@@ -1,0 +1,4 @@
+# Keep local and review builds within a predictable memory envelope. Override
+# for a single command with CARGO_BUILD_JOBS only on machines with more RAM.
+[build]
+jobs = 4
