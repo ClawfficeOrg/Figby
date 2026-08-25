@@ -3361,3 +3361,49 @@ fn test_font_editor_dirty_tracking_via_mutation_epoch() {
         "smush edit is a document mutation"
     );
 }
+
+/// F-09 (GPT review): a locked layer rejects writes from the paint path.
+/// Previously the lock flag was cosmetic.
+#[test]
+fn test_locked_layer_blocks_keyboard_paint() {
+    use crossterm::event::KeyCode;
+    use figby::tui::{AppMode, TuiApp};
+
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.ui.mode = AppMode::ImageEditor;
+    app.side_panel.open = false;
+
+    // Lock the active layer.
+    app.editor.layer_stack.active_layer_mut().locked = true;
+
+    // Move cursor onto a known cell.
+    app.editor.canvas.set_cursor(1, 1);
+
+    let before = app
+        .editor
+        .layer_stack
+        .active_layer()
+        .buffer()
+        .get(1, 1)
+        .map(|c| c.ch)
+        .unwrap_or(' ');
+    let rev0 = app.editor.revision;
+
+    // Enter paints at cursor when nothing else claims it.
+    app.handle_key_event(KeyCode::Enter);
+    let after = app
+        .editor
+        .layer_stack
+        .active_layer()
+        .buffer()
+        .get(1, 1)
+        .map(|c| c.ch)
+        .unwrap_or(' ');
+
+    assert_eq!(before, after, "locked layer must reject painted cells");
+    assert_eq!(
+        app.editor.revision, rev0,
+        "blocked paint must not count as a document mutation"
+    );
+}

@@ -160,11 +160,42 @@ impl EditorState {
         self.recomposite_canvas();
     }
 
+    /// Whether the active layer rejects writes. All mutating paths
+    /// (brush, eraser, fill, line, spray, marker, move, rotate, text
+    /// placement, keyboard paint, cut, paste) must check this before
+    /// touching the layer — the lock flag is otherwise cosmetic (GPT
+    /// review F-09).
+    pub(crate) fn active_layer_locked(&self) -> bool {
+        self.layer_stack.active_layer().locked
+    }
+
     pub(crate) fn push_undo_snapshot(&mut self, label: &str) {
-        self.undo.push_snapshot(
-            self.layer_stack.active_layer().buffer.clone(),
-            label.to_string(),
-        );
+        let layer_index = self.layer_stack.active;
+        let buffer = self.layer_stack.active_layer().buffer.clone();
+        self.undo
+            .push_snapshot(buffer, layer_index, label.to_string());
+    }
+
+    /// Restore an undo/redo snapshot into ITS OWN layer (GPT review F-09),
+    /// make that layer active so subsequent edits target what the user
+    /// sees, and recomposite. Returns false if the recorded layer no
+    /// longer exists (e.g. it was deleted after the snapshot) or is
+    /// locked — locked layers reject writes, including undo restorations.
+    pub fn restore_undo_snapshot(
+        &mut self,
+        layer_index: usize,
+        buffer: canvas::CanvasBuffer,
+    ) -> bool {
+        if layer_index >= self.layer_stack.layers.len() {
+            return false;
+        }
+        if self.layer_stack.layers[layer_index].locked {
+            return false;
+        }
+        *self.layer_stack.layers[layer_index].buffer_mut() = buffer;
+        self.layer_stack.active = layer_index;
+        self.recomposite_canvas();
+        true
     }
 
     pub(crate) fn compute_canvas_rect(&self, inner: Rect) -> Rect {
@@ -560,7 +591,7 @@ impl EditorState {
                     *dirty = true;
                     return true;
                 }
-                KeyCode::Char(' ') | KeyCode::Enter => {
+                KeyCode::Char(' ') | KeyCode::Enter if !self.active_layer_locked() => {
                     self.push_undo_snapshot("Braille dot");
                     let (cx, cy) = self.canvas.cursor();
                     let (cx, cy) = (cx as usize, cy as usize);
@@ -613,9 +644,11 @@ impl EditorState {
             return true;
         }
 
-        // Keyboard painting: Space/Enter paints or erases at cursor
+        // Keyboard painting: Space/Enter paints or erases at cursor.
+        // Locked layers reject writes (GPT review F-09).
         if Tool::is_paint_tool(self.toolbox.selected)
             && matches!(code, KeyCode::Char(' ') | KeyCode::Enter)
+            && !self.active_layer_locked()
         {
             let (cx, cy) = self.canvas.cursor();
             self.push_undo_snapshot("Keyboard paint");
@@ -1622,6 +1655,73 @@ mod editor_state_tests {
     /// and loading it back must restore every layer — navigation used to
     /// flatten the composite into the active layer only, corrupting
     /// multilayer documents.
+    /// F-09 (GPT review): editing layer 0, switching to layer 1, then
+    /// undoing must restore layer 0's own state and leave layer 1 alone
+    /// — not paste layer 0's pixels into layer 1.
+    #[test]
+    fn test_undo_targets_recorded_layer_not_active() {
+        let mut editor = make_test_editor(2, 2);
+        editor
+            .layer_stack
+            .layers
+            .push(layers::Layer::new(2, 2, "Second".to_string()));
+        let cell = |ch| canvas::CanvasCell {
+            ch,
+            fg: None,
+            bg: None,
+            height: None,
+        };
+
+        // Snapshot layer 0 BEFORE editing it (the app pushes snapshots
+        // prior to applying a stroke), then paint 'A'.
+        editor.layer_stack.active = 0;
+        editor.push_undo_snapshot("draw A");
+        editor.layer_stack.layers[0]
+            .buffer_mut()
+            .set(0, 0, cell('A'));
+
+        // Switch to layer 1 and paint 'B' directly (no snapshot).
+        editor.layer_stack.active = 1;
+        editor.layer_stack.layers[1]
+            .buffer_mut()
+            .set(1, 1, cell('B'));
+
+        // Undo while layer 1 is active.
+        let target = editor.undo.undo_top_layer().expect("undo entry exists");
+        assert_eq!(target, 0, "entry belongs to layer 0");
+        let cur = editor.layer_stack.layers[target].buffer.clone();
+        if let Some((buf, idx, _)) = editor.undo.undo(cur, target) {
+            assert!(editor.restore_undo_snapshot(idx, buf));
+        } else {
+            panic!("undo should pop an entry");
+        }
+
+        assert_eq!(
+            editor.layer_stack.layers[0].buffer().get(0, 0).unwrap().ch,
+            ' ',
+            "layer 0 must be restored to its pre-edit state"
+        );
+        assert_eq!(
+            editor.layer_stack.active, 0,
+            "undo should make the restored layer active"
+        );
+        assert_eq!(
+            editor.layer_stack.layers[1].buffer().get(1, 1).unwrap().ch,
+            'B',
+            "layer 1 content must be untouched by layer 0's undo"
+        );
+    }
+
+    /// F-09 (GPT review): locked layers reject undo restorations too —
+    /// all writes pass one lock-aware check.
+    #[test]
+    fn test_restore_rejects_locked_layer() {
+        let mut editor = make_test_editor(2, 2);
+        editor.layer_stack.active_layer_mut().locked = true;
+        let buf = canvas::CanvasBuffer::new(2, 2);
+        assert!(!editor.restore_undo_snapshot(0, buf));
+    }
+
     #[test]
     fn test_timeline_commit_and_load_preserve_all_layers() {
         let mut editor = make_test_editor(2, 2);

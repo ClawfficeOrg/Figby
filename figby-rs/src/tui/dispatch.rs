@@ -308,6 +308,51 @@ impl TuiApp {
         self.frame.dirty = true;
     }
 
+    /// Undo the most recent action, restoring into the RECORDED layer.
+    /// The redo entry captures that layer's current buffer so redo is
+    /// exact even across layer switches (GPT review F-09).
+    pub(crate) fn perform_undo(&mut self) {
+        if !self.editor.undo.can_undo() {
+            return;
+        }
+        let target = match self.editor.undo.undo_top_layer() {
+            Some(i) => i,
+            None => return,
+        };
+        if target >= self.editor.layer_stack.layers.len() {
+            // Layer was deleted after the snapshot; drop the stale entry.
+            let _ = self.editor.undo.undo(canvas::CanvasBuffer::new(0, 0), 0);
+            return;
+        }
+        let cur = self.editor.layer_stack.layers[target].buffer.clone();
+        if let Some((buf, idx, _)) = self.editor.undo.undo(cur, target) {
+            if self.editor.restore_undo_snapshot(idx, buf) {
+                self.editor.mark_dirty();
+            }
+        }
+    }
+
+    /// Redo counterpart of [`Self::perform_undo`].
+    pub(crate) fn perform_redo(&mut self) {
+        if !self.editor.undo.can_redo() {
+            return;
+        }
+        let target = match self.editor.undo.redo_top_layer() {
+            Some(i) => i,
+            None => return,
+        };
+        if target >= self.editor.layer_stack.layers.len() {
+            let _ = self.editor.undo.redo(canvas::CanvasBuffer::new(0, 0), 0);
+            return;
+        }
+        let cur = self.editor.layer_stack.layers[target].buffer.clone();
+        if let Some((buf, idx, _)) = self.editor.undo.redo(cur, target) {
+            if self.editor.restore_undo_snapshot(idx, buf) {
+                self.editor.mark_dirty();
+            }
+        }
+    }
+
     /// Route a destructive transition through the unsaved-changes dialog
     /// when needed (GPT review F-08). Clean documents proceed straight
     /// through.
@@ -725,7 +770,9 @@ impl TuiApp {
                     // Try to select existing block
                     if let Some(idx) = self.editor.text_tool.hit_test(bx, by) {
                         self.editor.text_tool.selected_block = Some(idx);
-                    } else if !self.editor.text_tool.text_buffer.is_empty() {
+                    } else if !self.editor.text_tool.text_buffer.is_empty()
+                        && !self.editor.active_layer_locked()
+                    {
                         // Place text at click position
                         self.editor.text_tool.place_at(bx, by);
                         self.editor.push_undo_snapshot("Place text");
@@ -792,6 +839,19 @@ impl TuiApp {
                         &mut self.interaction.selection_lasso_points,
                     );
                     return;
+                }
+
+                // Layer lock enforcement (GPT review F-09): mutating tools
+                // are no-ops on a locked layer. Eyedropper still samples;
+                // Emitter manages particles, not pixels.
+                {
+                    let read_only = matches!(
+                        self.editor.toolbox.selected,
+                        Tool::Eyedropper | Tool::Emitter
+                    );
+                    if self.editor.active_layer_locked() && !read_only {
+                        return;
+                    }
                 }
 
                 // Start batch for drag operations, push initial snapshot
@@ -930,6 +990,19 @@ impl TuiApp {
                         &mut self.interaction.selection_drag_origin,
                         &mut self.interaction.selection_lasso_points,
                     );
+                    return;
+                }
+
+                // Layer lock enforcement (GPT review F-09): no drag
+                // painting on a locked layer.
+                if self.editor.active_layer_locked()
+                    && !matches!(
+                        self.editor.toolbox.selected,
+                        Tool::Eyedropper | Tool::Emitter
+                    )
+                {
+                    self.interaction.prev_mouse_buf = None;
+                    self.interaction.line_start = None;
                     return;
                 }
 
@@ -1763,6 +1836,8 @@ impl TuiApp {
         // Keyboard painting: Space/Enter paints or erases at cursor
         if Tool::is_paint_tool(self.editor.toolbox.selected)
             && matches!(code, KeyCode::Char(' ') | KeyCode::Enter)
+            // Layer lock enforcement (GPT review F-09)
+            && !self.editor.active_layer_locked()
         {
             let (cx, cy) = self.editor.canvas.cursor();
             self.editor.push_undo_snapshot("Keyboard paint");
@@ -1866,21 +1941,11 @@ impl TuiApp {
                 None
             }
             GA::Undo => {
-                let cur = self.editor.layer_stack.active_layer().buffer.clone();
-                if let Some((buf, _)) = self.editor.undo.undo(cur) {
-                    *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
-                    self.editor.recomposite_canvas();
-                    self.editor.mark_dirty();
-                }
+                self.perform_undo();
                 Some(AppEvent::Undo)
             }
             GA::Redo => {
-                let cur = self.editor.layer_stack.active_layer().buffer.clone();
-                if let Some((buf, _)) = self.editor.undo.redo(cur) {
-                    *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
-                    self.editor.recomposite_canvas();
-                    self.editor.mark_dirty();
-                }
+                self.perform_redo();
                 Some(AppEvent::Redo)
             }
             GA::ToggleUndoPanel => {
@@ -2782,30 +2847,16 @@ impl TuiApp {
                 self.ui.menu_bar_state.reset();
             }
             menu::MenuAction::EditUndo => {
-                if self.editor.undo.can_undo() {
-                    let cur = self.editor.layer_stack.active_layer().buffer.clone();
-                    if let Some((buf, _)) = self.editor.undo.undo(cur) {
-                        *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
-                        self.editor.recomposite_canvas();
-                        self.editor.mark_dirty();
-                    }
-                }
+                self.perform_undo();
                 self.ui.menu_bar_state.reset();
             }
             menu::MenuAction::EditRedo => {
-                if self.editor.undo.can_redo() {
-                    let cur = self.editor.layer_stack.active_layer().buffer.clone();
-                    if let Some((buf, _)) = self.editor.undo.redo(cur) {
-                        *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
-                        self.editor.recomposite_canvas();
-                        self.editor.mark_dirty();
-                    }
-                }
+                self.perform_redo();
                 self.ui.menu_bar_state.reset();
             }
             menu::MenuAction::EditCut => {
                 if let Some(ref sel) = self.editor.selection {
-                    if sel.is_active() {
+                    if sel.is_active() && !self.editor.active_layer_locked() {
                         self.editor.push_undo_snapshot("Cut selection");
                         if let Some(sel_owned) = self.editor.selection.take() {
                             let mut buf = self.editor.layer_stack.active_layer().buffer.clone();
@@ -2827,7 +2878,7 @@ impl TuiApp {
                 self.ui.menu_bar_state.reset();
             }
             menu::MenuAction::EditPaste => {
-                if self.editor.clipboard.is_some() {
+                if self.editor.clipboard.is_some() && !self.editor.active_layer_locked() {
                     self.editor.push_undo_snapshot("Paste");
                     let clip = self.editor.clipboard.clone();
                     if let Some(ref clip_data) = clip {
