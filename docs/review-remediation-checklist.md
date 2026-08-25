@@ -59,16 +59,16 @@ Independent verification results:
 
 ## Phase 2 — Resource & trust boundaries
 
-- [ ] **F-10** Template image containment: pass base dir in RenderConfig, canonicalize +
+- [x] **F-10** Template image containment: pass base dir in RenderConfig, canonicalize +
       re-check containment immediately before open (template.rs:583-598).
-- [ ] **F-11 [verified]** Disable/allowlist `${VAR}` env expansion (template.rs:156);
+- [x] **F-11 [verified]** Disable/allowlist `${VAR}` env expansion (template.rs:156);
       bound template image dimensions; route rascii decoding through limited reader.
       Add test proving `$(...)` stays literal.
 - [ ] **F-12 [verified]** Canvas guard bypass: width=0 × height=u32::MAX passes
       `saturating_mul` check then allocates billions of rows (template.rs:505-511);
       margin/padding outside budget. Same for new_image/gif_import dialogs (65,535 cap).
       Use checked arithmetic incl. padding; reject zero dims; consider flat buffer.
-- [ ] **F-13 [verified]** GIF import retains all native-resolution frames in `raw_frames`
+- [x] **F-13 [verified]** GIF import retains all native-resolution frames in `raw_frames`
       (gif_import.rs:213-216); scaled-cell budget doesn't count native bytes. Stream
       decode; cap native pixels/cumulative bytes independently.
 - [ ] **F-14** Export pixel budgets: font-size-as-scale × canvas can exceed GBs
@@ -76,7 +76,7 @@ Independent verification results:
 - [ ] **F-15 [verified]** WASM editor cursor is byte index advanced by 1 per char
       (web.rs:39-58) → panic on multibyte edit. Switch to char/grapheme index.
       Browser tests: é, CJK, emoji, combining marks.
-- [ ] **F-16 [verified]** Replace recursion with loops: control.rs iso2022 (recursive
+- [x] **F-16 [verified]** Replace recursion with loops: control.rs iso2022 (recursive
       re-entry per control byte) and input.rs HZ skip. Long adversarial-run tests.
 - [ ] **F-17 [verified]** normalize_hex slices at byte offsets without ASCII check
       (palette_import.rs:126-135) → `"éx"` panics. Validate ASCII+hex digits, return
