@@ -21,6 +21,43 @@ Master memory index. Detailed entries live in versioned files below.
 
 ## Architectural Decisions
 
+### GPT-Review Remediation (6.0.32–6.0.33, branch `hardening/gpt-review`)
+Full review at `docs/GPT-review-8-20-26.md` (30 findings); progress
+tracked in `docs/review-remediation-checklist.md`. Second remote:
+`origin` = ClawfficeOrg/Figby, `upstream` = CompewterTutor/Figby.
+
+Key architectural decisions from Phase 0–1:
+
+- **Single timeline authority (F-05)**: `TimelineFrame::document_state`
+  (`Vec<CanvasBuffer>`, one per layer) owns pixels; keyframes own
+  transforms and are applied per-layer on top at composite time in
+  `capture_timeline_frames` — the ONLY compositor for export/playback.
+  Navigation commits every layer's buffer and restores every layer via
+  `EditorState::load_timeline_frame(&[CanvasBuffer])`.
+- **Rendering is read-only (F-06)**: the ImageEditor cache sync was
+  removed from `render()`; it runs only on explicit model mutations
+  (image load, conversion keys). GIF/RASCII imports call
+  `ImageEditor::clear_cells()`.
+- **Revision-aware saves (F-07)**: `EditorState::mark_dirty()` bumps a
+  revision counter; async saves capture `pending_save_revision` and
+  only clear unsaved / honor deferred quit when unchanged.
+- **One transition dialog (F-08)**: `PendingDocAction` +
+  `request_transition()` route Quit/Open/New through one
+  save/discard/cancel dialog; `reset_document()` atomically replaces
+  all document + transient state. FontEditor exposes `mutation_epoch`;
+  dispatcher marks dirty only when it moves.
+- **Layer-aware undo (F-09)**: `UndoEntry.layer_index` + peek helpers
+  (`undo_top_layer`/`redo_top_layer`) so redo captures the target
+  layer's own buffer. `restore_undo_snapshot()` is the single lock-
+  aware write path. `active_layer_locked()` gates every mutating path.
+- **Packaged assets (F-03)**: embedded assets live under
+  `figby-rs/assets/` (themes, icons, mascot, web fonts). Root `fonts/`
+  remains for CLI runtime font discovery and control-file tests.
+  Test fixture: `figby-rs/tests/fixtures/FiraMono-Regular.ttf` (OFL).
+- **Reproducible builds (F-19)**: `Cargo.lock` tracked, CI runs
+  `--locked`, toolchain pinned by root `rust-toolchain.toml` (1.97.1).
+  CI also asserts fixtures exist and verifies `cargo package`.
+
 ### UTF-8 Native Encoding
 Figby uses Rust `char`/`String` natively (UTF-8), not `wchar_t`.
 FIGlet C used `typedef long inchr` for internal char representation.

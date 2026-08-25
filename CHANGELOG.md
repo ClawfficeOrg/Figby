@@ -1,5 +1,52 @@
 # Changelog
 
+## [6.0.33] - 2026-08-25
+
+Phase 1 of the GPT-review remediation (`docs/GPT-review-8-20-26.md`,
+tracked in `docs/review-remediation-checklist.md`) — core document
+correctness: F-04 through F-09 all closed.
+
+### Fixed
+- **F-04** Production GIF/APNG export now uses the shared snapshot-aware
+  timeline compositor instead of re-deriving every frame from the live
+  layer stack; end-to-end test decodes the GIF and asserts distinct
+  frame pixels.
+- **F-05** Single timeline authority: `TimelineFrame::document_state`
+  (per-layer buffers) owns pixels, keyframes own transforms applied on
+  top at composite time; navigation commits/restores every layer so
+  multilayer documents survive frame changes losslessly.
+- **F-06** Rendering is read-only against document state — the
+  image-editor cache sync no longer runs in the render path and cannot
+  overwrite paint operations; GIF/RASCII imports clear the stale cache.
+- **F-07** Revision-aware saves: edits made while an async save runs
+  keep the document dirty and cancel deferred quit.
+- **F-08** Uniform dirty tracking (font-editor mutation epoch) plus
+  guarded Open/New transitions sharing one save/discard/cancel dialog;
+  atomic document reset covers undo/selection/timeline/export state;
+  Save option hidden where no save path exists.
+- **F-09** Layer-aware undo: entries carry their target layer and
+  restore into it (with lock checks); per-layer locks are enforced on
+  every mutating path (mouse tools, text placement, keyboard paint,
+  braille dots, cut/paste).
+- **F-16** ISO-2022 and HZ parsers converted from recursion to
+  iterative state machines; adversarial tests drive 500k-element
+  control/escape runs through both.
+
+### Security
+- **F-10** Template images resolve against the template's base dir with
+  canonicalization immediately before open — relative symlink escapes
+  rejected.
+- **F-11** `${VAR}` env expansion in templates is opt-in (default off);
+  template image dimensions defaulted when absent and capped at 2000.
+- **F-12** Template canvas rejects zero dimensions; padding/margin
+  counted via checked arithmetic before allocation.
+- **F-13** GIF import streams decode→composite in one pass instead of
+  retaining all native-resolution frames; 10k frame-count cap added.
+- **F-15** WASM editor cursor is a char index; multibyte editing
+  (accents, CJK, emoji, combining marks) no longer panics.
+- **F-17** One ASCII-validating `parse_hex_rgb` replaces seven unsafe
+  byte-offset slicing sites across palette/theme parsing.
+
 ## [6.0.32] - 2026-08-25
 
 ### Fixed

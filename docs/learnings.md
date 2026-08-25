@@ -1,5 +1,34 @@
 # Figby — Learnings
 
+## 6.0.33 — GPT-review remediation Phase 1 (document model)
+
+- **Two keyboard-paint paths existed** (`dispatch.rs` AND
+  `EditorState::handle_key`) — gating only the dispatch one left paint
+  leaking through on locked layers. When enforcing a rule, grep for
+  *every* implementation of the behavior, not just the first call site.
+- **Undo redo-capture needs the entry's layer buffer, not the active
+  layer's**: `undo(cur, cur_idx)` must receive the current content of
+  the layer being undone, or cross-layer redo restores garbage. Peek
+  helpers (`undo_top_layer`) + caller-side fetch keep UndoSystem dumb.
+- **Undo semantics gotcha when writing tests**: `push_undo_snapshot`
+  captures the CURRENT buffer — to test "undo reverts an edit", push
+  BEFORE mutating (the app does this: snapshot precedes stroke).
+- **macOS `sed -i ''` has no `\|` alternation in BRE** and perl one-liners
+  with escaped paths are error-prone — for multi-file refactors the
+  Edit tool with replaceAll is safer than shell one-liners; a sed that
+  silently matches nothing looks identical to success.
+- **`self.mark_dirty()` inside its own body**: a mechanical sed of
+  `self.unsaved = true` → `self.mark_dirty()` will also rewrite the new
+  helper's own body into infinite recursion (stack overflow in tests).
+  Write the helper first, then exclude it from any bulk substitution.
+- **Status-bar truncation is intentional responsive design**: droppable
+  items vanish under ~100 cols, so TUI smoke assertions must use a wide
+  backend (120 cols) rather than expecting every label at 80.
+- **Flaky parallel tests from clock-based temp names**: pid+nanos
+  collides when clock granularity is coarse; add a per-process
+  AtomicU64 counter. Symptom was `DirectoryNotEmpty` only under full-
+  suite runs, never alone.
+
 ## 6.0.26 — Text tool UX redesign
 
 - Live preview overlay on canvas: clone `TextToolState`, call `render_rows_from_buffer()`, push `TextOverlay` into `canvas.text_overlays` alongside committed blocks. The clone avoids mutating the real state during render.
