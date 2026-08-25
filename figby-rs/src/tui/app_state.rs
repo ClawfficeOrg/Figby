@@ -141,13 +141,22 @@ impl EditorState {
         self.canvas.buffer = self.layer_stack.composite();
     }
 
-    /// Load a timeline frame's captured raster (`TimelineFrame::layer_state`)
-    /// into the active layer and recomposite. Timeline navigation only moves
-    /// `current_frame` — without this, the canvas stays frozen on whatever
-    /// content was loaded at import/capture time no matter which frame is
-    /// selected.
-    pub fn load_timeline_frame(&mut self, buffer: &canvas::CanvasBuffer) {
-        *self.layer_stack.active_layer_mut().buffer_mut() = buffer.clone();
+    /// Restore a timeline frame's committed per-layer buffers and
+    /// recomposite. Restores EVERY layer (not just the active one), so
+    /// navigating the timeline never flattens or duplicates multilayer
+    /// content (GPT review F-05). Snapshot layers beyond the current
+    /// stack are ignored; stack layers beyond the snapshot are cleared.
+    pub fn load_timeline_frame(&mut self, states: &[canvas::CanvasBuffer]) {
+        for (i, layer) in self.layer_stack.layers.iter_mut().enumerate() {
+            match states.get(i) {
+                Some(buf) => *layer.buffer_mut() = buf.clone(),
+                None => {
+                    let w = layer.buffer().width();
+                    let h = layer.buffer().height();
+                    *layer.buffer_mut() = canvas::CanvasBuffer::new(w, h);
+                }
+            }
+        }
         self.recomposite_canvas();
     }
 
@@ -881,10 +890,20 @@ impl AnimationState {
     pub(crate) fn commit_current_timeline_frame(&mut self, editor: &EditorState) {
         let cf = self.timeline_state.current_frame;
         if cf < self.timeline_state.frames.len() {
-            let buffer = editor.layer_stack.composite();
-            let thumbnail = capture_thumbnail(&buffer, 8, 3);
+            // Commit EVERY layer's buffer (GPT review F-05): an earlier
+            // version stored only the flattened composite, which the load
+            // path then wrote back into the active layer alone —
+            // duplicating/corrupting multilayer documents on navigation.
+            let document_state: Vec<canvas::CanvasBuffer> = editor
+                .layer_stack
+                .layers
+                .iter()
+                .map(|l| l.buffer.clone())
+                .collect();
+            let composite = editor.layer_stack.composite();
+            let thumbnail = capture_thumbnail(&composite, 8, 3);
             let frame = &mut self.timeline_state.frames[cf];
-            frame.layer_state = Some(buffer);
+            frame.document_state = document_state;
             frame.thumbnail = thumbnail;
             frame.has_keyframe = true;
         }
@@ -892,13 +911,14 @@ impl AnimationState {
 
     pub(crate) fn load_current_timeline_frame(&mut self, editor: &mut EditorState) {
         let cf = self.timeline_state.current_frame;
-        if let Some(buffer) = self
+        if let Some(states) = self
             .timeline_state
             .frames
             .get(cf)
-            .and_then(|f| f.layer_state.clone())
+            .map(|f| f.document_state.clone())
+            .filter(|s| !s.is_empty())
         {
-            editor.load_timeline_frame(&buffer);
+            editor.load_timeline_frame(&states);
         }
     }
 
@@ -953,7 +973,7 @@ impl AnimationState {
                         thumbnail,
                         has_keyframe: true,
                         label: format!("F{}", self.timeline_state.frames.len()),
-                        layer_state: Some(buffer),
+                        document_state: vec![buffer],
                         layer_keyframes,
                     };
                     self.timeline_state.sync_layer_names(&editor.layer_stack);
@@ -1403,7 +1423,7 @@ mod editor_state_tests {
             },
         );
 
-        editor.load_timeline_frame(&buf);
+        editor.load_timeline_frame(&[buf]);
 
         assert_eq!(editor.canvas.buffer.get(0, 0).unwrap().ch, 'X');
         assert_eq!(
@@ -1430,7 +1450,7 @@ mod editor_state_tests {
         assert_eq!(editor.canvas.buffer.get(1, 1).unwrap().ch, 'A');
 
         let frame_buf = canvas::CanvasBuffer::new(2, 2); // blank frame
-        editor.load_timeline_frame(&frame_buf);
+        editor.load_timeline_frame(&[frame_buf]);
 
         assert_eq!(
             editor.canvas.buffer.get(1, 1).unwrap().ch,
@@ -1577,6 +1597,103 @@ mod editor_state_tests {
         assert!(
             !editor.selection.as_ref().unwrap().is_selected(2, 0),
             "the mask's old position should no longer be selected after rotating"
+        );
+    }
+
+    /// F-05 (GPT review): committing a frame must snapshot EVERY layer,
+    /// and loading it back must restore every layer — navigation used to
+    /// flatten the composite into the active layer only, corrupting
+    /// multilayer documents.
+    #[test]
+    fn test_timeline_commit_and_load_preserve_all_layers() {
+        let mut editor = make_test_editor(2, 2);
+        // Give the stack a second layer with distinct content:
+        // L0='0' at (0,0), L1='1' at (1,1).
+        editor
+            .layer_stack
+            .layers
+            .push(layers::Layer::new(2, 2, "Second".to_string()));
+        editor.layer_stack.layers[0].buffer_mut().set(
+            0,
+            0,
+            canvas::CanvasCell {
+                ch: '0',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+        editor.layer_stack.layers[1].buffer_mut().set(
+            1,
+            1,
+            canvas::CanvasCell {
+                ch: '1',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+
+        let mut anim = AnimationState {
+            timeline_state: timeline::TimelineState::default(),
+            particle_system: particles::ParticleSystem::new(particles::ParticleConfig::default()),
+            emitter_active: false,
+            emitter_panel: particles::EmitterConfigPanel::new(),
+            show_live_particles: true,
+            baked_layer_indices: Vec::new(),
+            timeline_visible: false,
+            marker_accum: HashMap::new(),
+            loop_enabled: false,
+            inline_player: None,
+            transport_rects: Vec::new(),
+        };
+        anim.timeline_state.add_frame(timeline::TimelineFrame {
+            thumbnail: vec![],
+            has_keyframe: true,
+            label: "F0".into(),
+            document_state: Vec::new(),
+            layer_keyframes: vec![None, None],
+        });
+        anim.commit_current_timeline_frame(&editor);
+        assert_eq!(
+            anim.timeline_state.frames[0].document_state.len(),
+            2,
+            "commit must snapshot every layer"
+        );
+
+        // Mutate both layers after commit (simulating edits on frame 1).
+        editor.layer_stack.layers[0].buffer_mut().set(
+            0,
+            0,
+            canvas::CanvasCell {
+                ch: 'x',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+        editor.layer_stack.layers[1].buffer_mut().set(
+            1,
+            1,
+            canvas::CanvasCell {
+                ch: 'y',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+
+        // Navigate back to the committed frame.
+        anim.load_current_timeline_frame(&mut editor);
+        assert_eq!(
+            editor.layer_stack.layers[0].buffer().get(0, 0).unwrap().ch,
+            '0',
+            "layer 0 content must be restored exactly"
+        );
+        assert_eq!(
+            editor.layer_stack.layers[1].buffer().get(1, 1).unwrap().ch,
+            '1',
+            "layer 1 must be restored too, not just the active layer"
         );
     }
 }

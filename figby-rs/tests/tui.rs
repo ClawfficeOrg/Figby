@@ -2978,14 +2978,14 @@ fn test_space_starts_playback_even_with_layers_panel_open() {
         thumbnail: vec![],
         has_keyframe: true,
         label: "F0".to_string(),
-        layer_state: None,
+        document_state: Vec::new(),
         layer_keyframes: vec![],
     });
     app.animation.timeline_state.add_frame(TimelineFrame {
         thumbnail: vec![],
         has_keyframe: true,
         label: "F1".to_string(),
-        layer_state: None,
+        document_state: Vec::new(),
         layer_keyframes: vec![],
     });
     assert!(app.editor.layer_stack.layers[0].visible);
@@ -3034,14 +3034,14 @@ fn test_timeline_frame_edits_persist_on_switch() {
         thumbnail: vec![],
         has_keyframe: true,
         label: "F0".to_string(),
-        layer_state: None,
+        document_state: Vec::new(),
         layer_keyframes: vec![],
     });
     app.animation.timeline_state.add_frame(TimelineFrame {
         thumbnail: vec![],
         has_keyframe: true,
         label: "F1".to_string(),
-        layer_state: None,
+        document_state: Vec::new(),
         layer_keyframes: vec![],
     });
 

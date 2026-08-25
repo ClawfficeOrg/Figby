@@ -32,7 +32,14 @@ pub struct TimelineFrame {
     pub thumbnail: Vec<Vec<char>>,
     pub has_keyframe: bool,
     pub label: String,
-    pub layer_state: Option<CanvasBuffer>,
+    /// Committed pixel state: one buffer per layer, in render order
+    /// (bottom-to-top). Empty when the frame has no committed snapshot —
+    /// such frames derive pixels from the live layer stack.
+    ///
+    /// Single-authority rule (GPT review F-05): this owns *pixels*;
+    /// `layer_keyframes` own *transforms* (offset/opacity/blend), which
+    /// are applied on top of these buffers at composite time.
+    pub document_state: Vec<CanvasBuffer>,
     pub layer_keyframes: Vec<Option<LayerKeyframe>>,
 }
 
@@ -450,7 +457,7 @@ impl TimelineState {
                 thumbnail: start_frame.thumbnail.clone(),
                 has_keyframe: has_kf,
                 label: format!("tween {}/{}", i + 1, num_frames),
-                layer_state: None,
+                document_state: Vec::new(),
                 layer_keyframes: frame_layers,
             });
         }
@@ -1184,7 +1191,7 @@ mod tests {
             thumbnail: thumb,
             has_keyframe: has_kf,
             label: label.to_string(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: Vec::new(),
         }
     }

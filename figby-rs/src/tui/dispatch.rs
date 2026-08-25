@@ -2273,7 +2273,7 @@ impl TuiApp {
                             thumbnail,
                             has_keyframe: false,
                             label: format!("F{}", i),
-                            layer_state: Some(frame_buf),
+                            document_state: vec![frame_buf],
                             layer_keyframes: vec![Some(timeline::LayerKeyframe::default())],
                         });
                 }
@@ -2390,7 +2390,7 @@ impl TuiApp {
 
         // Compose timeline frames if animation format + timeline has frames.
         // Use the shared compositor (same one as preview/tests/ANSI anim) so
-        // captured frame snapshots (layer_state) are respected; an earlier
+        // captured frame snapshots (document_state) are respected; an earlier
         // inline copy of this logic skipped them and exported repeated
         // copies of the live canvas (GPT review F-04).
         let frames: Vec<Vec<Vec<canvas::CanvasCell>>> = if (format
@@ -2880,7 +2880,7 @@ impl TuiApp {
                     thumbnail,
                     has_keyframe: true,
                     label: format!("F{}", self.animation.timeline_state.frames.len()),
-                    layer_state: Some(buffer),
+                    document_state: vec![buffer],
                     layer_keyframes,
                 };
                 self.animation
@@ -2969,7 +2969,7 @@ mod playback_reconciliation_tests {
                 thumbnail: capture_thumbnail(&buf, 8, 3),
                 has_keyframe: true,
                 label: format!("F{}", i),
-                layer_state: Some(buf),
+                document_state: vec![buf],
                 layer_keyframes: Vec::new(),
             };
             app.animation.timeline_state.add_frame(frame);
@@ -3053,7 +3053,7 @@ mod sidebar_keybindings_tests {
                 thumbnail: capture_thumbnail(&buf, 8, 3),
                 has_keyframe: true,
                 label: format!("F{}", i),
-                layer_state: Some(buf),
+                document_state: vec![buf],
                 layer_keyframes: Vec::new(),
             };
             app.animation.timeline_state.add_frame(frame);

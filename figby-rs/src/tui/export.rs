@@ -671,20 +671,63 @@ pub fn capture_timeline_frames(
     }
     (0..timeline.frames.len())
         .map(|frame_idx| {
-            // A captured raster snapshot (GIF import, or an 'A'-key manual
-            // frame capture) is already a finished composite for this
-            // frame — use it directly. Falling through to the per-layer
-            // keyframe-interpolation path below would instead re-render
-            // the *live* layer stack (unchanged across every frame_idx)
-            // and only vary position/opacity/blend-mode, so every
-            // captured frame would come out identical — current_frame
-            // still advances (so the progress bar/counter looks right),
-            // but playback/export visibly never changes.
-            if let Some(buf) = &timeline.frames[frame_idx].layer_state {
+            // Single-authority rule (GPT review F-05): a frame's pixels
+            // come from its committed `document_state` snapshot when one
+            // exists; keyframes contribute transforms (offset/opacity/
+            // blend) applied on top, per layer, in stack order. Frames
+            // without a snapshot fall through to the per-layer
+            // keyframe-interpolation path against the live layer stack.
+            //
+            // (An even earlier version of the production exporter
+            // re-derived every frame from the *live* stack — unchanged
+            // across frame_idx — so captured frames all came out
+            // identical.)
+            if !timeline.frames[frame_idx].document_state.is_empty() {
+                let states = &timeline.frames[frame_idx].document_state;
+                let mut result_buf = CanvasBuffer::new(width, height);
+                for (layer_idx, buf) in states.iter().enumerate() {
+                    let props = timeline.get_interpolated_properties(frame_idx, layer_idx);
+                    if props.opacity == 0 {
+                        continue;
+                    }
+                    let ox = props.position_offset.0.max(0) as usize;
+                    let oy = props.position_offset.1.max(0) as usize;
+                    for y in 0..height.min(buf.height()) {
+                        for x in 0..width.min(buf.width()) {
+                            let bx = x + ox;
+                            let by = y + oy;
+                            if bx >= width || by >= height {
+                                continue;
+                            }
+                            if let Some(top) = buf.get(x, y) {
+                                if top.ch == ' ' && top.fg.is_none() && top.bg.is_none() {
+                                    continue;
+                                }
+                                let bottom = result_buf.get(bx, by).copied().unwrap_or_default();
+                                let blended_fg =
+                                    blend_mode_color(top.fg, bottom.fg, props.blend_mode);
+                                let blended_bg =
+                                    blend_mode_color(top.bg, bottom.bg, props.blend_mode);
+                                let final_fg = blend_colors(blended_fg, bottom.fg, props.opacity);
+                                let final_bg = blend_colors(blended_bg, bottom.bg, props.opacity);
+                                result_buf.set(
+                                    bx,
+                                    by,
+                                    CanvasCell {
+                                        ch: top.ch,
+                                        fg: final_fg,
+                                        bg: final_bg,
+                                        height: None,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
                 return (0..height)
                     .map(|y| {
                         (0..width)
-                            .map(|x| buf.get(x, y).copied().unwrap_or_default())
+                            .map(|x| result_buf.get(x, y).copied().unwrap_or_default())
                             .collect()
                     })
                     .collect();
@@ -1100,14 +1143,14 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: Some(buf0),
+            document_state: vec![buf0],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
         timeline.add_frame(TimelineFrame {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
-            layer_state: Some(buf1),
+            document_state: vec![buf1],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
 
@@ -1141,7 +1184,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
         let frames = capture_timeline_frames(&timeline, &stack, 3, 3);
@@ -1179,7 +1222,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![
                 Some(LayerKeyframe::default()),
                 Some(LayerKeyframe::default()),
@@ -1209,14 +1252,14 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
         timeline.add_frame(TimelineFrame {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe {
                 position_offset: (1, 0),
                 ..Default::default()
@@ -1247,14 +1290,14 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
         timeline.add_frame(TimelineFrame {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe {
                 opacity: 0,
                 ..Default::default()
@@ -1296,7 +1339,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![
                 Some(LayerKeyframe::default()),
                 Some(LayerKeyframe {
@@ -1331,7 +1374,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: None,
+            document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
         assert!(!dialog.timeline_available);
@@ -1575,6 +1618,49 @@ mod tests {
         assert_eq!(ExportMode::Ansi.label(), "ANSI");
     }
 
+    /// F-05 (GPT review): keyframes own *transforms*; a committed
+    /// document_state owns *pixels*. The compositor must apply the two on
+    /// top of each other instead of treating them as rival authorities.
+    #[test]
+    fn test_capture_applies_keyframe_transform_to_committed_snapshot() {
+        let stack = LayerStack::new(3, 3);
+
+        let mut buf = CanvasBuffer::new(3, 3);
+        buf.set(
+            0,
+            0,
+            CanvasCell {
+                ch: 'A',
+                fg: Some(Color::Red),
+                bg: None,
+                height: None,
+            },
+        );
+
+        let mut timeline = TimelineState::default();
+        timeline.add_frame(TimelineFrame {
+            thumbnail: vec![],
+            has_keyframe: true,
+            label: "F0".into(),
+            document_state: vec![buf],
+            layer_keyframes: vec![Some(LayerKeyframe {
+                position_offset: (1, 1),
+                opacity: 128,
+                blend_mode: BlendMode::Normal,
+            })],
+        });
+
+        let frames = capture_timeline_frames(&timeline, &stack, 3, 3);
+        assert_eq!(frames.len(), 1);
+        assert_eq!(
+            frames[0][1][1].ch, 'A',
+            "snapshot pixel must be shifted by the keyframe offset"
+        );
+        // Opacity over an empty background cell keeps the top color
+        // (nothing to blend against), so assert color passthrough.
+        assert_eq!(frames[0][1][1].fg, Some(Color::Red));
+    }
+
     #[test]
     fn test_export_gif_two_saved_frames_decode_distinct() {
         // End-to-end guard for F-04: two frames with visually different
@@ -1611,14 +1697,14 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
-            layer_state: Some(buf0),
+            document_state: vec![buf0],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
         timeline.add_frame(TimelineFrame {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
-            layer_state: Some(buf1),
+            document_state: vec![buf1],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
 
