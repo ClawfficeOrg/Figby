@@ -1409,11 +1409,14 @@ mod tests {
     // --- load_font / ZIP support tests ---
 
     fn temp_dir_uniq() -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
         let ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        std::env::temp_dir().join(format!("figby_test_{}_{}", std::process::id(), ts))
+        std::env::temp_dir().join(format!("figby_test_{}_{}_{n}", std::process::id(), ts))
     }
 
     fn write_standard_font(dir: &std::path::Path) {
