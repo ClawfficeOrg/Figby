@@ -53,7 +53,7 @@ Independent verification results:
 - [x] **F-08** Uniform dirty tracking: font_editor mutations don't set unsaved flag;
       Open/New lack save/discard guard and partially reset state; image-mode
       "Save and Quit" early-returns unless Font Editor mode.
-- [ ] **F-09 [verified]** Undo entries store bare CanvasBuffer applied to whichever layer is
+- [x] **F-09 [verified]** Undo entries store bare CanvasBuffer applied to whichever layer is
       active at undo time → cross-layer corruption. Carry target layer id +
       structural inverse ops. Enforce layer locks via one mutation API.
 
