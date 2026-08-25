@@ -1116,7 +1116,7 @@ mod tests {
     #[test]
     fn test_font_file_to_figfont_smoke() {
         use std::io::Write;
-        static FONT_BYTES: &[u8] = include_bytes!("../../assets/fonts/to-convert/Lixdu.ttf");
+        static FONT_BYTES: &[u8] = include_bytes!("../tests/fixtures/FiraMono-Regular.ttf");
         let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
         tmp.write_all(FONT_BYTES).expect("write");
         let charset = test_charset();
@@ -1140,7 +1140,7 @@ mod tests {
     #[test]
     fn test_point_size_clamping() {
         use std::io::Write;
-        static FONT_BYTES: &[u8] = include_bytes!("../../assets/fonts/to-convert/Lixdu.ttf");
+        static FONT_BYTES: &[u8] = include_bytes!("../tests/fixtures/FiraMono-Regular.ttf");
         let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
         tmp.write_all(FONT_BYTES).expect("write");
         let charset = test_charset();
