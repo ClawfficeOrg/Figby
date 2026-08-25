@@ -951,14 +951,7 @@ fn color_to_hex(color: Color) -> String {
 }
 
 fn hex_to_color(hex: &str) -> Option<Color> {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() != 6 {
-        return None;
-    }
-    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-    Some(Color::Rgb(r, g, b))
+    super::theme::parse_hex_rgb(hex).map(|[r, g, b]| Color::Rgb(r, g, b))
 }
 
 fn ansi_to_rgb(index: u8) -> (u8, u8, u8) {
@@ -1006,14 +999,9 @@ fn ansi_to_rgb(index: u8) -> (u8, u8, u8) {
 }
 
 fn hex_to_rgb_tuple(hex: &str) -> (u8, u8, u8) {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() != 6 {
-        return (0, 0, 0);
-    }
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
-    (r, g, b)
+    super::theme::parse_hex_rgb(hex)
+        .map(|rgb| (rgb[0], rgb[1], rgb[2]))
+        .unwrap_or((0, 0, 0))
 }
 
 fn luminance(color: Color) -> Option<u8> {

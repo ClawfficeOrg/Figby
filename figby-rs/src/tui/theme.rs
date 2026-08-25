@@ -3,18 +3,39 @@ use serde::Deserialize;
 
 const DEFAULT_THEME_YAML: &str = include_str!("../../assets/themes/default.yaml");
 
-pub fn color_from_hex(hex: &str) -> Color {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() == 6 {
-        if let (Ok(r), Ok(g), Ok(b)) = (
-            u8::from_str_radix(&hex[0..2], 16),
-            u8::from_str_radix(&hex[2..4], 16),
-            u8::from_str_radix(&hex[4..6], 16),
-        ) {
-            return Color::Rgb(r, g, b);
-        }
+/// Parse an RGB triple from a hex color string (`#RGB` or `#RRGGBB`).
+///
+/// ASCII-validates before any slicing, so non-ASCII input (e.g. `"éx"`)
+/// returns `None` instead of panicking on an interior byte boundary
+/// (GPT review F-17).
+pub fn parse_hex_rgb(hex: &str) -> Option<[u8; 3]> {
+    let hex = hex.trim().trim_start_matches('#');
+    if hex.is_empty() || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
     }
-    Color::Reset
+    match hex.len() {
+        6 => Some([
+            u8::from_str_radix(&hex[0..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..4], 16).ok()?,
+            u8::from_str_radix(&hex[4..6], 16).ok()?,
+        ]),
+        3 => {
+            let bytes = hex.as_bytes();
+            let expand = |c: u8| -> Option<u8> {
+                let pair = [c, c];
+                let s = core::str::from_utf8(&pair).ok()?;
+                u8::from_str_radix(s, 16).ok()
+            };
+            Some([expand(bytes[0])?, expand(bytes[1])?, expand(bytes[2])?])
+        }
+        _ => None,
+    }
+}
+
+pub fn color_from_hex(hex: &str) -> Color {
+    parse_hex_rgb(hex)
+        .map(|[r, g, b]| Color::Rgb(r, g, b))
+        .unwrap_or(Color::Reset)
 }
 
 #[derive(Debug, Clone)]
@@ -629,5 +650,22 @@ statusbar:
         assert_eq!(color_from_hex("#000000"), Color::Rgb(0, 0, 0));
         assert_eq!(color_from_hex(""), Color::Reset);
         assert_eq!(color_from_hex("nothex"), Color::Reset);
+    }
+}
+
+#[cfg(test)]
+mod theme_tests {
+    use super::*;
+
+    /// F-17 (GPT review): non-ASCII input must return None, not panic on
+    /// a non-char-boundary byte slice.
+    #[test]
+    fn test_parse_hex_rgb_multibyte_no_panic() {
+        assert_eq!(parse_hex_rgb("éx"), None);
+        assert_eq!(parse_hex_rgb("#日本語"), None);
+        assert_eq!(parse_hex_rgb("gggggg"), None);
+        assert_eq!(parse_hex_rgb("#AABBCC"), Some([0xAA, 0xBB, 0xCC]));
+        assert_eq!(parse_hex_rgb("#abc"), Some([0xAA, 0xBB, 0xCC]));
+        assert_eq!(color_from_hex("éx"), Color::Reset);
     }
 }

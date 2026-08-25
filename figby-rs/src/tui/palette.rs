@@ -151,15 +151,8 @@ pub fn build_rgb_to_swatch(
 ) -> std::collections::HashMap<(u8, u8, u8), usize> {
     let mut map = std::collections::HashMap::new();
     for (i, (_name, hex)) in swatches.iter().enumerate() {
-        let hex = hex.trim_start_matches('#');
-        if hex.len() == 6 {
-            if let (Ok(r), Ok(g), Ok(b)) = (
-                u8::from_str_radix(&hex[0..2], 16),
-                u8::from_str_radix(&hex[2..4], 16),
-                u8::from_str_radix(&hex[4..6], 16),
-            ) {
-                map.insert((r, g, b), i);
-            }
+        if let Some([r, g, b]) = super::theme::parse_hex_rgb(hex) {
+            map.insert((r, g, b), i);
         }
     }
     map
@@ -282,18 +275,15 @@ impl Palette {
     pub fn set_custom_hex(&mut self, hex: &str) -> bool {
         self.custom_hex.clear();
         self.custom_hex.push_str(hex);
-        if hex.len() == 7 && hex.starts_with('#') {
-            let r = u8::from_str_radix(&hex[1..3], 16);
-            let g = u8::from_str_radix(&hex[3..5], 16);
-            let b = u8::from_str_radix(&hex[5..7], 16);
-            if let (Ok(r), Ok(g), Ok(b)) = (r, g, b) {
+        match super::theme::parse_hex_rgb(hex) {
+            Some([r, g, b]) => {
                 let color = Color::Rgb(r, g, b);
                 self.selected_color = Some(color);
                 self.push_recent(color);
-                return true;
+                true
             }
+            None => false,
         }
-        false
     }
 
     pub fn apply_to_cell(&self, cell: &mut CanvasCell) {

@@ -28,13 +28,10 @@ impl Swatch {
 
     /// Compute default shadow color as fg * 0.3
     pub fn default_shadow_hex(hex: &str) -> String {
-        let hex = hex.trim_start_matches('#');
-        if hex.len() != 6 {
-            return "#000000".to_string();
-        }
-        let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
-        let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
-        let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+        let [r, g, b] = match crate::tui::theme::parse_hex_rgb(hex) {
+            Some(rgb) => rgb,
+            None => return "#000000".to_string(),
+        };
         let shadow_r = (r as f32 * 0.3).round() as u8;
         let shadow_g = (g as f32 * 0.3).round() as u8;
         let shadow_b = (b as f32 * 0.3).round() as u8;
@@ -125,15 +122,9 @@ pub fn import_swatches(content: &[u8], format: ImportFormat) -> Result<Vec<Swatc
 
 fn normalize_hex(hex: &str) -> String {
     let hex = hex.trim().trim_start_matches('#');
-    match hex.len() {
-        6 => format!("#{}", hex.to_uppercase()),
-        3 => {
-            let r = &hex[0..1];
-            let g = &hex[1..2];
-            let b = &hex[2..3];
-            format!("#{r}{r}{g}{g}{b}{b}").to_uppercase()
-        }
-        _ => "#000000".to_string(),
+    match crate::tui::theme::parse_hex_rgb(hex) {
+        Some([r, g, b]) => format!("#{r:02X}{g:02X}{b:02X}"),
+        None => "#000000".to_string(),
     }
 }
 
@@ -525,6 +516,18 @@ pub fn builtin_palettes() -> Vec<(&'static str, Vec<Swatch>)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// F-17 (GPT review): valid UTF-8 with multibyte chars must not panic
+    /// on byte-offset slicing; it should parse or error cleanly.
+    #[test]
+    fn test_normalize_hex_multibyte_no_panic() {
+        assert_eq!(normalize_hex("éx"), "#000000");
+        assert_eq!(normalize_hex("#éx"), "#000000");
+        assert_eq!(normalize_hex("日本語"), "#000000");
+        assert_eq!(normalize_hex("abc"), "#AABBCC");
+        assert_eq!(normalize_hex("#aabbcc"), "#AABBCC");
+        assert_eq!(Swatch::default_shadow_hex("éxxxx"), "#000000");
+    }
 
     #[test]
     fn test_paletty_json_parses() {
