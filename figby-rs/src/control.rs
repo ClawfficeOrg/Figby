@@ -62,159 +62,118 @@ pub trait CharReader {
 }
 
 impl ControlState {
+    /// ISO-2022 state machine, iterative.
+    ///
+    /// An earlier version recursed once per control byte, so input with a
+    /// long run of shift/control sequences could overflow the stack
+    /// (GPT review F-16). The explicit loop below is behavior-equivalent:
+    /// control bytes update state and re-loop; the SS2/SS3-style handlers
+    /// (0x8E/0x8F/0x14E/0x14F) push the previous GL/GR onto a stack that
+    /// unwinds when the next printable char is produced.
     pub fn iso2022(&mut self, input: &mut impl CharReader) -> Option<u32> {
-        let mut ch = input.next()?;
-        if ch == 0x1B {
-            ch = input.next()? + 0x100;
-        }
-        if ch == 0x124 {
-            ch = input.next()? + 0x200;
-        }
-        match ch {
-            0x0E => {
-                self.gl = 1;
-                return self.iso2022(input);
+        let mut saved_gl_gr: Vec<(u8, u8)> = Vec::new();
+        loop {
+            let mut ch = input.next()?;
+            if ch == 0x1B {
+                ch = input.next()? + 0x100;
             }
-            0x0F => {
-                self.gl = 0;
-                return self.iso2022(input);
+            if ch == 0x124 {
+                ch = input.next()? + 0x200;
             }
-            0x8E | 0x14E => {
-                let save_gl = self.gl;
-                let save_gr = self.gr;
-                self.gl = 2;
-                self.gr = 2;
-                let result = self.iso2022(input);
-                self.gl = save_gl;
-                self.gr = save_gr;
-                return result;
-            }
-            0x8F | 0x14F => {
-                let save_gl = self.gl;
-                let save_gr = self.gr;
-                self.gl = 3;
-                self.gr = 3;
-                let result = self.iso2022(input);
-                self.gl = save_gl;
-                self.gr = save_gr;
-                return result;
-            }
-            0x16E => {
-                self.gl = 2;
-                return self.iso2022(input);
-            }
-            0x16F => {
-                self.gl = 3;
-                return self.iso2022(input);
-            }
-            0x17E => {
-                self.gr = 1;
-                return self.iso2022(input);
-            }
-            0x17D => {
-                self.gr = 2;
-                return self.iso2022(input);
-            }
-            0x17C => {
-                self.gr = 3;
-                return self.iso2022(input);
-            }
-            0x128 => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x42 { 0 } else { c };
-                self.gn[0] = c << 16;
-                self.gndbl[0] = false;
-                return self.iso2022(input);
-            }
-            0x129 => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x42 { 0 } else { c };
-                self.gn[1] = c << 16;
-                self.gndbl[1] = false;
-                return self.iso2022(input);
-            }
-            0x12A => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x42 { 0 } else { c };
-                self.gn[2] = c << 16;
-                self.gndbl[2] = false;
-                return self.iso2022(input);
-            }
-            0x12B => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x42 { 0 } else { c };
-                self.gn[3] = c << 16;
-                self.gndbl[3] = false;
-                return self.iso2022(input);
-            }
-            0x12D => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x41 { 0 } else { c };
-                self.gn[1] = (c << 16) | 0x80;
-                self.gndbl[1] = false;
-                return self.iso2022(input);
-            }
-            0x12E => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x41 { 0 } else { c };
-                self.gn[2] = (c << 16) | 0x80;
-                self.gndbl[2] = false;
-                return self.iso2022(input);
-            }
-            0x12F => {
-                let c = input.next().unwrap_or(0);
-                let c = if c == 0x41 { 0 } else { c };
-                self.gn[3] = (c << 16) | 0x80;
-                self.gndbl[3] = false;
-                return self.iso2022(input);
-            }
-            0x228 => {
-                let c = input.next().unwrap_or(0);
-                self.gn[0] = c << 16;
-                self.gndbl[0] = true;
-                return self.iso2022(input);
-            }
-            0x229 => {
-                let c = input.next().unwrap_or(0);
-                self.gn[1] = c << 16;
-                self.gndbl[1] = true;
-                return self.iso2022(input);
-            }
-            0x22A => {
-                let c = input.next().unwrap_or(0);
-                self.gn[2] = c << 16;
-                self.gndbl[2] = true;
-                return self.iso2022(input);
-            }
-            0x22B => {
-                let c = input.next().unwrap_or(0);
-                self.gn[3] = c << 16;
-                self.gndbl[3] = true;
-                return self.iso2022(input);
-            }
-            _ => {
-                if ch & 0x200 != 0 {
-                    self.gn[0] = (ch & !0x200) << 16;
-                    self.gndbl[0] = true;
-                    return self.iso2022(input);
+            match ch {
+                0x0E => {
+                    self.gl = 1;
+                    continue;
+                }
+                0x0F => {
+                    self.gl = 0;
+                    continue;
+                }
+                0x8E | 0x14E | 0x8F | 0x14F => {
+                    saved_gl_gr.push((self.gl, self.gr));
+                    if ch == 0x8E || ch == 0x14E {
+                        self.gl = 2;
+                        self.gr = 2;
+                    } else {
+                        self.gl = 3;
+                        self.gr = 3;
+                    }
+                    continue;
+                }
+                0x16E => {
+                    self.gl = 2;
+                    continue;
+                }
+                0x16F => {
+                    self.gl = 3;
+                    continue;
+                }
+                0x17E => {
+                    self.gr = 1;
+                    continue;
+                }
+                0x17D => {
+                    self.gr = 2;
+                    continue;
+                }
+                0x17C => {
+                    self.gr = 3;
+                    continue;
+                }
+                0x128..=0x12B => {
+                    let c = input.next().unwrap_or(0);
+                    let c = if c == 0x42 { 0 } else { c };
+                    let idx = (ch - 0x128) as usize;
+                    self.gn[idx] = c << 16;
+                    self.gndbl[idx] = false;
+                    continue;
+                }
+                0x12D..=0x12F => {
+                    let c = input.next().unwrap_or(0);
+                    let c = if c == 0x41 { 0 } else { c };
+                    let idx = (ch - 0x12C) as usize;
+                    self.gn[idx] = (c << 16) | 0x80;
+                    self.gndbl[idx] = false;
+                    continue;
+                }
+                0x228..=0x22B => {
+                    let c = input.next().unwrap_or(0);
+                    let idx = (ch - 0x228) as usize;
+                    self.gn[idx] = c << 16;
+                    self.gndbl[idx] = true;
+                    continue;
+                }
+                _ => {
+                    if ch & 0x200 != 0 {
+                        self.gn[0] = (ch & !0x200) << 16;
+                        self.gndbl[0] = true;
+                        continue;
+                    }
                 }
             }
-        }
-        if (0x21..=0x7E).contains(&ch) {
-            if self.gndbl[self.gl as usize] {
-                let ch2 = input.next().unwrap_or(0);
-                return Some(self.gn[self.gl as usize] | (ch << 8) | ch2);
+
+            // A printable character: unwind any pending GL/GR saves
+            // (LIFO — outermost save wins), then emit it.
+            while let Some((gl, gr)) = saved_gl_gr.pop() {
+                self.gl = gl;
+                self.gr = gr;
             }
-            return Some(self.gn[self.gl as usize] | ch);
-        }
-        if (0xA0..=0xFF).contains(&ch) {
-            if self.gndbl[self.gr as usize] {
-                let ch2 = input.next().unwrap_or(0);
-                return Some(self.gn[self.gr as usize] | (ch << 8) | ch2);
+            if (0x21..=0x7E).contains(&ch) {
+                if self.gndbl[self.gl as usize] {
+                    let ch2 = input.next().unwrap_or(0);
+                    return Some(self.gn[self.gl as usize] | (ch << 8) | ch2);
+                }
+                return Some(self.gn[self.gl as usize] | ch);
             }
-            return Some(self.gn[self.gr as usize] | (ch & !0x80));
+            if (0xA0..=0xFF).contains(&ch) {
+                if self.gndbl[self.gr as usize] {
+                    let ch2 = input.next().unwrap_or(0);
+                    return Some(self.gn[self.gr as usize] | (ch << 8) | ch2);
+                }
+                return Some(self.gn[self.gr as usize] | (ch & !0x80));
+            }
+            return Some(ch);
         }
-        Some(ch)
     }
 }
 
@@ -1320,5 +1279,47 @@ mod tests {
         let mut input = MockReader::new(b" ");
         assert_eq!(state.iso2022(&mut input), Some(0x20));
         assert_eq!(state.iso2022(&mut input), None);
+    }
+
+    use super::*;
+
+    /// F-16 (GPT review): a long run of control bytes must not overflow
+    /// the stack. 1M shift-in/shift-out pairs previously meant 1M stack
+    /// frames; now it's a flat loop.
+    #[test]
+    fn test_iso2022_long_control_run_no_overflow() {
+        let mut data = Vec::new();
+        for _ in 0..500_000 {
+            data.push(0x0E); // shift in
+            data.push(0x0F); // shift out
+        }
+        data.push(b'A');
+        let mut reader = MockReader::new(&data);
+        let mut state = ControlState::default();
+        let ch = state.iso2022(&mut reader).expect("should emit final char");
+        assert_eq!(ch, b'A' as u32);
+    }
+
+    /// Nested SS2 saves must unwind correctly (outermost restore wins).
+    #[test]
+    fn test_iso2022_ss2_nesting() {
+        // SS2 SS2 'A' → both saves pushed; gl/gr restored to pre-first-SS2.
+        let mut reader = MockReader::new(&[0x8E, 0x8E, b'A']);
+        let mut state = ControlState::default();
+        let ch = state.iso2022(&mut reader).expect("should emit char");
+        assert_eq!(state.gl, 0); // default gl restored
+        assert_eq!(ch, b'A' as u32);
+    }
+
+    /// Deeply nested single-shift sequences still terminate and restore.
+    #[test]
+    fn test_iso2022_deep_ss2_run() {
+        let mut data = vec![0x8E; 100_000];
+        data.push(b'B');
+        let mut reader = MockReader::new(&data);
+        let mut state = ControlState::default();
+        let ch = state.iso2022(&mut reader).expect("should emit char");
+        assert_eq!(ch, b'B' as u32);
+        assert_eq!(state.gl, 0);
     }
 }

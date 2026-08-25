@@ -33,34 +33,41 @@ pub struct HZState {
     pub hzmode: bool,
 }
 
+/// HZ (GB2312) reader — iterative.
+///
+/// Previously recursed per `~~` / `~X` escape sequence, so a long run of
+/// tilde sequences could overflow the stack (GPT review F-16).
 pub fn read_hz_char(input: &mut impl CharReader, state: &mut HZState) -> Option<u32> {
-    let b = input.next()?;
-    if state.hzmode {
-        if b == b'}' as u32 {
-            if let Some(c) = input.next() {
-                if c == b'~' as u32 {
-                    state.hzmode = false;
-                    return read_hz_char(input, state);
+    loop {
+        let b = input.next()?;
+        if state.hzmode {
+            if b == b'}' as u32 {
+                if let Some(c) = input.next() {
+                    if c == b'~' as u32 {
+                        state.hzmode = false;
+                        continue;
+                    }
+                    input.unget(c);
                 }
-                input.unget(c);
             }
-        }
-        match input.next() {
-            Some(b2) => Some((b << 8) | b2),
-            None => Some(b),
-        }
-    } else if b == b'~' as u32 {
-        match input.next() {
-            Some(c) if c == b'{' as u32 => {
-                state.hzmode = true;
-                read_hz_char(input, state)
+            match input.next() {
+                Some(b2) => return Some((b << 8) | b2),
+                None => return Some(b),
             }
-            Some(c) if c == b'~' as u32 => Some(b'~' as u32),
-            Some(_) => read_hz_char(input, state),
-            None => Some(b'~' as u32),
+        } else if b == b'~' as u32 {
+            match input.next() {
+                Some(c) if c == b'{' as u32 => {
+                    state.hzmode = true;
+                    continue;
+                }
+                Some(c) if c == b'~' as u32 => return Some(b'~' as u32),
+                // Any other escape after '~' is skipped; keep scanning.
+                Some(_) => continue,
+                None => return Some(b'~' as u32),
+            }
+        } else {
+            return Some(b);
         }
-    } else {
-        Some(b)
     }
 }
 
@@ -428,5 +435,22 @@ mod tests {
         assert_eq!(deutsch_reroute(b'Z' as u32, true), b'Z' as u32);
         assert_eq!(deutsch_reroute(b'a' as u32, true), b'a' as u32);
         assert_eq!(deutsch_reroute(b' ' as u32, true), b' ' as u32);
+    }
+
+    // --- HZ recursion guard (GPT review F-16) ---
+
+    #[test]
+    fn test_hz_long_escape_run_no_overflow() {
+        // 500k '~X' escape pairs previously meant 500k stack frames.
+        let mut data = Vec::new();
+        for _ in 0..500_000 {
+            data.push(b'~');
+            data.push(b'x');
+        }
+        data.push(b'A');
+        let mut input = MockReader::new(&data);
+        let mut state = HZState::default();
+        let ch = read_hz_char(&mut input, &mut state);
+        assert_eq!(ch, Some(b'A' as u32));
     }
 }
