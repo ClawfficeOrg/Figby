@@ -111,6 +111,10 @@ pub struct EditorState {
     pub text_tool: tools::text::TextToolState,
     pub undo: undo::UndoSystem,
     pub unsaved: bool,
+    /// Monotonically increasing counter of document mutations. Bumped by
+    /// `mark_dirty()`; used to detect edits that happen while an async
+    /// save is in flight (GPT review F-07).
+    pub revision: u64,
     pub selection: Option<tools::selection::Selection>,
     pub clipboard: Option<tools::selection::Clipboard>,
     pub layer_stack: layers::LayerStack,
@@ -125,6 +129,14 @@ pub struct EditorState {
 }
 
 impl EditorState {
+    /// Record a document mutation: flags the document unsaved and bumps
+    /// the revision counter so in-flight async saves can detect that the
+    /// document changed since they snapshotted.
+    pub fn mark_dirty(&mut self) {
+        self.unsaved = true;
+        self.revision = self.revision.wrapping_add(1);
+    }
+
     pub fn recomposite_canvas(&mut self) {
         self.canvas.buffer = self.layer_stack.composite();
     }
@@ -390,14 +402,14 @@ impl EditorState {
                 KeyCode::Left => {
                     self.push_undo_snapshot("Rotate");
                     self.rotate_selection_or_layer(false);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     *dirty = true;
                     return true;
                 }
                 KeyCode::Right => {
                     self.push_undo_snapshot("Rotate");
                     self.rotate_selection_or_layer(true);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     *dirty = true;
                     return true;
                 }
@@ -412,25 +424,25 @@ impl EditorState {
                 KeyCode::Up => {
                     self.push_undo_snapshot("Move selection");
                     self.move_selection(0, -1);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Down => {
                     self.push_undo_snapshot("Move selection");
                     self.move_selection(0, 1);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Left => {
                     self.push_undo_snapshot("Move selection");
                     self.move_selection(-1, 0);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Right => {
                     self.push_undo_snapshot("Move selection");
                     self.move_selection(1, 0);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Delete | KeyCode::Backspace => {
@@ -440,7 +452,7 @@ impl EditorState {
                         sel.delete_from(&mut buf);
                         *self.layer_stack.active_layer_mut().buffer_mut() = buf;
                         self.recomposite_canvas();
-                        self.unsaved = true;
+                        self.mark_dirty();
                     }
                     return true;
                 }
@@ -462,7 +474,7 @@ impl EditorState {
                             self.clipboard = Some(sel.cut_from(&mut buf));
                             *self.layer_stack.active_layer_mut().buffer_mut() = buf;
                             self.recomposite_canvas();
-                            self.unsaved = true;
+                            self.mark_dirty();
                         }
                         return true;
                     }
@@ -476,7 +488,7 @@ impl EditorState {
                             );
                             *self.layer_stack.active_layer_mut().buffer_mut() = buf;
                             self.recomposite_canvas();
-                            self.unsaved = true;
+                            self.mark_dirty();
                         }
                         return true;
                     }
@@ -489,25 +501,25 @@ impl EditorState {
                 KeyCode::Up => {
                     self.push_undo_snapshot("Move layer");
                     self.move_layer(0, -1);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Down => {
                     self.push_undo_snapshot("Move layer");
                     self.move_layer(0, 1);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Left => {
                     self.push_undo_snapshot("Move layer");
                     self.move_layer(-1, 0);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 KeyCode::Right => {
                     self.push_undo_snapshot("Move layer");
                     self.move_layer(1, 0);
-                    self.unsaved = true;
+                    self.mark_dirty();
                     return true;
                 }
                 _ => {}
@@ -556,7 +568,7 @@ impl EditorState {
                     }
                     *self.layer_stack.active_layer_mut().buffer_mut() = buf;
                     self.recomposite_canvas();
-                    self.unsaved = true;
+                    self.mark_dirty();
                     *dirty = true;
                     return true;
                 }
@@ -649,7 +661,7 @@ impl EditorState {
                 *self.layer_stack.active_layer_mut().buffer_mut() = buf;
                 self.recomposite_canvas();
             }
-            self.unsaved = true;
+            self.mark_dirty();
             return true;
         }
 
@@ -1039,6 +1051,12 @@ pub struct DialogState {
     pub quit_confirm_dialog: bool,
     pub quit_confirm_buttons: [Rect; 3],
     pub quit_after_save: bool,
+    /// Document revision captured when the current async save started.
+    /// `None` when no save is in flight. On `SaveComplete`, unsaved state
+    /// is only cleared (and a deferred quit only honored) if the document
+    /// hasn't been mutated since — edits made during the save keep the
+    /// document dirty (GPT review F-07).
+    pub pending_save_revision: Option<u64>,
 }
 
 /// Welcome/startup effects state.
@@ -1201,6 +1219,7 @@ impl TuiApp {
                     text_tool: tools::text::TextToolState::new("fonts"),
                     undo: undo::UndoSystem::new(config.tui.undo_limit.unwrap_or(50)),
                     unsaved: false,
+                    revision: 0,
                     selection: None,
                     clipboard: None,
                     layer_stack,
@@ -1230,6 +1249,7 @@ impl TuiApp {
                 quit_confirm_dialog: false,
                 quit_confirm_buttons: [Rect::default(); 3],
                 quit_after_save: false,
+                pending_save_revision: None,
             },
             interaction: InteractionState {
                 selection_drag_origin: None,
@@ -1353,6 +1373,7 @@ mod editor_state_tests {
             text_tool: tools::text::TextToolState::new(""),
             undo: undo::UndoSystem::new(50),
             unsaved: false,
+            revision: 0,
             selection: None,
             clipboard: None,
             layer_stack: layers::LayerStack::new(w, h),

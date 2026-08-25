@@ -318,7 +318,7 @@ impl TuiApp {
                     .text_tool
                     .rasterize_selected_block(&mut self.editor.layer_stack.layers[aidx].buffer);
                 self.editor.recomposite_canvas();
-                self.editor.unsaved = true;
+                self.editor.mark_dirty();
             }
         }
         self.frame.dirty = true;
@@ -499,7 +499,7 @@ impl TuiApp {
                 )
             {
                 self.editor.recomposite_canvas();
-                self.editor.unsaved = true;
+                self.editor.mark_dirty();
                 self.frame.dirty = true;
                 return;
             }
@@ -694,7 +694,7 @@ impl TuiApp {
                         // Place text at click position
                         self.editor.text_tool.place_at(bx, by);
                         self.editor.push_undo_snapshot("Place text");
-                        self.editor.unsaved = true;
+                        self.editor.mark_dirty();
                     }
                 }
             } else {
@@ -747,7 +747,7 @@ impl TuiApp {
                 self.editor
                     .canvas
                     .set_cursor(bx.max(0) as u16, by.max(0) as u16);
-                self.editor.unsaved = true;
+                self.editor.mark_dirty();
 
                 if is_selection_tool {
                     self.editor.handle_selection_down(
@@ -886,7 +886,7 @@ impl TuiApp {
                 self.editor
                     .canvas
                     .set_cursor(bx.max(0) as u16, by.max(0) as u16);
-                self.editor.unsaved = true;
+                self.editor.mark_dirty();
 
                 if is_selection_tool {
                     self.editor.handle_selection_drag(
@@ -1401,7 +1401,7 @@ impl TuiApp {
                 .handle_key(key, &mut self.editor.layer_stack)
         {
             self.editor.recomposite_canvas();
-            self.editor.unsaved = true;
+            self.editor.mark_dirty();
             self.frame.dirty = true;
             return None;
         }
@@ -1446,7 +1446,7 @@ impl TuiApp {
             if let Some(undo_label) = self.editor.text_tool.handle_key(code, modifiers, cursor) {
                 if !undo_label.is_empty() {
                     self.editor.push_undo_snapshot(undo_label);
-                    self.editor.unsaved = true;
+                    self.editor.mark_dirty();
                 }
                 return None;
             }
@@ -1766,7 +1766,7 @@ impl TuiApp {
                 *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                 self.editor.recomposite_canvas();
             }
-            self.editor.unsaved = true;
+            self.editor.mark_dirty();
             return None;
         }
 
@@ -1819,7 +1819,7 @@ impl TuiApp {
                 if let Some((buf, _)) = self.editor.undo.undo(cur) {
                     *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                     self.editor.recomposite_canvas();
-                    self.editor.unsaved = true;
+                    self.editor.mark_dirty();
                 }
                 Some(AppEvent::Undo)
             }
@@ -1828,7 +1828,7 @@ impl TuiApp {
                 if let Some((buf, _)) = self.editor.undo.redo(cur) {
                     *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                     self.editor.recomposite_canvas();
-                    self.editor.unsaved = true;
+                    self.editor.mark_dirty();
                 }
                 Some(AppEvent::Redo)
             }
@@ -1904,6 +1904,7 @@ impl TuiApp {
                 }
                 let font = font.clone();
                 let path = path.clone();
+                self.dialogs.pending_save_revision = Some(self.editor.revision);
                 let (tx, rx) = mpsc::channel();
                 self.ctx.async_rx = Some(rx);
                 self.ctx.throbber.start("Saving...");
@@ -2072,6 +2073,7 @@ impl TuiApp {
             None => return,
         };
         let result_path = path.clone();
+        self.dialogs.pending_save_revision = Some(self.editor.revision);
         let (tx, rx) = mpsc::channel();
         self.ctx.async_rx = Some(rx);
         self.ctx.throbber.start("Saving...");
@@ -2297,7 +2299,7 @@ impl TuiApp {
                 self.ui.mode = AppMode::ImageEditor;
                 self.animation.timeline_visible = true;
                 self.editor.recomposite_canvas();
-                self.editor.unsaved = true;
+                self.editor.mark_dirty();
                 self.frame.dirty = true;
             }
             Err(e) => {
@@ -2315,7 +2317,7 @@ impl TuiApp {
                 self.editor.sync_image_to_canvas();
                 self.editor.undo.clear();
                 self.ui.mode = AppMode::ImageEditor;
-                self.editor.unsaved = true;
+                self.editor.mark_dirty();
                 self.frame.dirty = true;
             }
             Err(e) => {
@@ -2347,7 +2349,7 @@ impl TuiApp {
         }
         *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
         self.editor.recomposite_canvas();
-        self.editor.unsaved = true;
+        self.editor.mark_dirty();
         self.ui.mode = AppMode::ImageEditor;
         self.frame.dirty = true;
     }
@@ -2688,7 +2690,7 @@ impl TuiApp {
                     if let Some((buf, _)) = self.editor.undo.undo(cur) {
                         *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                         self.editor.recomposite_canvas();
-                        self.editor.unsaved = true;
+                        self.editor.mark_dirty();
                     }
                 }
                 self.ui.menu_bar_state.reset();
@@ -2699,7 +2701,7 @@ impl TuiApp {
                     if let Some((buf, _)) = self.editor.undo.redo(cur) {
                         *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                         self.editor.recomposite_canvas();
-                        self.editor.unsaved = true;
+                        self.editor.mark_dirty();
                     }
                 }
                 self.ui.menu_bar_state.reset();
@@ -2713,7 +2715,7 @@ impl TuiApp {
                             self.editor.clipboard = Some(sel_owned.cut_from(&mut buf));
                             *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                             self.editor.recomposite_canvas();
-                            self.editor.unsaved = true;
+                            self.editor.mark_dirty();
                         }
                     }
                 }
@@ -2739,7 +2741,7 @@ impl TuiApp {
                         );
                         *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
                         self.editor.recomposite_canvas();
-                        self.editor.unsaved = true;
+                        self.editor.mark_dirty();
                     }
                 }
                 self.ui.menu_bar_state.reset();

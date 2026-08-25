@@ -125,7 +125,7 @@ impl TuiApp {
         }
     }
 
-    pub(crate) fn check_async_completion(&mut self) {
+    pub fn check_async_completion(&mut self) {
         let rx = match self.ctx.async_rx.take() {
             Some(rx) => rx,
             None => return,
@@ -137,16 +137,27 @@ impl TuiApp {
                 match result {
                     AsyncResult::SaveComplete(r) => match r {
                         Ok(path) => {
-                            self.editor.unsaved = false;
+                            // Only treat the document as clean (and honor a
+                            // deferred quit) if it wasn't edited while the
+                            // async save was in flight — otherwise clearing
+                            // the flag would silently discard those edits
+                            // on quit (GPT review F-07).
+                            let saved_unchanged =
+                                self.dialogs.pending_save_revision == Some(self.editor.revision);
+                            self.dialogs.pending_save_revision = None;
+                            if saved_unchanged {
+                                self.editor.unsaved = false;
+                            }
                             self.editor.font_editor.current_path = Some(path);
                             self.ctx.last_save_time = Instant::now();
                             self.dialogs.file_ops.error_message.clear();
-                            if self.dialogs.quit_after_save {
+                            if saved_unchanged && self.dialogs.quit_after_save {
                                 self.dialogs.quit_after_save = false;
                                 self.ui.should_quit = true;
                             }
                         }
                         Err(e) => {
+                            self.dialogs.pending_save_revision = None;
                             self.dialogs.quit_after_save = false;
                             self.dialogs.file_ops.error_message = format!("Save failed: {e}");
                         }
@@ -170,7 +181,7 @@ impl TuiApp {
                         Ok((font, family_name)) => {
                             self.ui.session_type = SessionType::Font;
                             self.ui.mode = AppMode::FontEditor;
-                            self.editor.unsaved = true;
+                            self.editor.mark_dirty();
                             self.editor.undo.clear();
                             self.editor.font_editor.load_font(font);
                             self.editor.font_editor.current_path = None;

@@ -3094,3 +3094,63 @@ fn test_timeline_frame_edits_persist_on_switch() {
         "Frame 1 edit 'Y' at (1,1) should persist after switch back"
     );
 }
+
+/// F-07 (GPT review): edits made while an async save is in flight must
+/// keep the document dirty; a deferred quit must not be honored.
+#[test]
+fn test_save_complete_keeps_unsaved_when_edited_during_save() {
+    use figby::tui::{AsyncResult, TuiApp};
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.editor.mark_dirty();
+    let rev_at_save = app.editor.revision;
+    app.dialogs.pending_save_revision = Some(rev_at_save);
+    app.dialogs.quit_after_save = true;
+
+    // User edits the document while the save is running.
+    app.editor.mark_dirty();
+    assert_ne!(app.editor.revision, rev_at_save);
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = tx.send(AsyncResult::SaveComplete(Ok(std::path::PathBuf::from(
+        "/tmp/fake.flf",
+    ))));
+    app.ctx.async_rx = Some(rx);
+    app.check_async_completion();
+
+    assert!(
+        app.editor.unsaved,
+        "document edited during save must remain unsaved"
+    );
+    assert!(
+        !app.ui.should_quit,
+        "deferred quit must not fire when edits happened during save"
+    );
+    assert_eq!(app.dialogs.pending_save_revision, None);
+}
+
+/// F-07 counterpart: with no edits during the async save, completion
+/// clears the unsaved flag and honors a deferred quit as before.
+#[test]
+fn test_save_complete_clears_unsaved_when_untouched_during_save() {
+    use figby::tui::{AsyncResult, TuiApp};
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.editor.mark_dirty();
+    app.dialogs.pending_save_revision = Some(app.editor.revision);
+    app.dialogs.quit_after_save = true;
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = tx.send(AsyncResult::SaveComplete(Ok(std::path::PathBuf::from(
+        "/tmp/fake.flf",
+    ))));
+    app.ctx.async_rx = Some(rx);
+    app.check_async_completion();
+
+    assert!(
+        !app.editor.unsaved,
+        "clean save should clear the unsaved flag"
+    );
+    assert!(app.ui.should_quit, "deferred quit should be honored");
+    assert!(!app.dialogs.quit_after_save);
+}
