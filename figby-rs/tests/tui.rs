@@ -28,7 +28,9 @@ fn test_tui_smoke_all_panels_render() {
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     // toolbox_h = 12 tools + 1 + 10 brush = 23 rows; need ~30+ rows for palette to render
-    let backend = TestBackend::new(80, 40);
+    // 80 cols drops droppable status-bar items (e.g. FPS) via truncation;
+    // 120 keeps the full status bar visible.
+    let backend = TestBackend::new(120, 40);
     let mut terminal = Terminal::new(backend).unwrap();
     terminal.draw(|f| app.render(f)).unwrap();
     let buffer = terminal.backend().buffer();
