@@ -1574,4 +1574,79 @@ mod tests {
         assert_eq!(ExportMode::Gif.label(), "GIF");
         assert_eq!(ExportMode::Ansi.label(), "ANSI");
     }
+
+    #[test]
+    fn test_export_gif_two_saved_frames_decode_distinct() {
+        // End-to-end guard for F-04: two frames with visually different
+        // saved snapshots must survive compositor → GIF encode → decode
+        // as distinct pixel data. This is what production export broke
+        // when it re-derived frames from the live layer stack.
+        let stack = LayerStack::new(2, 2);
+
+        let mut buf0 = CanvasBuffer::new(2, 2);
+        buf0.set(
+            0,
+            0,
+            CanvasCell {
+                ch: '#',
+                fg: Some(Color::Red),
+                bg: None,
+                height: None,
+            },
+        );
+        let mut buf1 = CanvasBuffer::new(2, 2);
+        buf1.set(
+            1,
+            1,
+            CanvasCell {
+                ch: '@',
+                fg: Some(Color::Green),
+                bg: None,
+                height: None,
+            },
+        );
+
+        let mut timeline = TimelineState::default();
+        timeline.add_frame(TimelineFrame {
+            thumbnail: vec![],
+            has_keyframe: true,
+            label: "F0".into(),
+            layer_state: Some(buf0),
+            layer_keyframes: vec![Some(LayerKeyframe::default())],
+        });
+        timeline.add_frame(TimelineFrame {
+            thumbnail: vec![],
+            has_keyframe: true,
+            label: "F1".into(),
+            layer_state: Some(buf1),
+            layer_keyframes: vec![Some(LayerKeyframe::default())],
+        });
+
+        let frames = capture_timeline_frames(&timeline, &stack, 2, 2);
+        assert_eq!(frames.len(), 2);
+        assert_ne!(
+            frames[0], frames[1],
+            "compositor must produce distinct cells for distinct saved frames"
+        );
+
+        let gif_bytes = crate::output::export_cells_to_gif(&frames, &[10, 10], 4, 0)
+            .expect("GIF encode should succeed");
+
+        use gif::DecodeOptions;
+        let mut decoder = DecodeOptions::new();
+        decoder.set_color_output(gif::ColorOutput::RGBA);
+        let mut reader = decoder
+            .read_info(&gif_bytes[..])
+            .expect("should decode GIF");
+
+        let mut decoded: Vec<Vec<u8>> = Vec::new();
+        while let Ok(Some(frame)) = reader.read_next_frame() {
+            decoded.push(frame.buffer.to_vec());
+        }
+        assert_eq!(decoded.len(), 2, "GIF should contain both frames");
+        assert_ne!(
+            decoded[0], decoded[1],
+            "decoded GIF frames must differ in pixels, not just timing"
+        );
+    }
 }

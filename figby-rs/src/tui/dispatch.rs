@@ -2386,7 +2386,11 @@ impl TuiApp {
             None
         };
 
-        // Compose timeline frames if animation format + timeline has frames
+        // Compose timeline frames if animation format + timeline has frames.
+        // Use the shared compositor (same one as preview/tests/ANSI anim) so
+        // captured frame snapshots (layer_state) are respected; an earlier
+        // inline copy of this logic skipped them and exported repeated
+        // copies of the live canvas (GPT review F-04).
         let frames: Vec<Vec<Vec<canvas::CanvasCell>>> = if (format
             == crate::tui::export::ExportMode::Gif
             || format == crate::tui::export::ExportMode::Apng)
@@ -2394,77 +2398,7 @@ impl TuiApp {
             && !self.animation.timeline_state.frames.is_empty()
         {
             let ts = &self.animation.timeline_state;
-            let num_frames = ts.frames.len();
-            let layer_stack = &self.editor.layer_stack;
-            (0..num_frames)
-                .map(|frame_idx| {
-                    let mut result_buf = canvas::CanvasBuffer::new(w, h);
-                    for (layer_idx, layer) in layer_stack.layers.iter().enumerate() {
-                        if !layer.visible {
-                            continue;
-                        }
-                        let props = ts.get_interpolated_properties(frame_idx, layer_idx);
-                        if props.opacity == 0 {
-                            continue;
-                        }
-                        let ox = props.position_offset.0.max(0) as usize;
-                        let oy = props.position_offset.1.max(0) as usize;
-                        for y in 0..h.min(layer.buffer.height()) {
-                            for x in 0..w.min(layer.buffer.width()) {
-                                let bx = x + ox;
-                                let by = y + oy;
-                                if bx >= w || by >= h {
-                                    continue;
-                                }
-                                if let Some(top) = layer.buffer.get(x, y) {
-                                    if top.ch == ' ' && top.fg.is_none() && top.bg.is_none() {
-                                        continue;
-                                    }
-                                    let bottom =
-                                        result_buf.get(bx, by).copied().unwrap_or_default();
-                                    let blended_fg = crate::tui::layers::blend_mode_color(
-                                        top.fg,
-                                        bottom.fg,
-                                        props.blend_mode,
-                                    );
-                                    let blended_bg = crate::tui::layers::blend_mode_color(
-                                        top.bg,
-                                        bottom.bg,
-                                        props.blend_mode,
-                                    );
-                                    let final_fg = crate::tui::layers::blend_colors(
-                                        blended_fg,
-                                        bottom.fg,
-                                        props.opacity,
-                                    );
-                                    let final_bg = crate::tui::layers::blend_colors(
-                                        blended_bg,
-                                        bottom.bg,
-                                        props.opacity,
-                                    );
-                                    result_buf.set(
-                                        bx,
-                                        by,
-                                        canvas::CanvasCell {
-                                            ch: top.ch,
-                                            fg: final_fg,
-                                            bg: final_bg,
-                                            height: None,
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    (0..result_buf.height())
-                        .map(|y| {
-                            (0..result_buf.width())
-                                .map(|x| result_buf.get(x, y).copied().unwrap_or_default())
-                                .collect()
-                        })
-                        .collect()
-                })
-                .collect()
+            export::capture_timeline_frames(ts, &self.editor.layer_stack, w, h)
         } else {
             vec![cells.clone()]
         };
