@@ -21,6 +21,9 @@ struct WebApp {
     fonts: Vec<FontEntry>,
     selected: usize,
     sample_text: String,
+    /// Cursor position as a *character* index (not a byte offset) —
+    /// converting per-char movement to byte indices directly panicked on
+    /// multibyte input (GPT review F-15).
     cursor_pos: usize,
 }
 
@@ -34,27 +37,53 @@ impl WebApp {
         }
     }
 
+    /// Number of characters in the sample text.
+    fn char_len(&self) -> usize {
+        self.sample_text.chars().count()
+    }
+
+    /// Byte offset of the cursor's character index within `sample_text`.
+    fn byte_offset(&self) -> usize {
+        self.sample_text
+            .char_indices()
+            .nth(self.cursor_pos)
+            .map(|(i, _)| i)
+            .unwrap_or(self.sample_text.len())
+    }
+
     fn handle_key(&mut self, code: KeyCode) {
         match code {
             KeyCode::Char(c) => {
-                if self.cursor_pos >= self.sample_text.len() {
+                let at_end = self.cursor_pos >= self.char_len();
+                if at_end {
                     self.sample_text.push(c);
                 } else {
-                    self.sample_text.insert(self.cursor_pos, c);
+                    let byte = self.byte_offset();
+                    self.sample_text.insert(byte, c);
                 }
                 self.cursor_pos += 1;
             }
             KeyCode::Backspace if self.cursor_pos > 0 && !self.sample_text.is_empty() => {
+                let byte = self.byte_offset();
+                // Width (in bytes) of the character before the cursor.
+                let prev_len = self.sample_text[..byte]
+                    .chars()
+                    .next_back()
+                    .map(|c| c.len_utf8())
+                    .unwrap_or(0);
+                if prev_len > 0 {
+                    self.sample_text.remove(byte - prev_len);
+                }
                 self.cursor_pos -= 1;
-                self.sample_text.remove(self.cursor_pos);
             }
-            KeyCode::Delete if self.cursor_pos < self.sample_text.len() => {
-                self.sample_text.remove(self.cursor_pos);
+            KeyCode::Delete if self.cursor_pos < self.char_len() => {
+                let byte = self.byte_offset();
+                self.sample_text.remove(byte);
             }
             KeyCode::Left => {
                 self.cursor_pos = self.cursor_pos.saturating_sub(1);
             }
-            KeyCode::Right if self.cursor_pos < self.sample_text.len() => {
+            KeyCode::Right if self.cursor_pos < self.char_len() => {
                 self.cursor_pos += 1;
             }
             KeyCode::Up if self.selected > 0 => {
@@ -67,7 +96,7 @@ impl WebApp {
                 self.cursor_pos = 0;
             }
             KeyCode::End => {
-                self.cursor_pos = self.sample_text.len();
+                self.cursor_pos = self.char_len();
             }
             _ => {}
         }
@@ -173,4 +202,69 @@ pub fn run_web() -> io::Result<()> {
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod web_tests {
+    use super::*;
+
+    fn app_with(text: &str) -> WebApp {
+        let fonts = vec![FontEntry {
+            name: "standard",
+            font: parse_tlf_font(include_str!("../assets/fonts/standard.flf"))
+                .expect("standard.flf should parse"),
+        }];
+        let mut app = WebApp::new(fonts);
+        app.sample_text = text.to_string();
+        app.cursor_pos = text.chars().count();
+        app
+    }
+
+    /// F-15 (GPT review): editing around multibyte characters must not
+    /// panic on interior byte indices.
+    #[test]
+    fn test_multibyte_editing_no_panic() {
+        let mut app = app_with("é");
+        // Backspace over 'é' (2 bytes, 1 char).
+        app.handle_key(KeyCode::Backspace);
+        assert_eq!(app.sample_text, "");
+        assert_eq!(app.cursor_pos, 0);
+
+        // Insert before a multibyte char (cursor at start).
+        let mut app = app_with("éx");
+        app.cursor_pos = 0;
+        app.handle_key(KeyCode::Char('a'));
+        assert_eq!(app.sample_text, "aéx");
+
+        // Delete a multibyte char under the cursor.
+        let mut app = app_with("aéx");
+        app.cursor_pos = 1;
+        app.handle_key(KeyCode::Delete);
+        assert_eq!(app.sample_text, "ax");
+
+        // CJK and emoji round-trip: type, move left twice, backspace.
+        let mut app = app_with("");
+        for c in ['日', '本', '🦀'] {
+            app.handle_key(KeyCode::Char(c));
+        }
+        assert_eq!(app.sample_text, "日本🦀");
+        app.handle_key(KeyCode::Left);
+        app.handle_key(KeyCode::Left);
+        app.handle_key(KeyCode::Backspace);
+        assert_eq!(app.sample_text, "日🦀");
+        assert_eq!(app.cursor_pos, 1);
+
+        // Combining sequence stays valid UTF-8 through edits.
+        let mut app = app_with("e\u{301}x"); // e + combining acute
+        app.cursor_pos = 2; // after the combining mark
+        app.handle_key(KeyCode::Backspace); // remove combining mark
+        assert_eq!(app.sample_text, "ex");
+
+        // End/Home navigate by chars, not bytes.
+        let mut app = app_with("éx");
+        app.handle_key(KeyCode::End);
+        assert_eq!(app.cursor_pos, 2);
+        app.handle_key(KeyCode::Home);
+        assert_eq!(app.cursor_pos, 0);
+    }
 }
