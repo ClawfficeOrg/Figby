@@ -44,7 +44,7 @@ Independent verification results:
 - [x] **F-05** Pick single timeline frame authority (snapshot vs keyframes). Fix navigation
       commit/load flattening into wrong layer (app_state.rs:869-878, 903-928,
       dispatch.rs:2618-2635). Multilayer docs corruptable by timeline nav.
-- [ ] **F-06** Make render read-only: sync_image_to_canvas on every redraw can overwrite paint
+- [x] **F-06** Make render read-only: sync_image_to_canvas on every redraw can overwrite paint
       ops with stale ImageEditor cache (mod.rs:480-486, app_state.rs:219-235).
       Regression test: paint → redraw → paint survives.
 - [x] **F-07 [verified]** Revision-aware saves: `AsyncResult::SaveComplete`
