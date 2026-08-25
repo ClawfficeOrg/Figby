@@ -479,11 +479,16 @@ impl TuiApp {
             frame.render_widget(&self.editor.font_editor, inner);
         } else {
             if self.ui.mode == AppMode::FontEditor {
+                // Read-only w.r.t. the document: copies canvas content
+                // into the font editor's display cache.
                 self.editor.sync_canvas_to_font_char();
             }
-            if self.ui.mode == AppMode::ImageEditor {
-                self.editor.sync_image_to_canvas();
-            }
+            // NOTE (GPT review F-06): rendering must not mutate document
+            // state. Image-editor → canvas synchronization used to run on
+            // every render here, letting the image editor's stale cell
+            // cache overwrite paint operations. That sync now happens
+            // only at explicit model-mutation points (image load,
+            // conversion keys, GIF import), never during rendering.
 
             // Selection perimeter
             if let Some(ref sel) = self.editor.selection {

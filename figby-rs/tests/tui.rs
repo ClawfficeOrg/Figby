@@ -3154,3 +3154,81 @@ fn test_save_complete_clears_unsaved_when_untouched_during_save() {
     assert!(app.ui.should_quit, "deferred quit should be honored");
     assert!(!app.dialogs.quit_after_save);
 }
+
+/// F-06 (GPT review): rendering must be read-only against document state.
+/// With a stale ImageEditor cell cache present, a paint operation onto
+/// the active layer used to be overwritten by the render-time sync on
+/// the very next redraw. The paint must survive.
+#[test]
+fn test_render_does_not_overwrite_paint_with_stale_image_cache() {
+    use figby::tui::{canvas, canvas::CanvasCell, AppMode, TuiApp};
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.ui.mode = AppMode::ImageEditor;
+
+    // Populate the image editor's conversion cache (as loading an image would).
+    let mut cells = vec![
+        vec![
+            CanvasCell {
+                ch: '.',
+                fg: None,
+                bg: None,
+                height: None
+            };
+            4
+        ];
+        2
+    ];
+    cells[0][0] = CanvasCell {
+        ch: 'O',
+        fg: None,
+        bg: None,
+        height: None,
+    };
+    // Simulate the cache being applied once (image was loaded, then shown).
+    let mut buf = canvas::CanvasBuffer::new(4, 2);
+    for (y, row) in cells.iter().enumerate() {
+        for (x, cell) in row.iter().enumerate() {
+            buf.set(x, y, *cell);
+        }
+    }
+    app.editor.load_timeline_frame(&[buf]);
+
+    // Simulate a paint operation directly on the active layer — this is
+    // what brush/pencil tools do; they do NOT update the editor's cache.
+    let painted = CanvasCell {
+        ch: 'X',
+        fg: None,
+        bg: None,
+        height: None,
+    };
+    app.editor
+        .layer_stack
+        .active_layer_mut()
+        .buffer_mut()
+        .set(0, 0, painted);
+    app.editor.recomposite_canvas();
+
+    // Two full render passes — previously each one re-applied the stale
+    // cache and erased the paint.
+    for _ in 0..2 {
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
+    }
+
+    assert_eq!(
+        app.editor
+            .layer_stack
+            .active_layer()
+            .buffer()
+            .get(0, 0)
+            .unwrap()
+            .ch,
+        'X',
+        "render must not overwrite a paint with the stale image-editor cache"
+    );
+}

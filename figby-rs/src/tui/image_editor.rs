@@ -71,6 +71,14 @@ impl ImageEditor {
         }
     }
 
+    /// Drop the cached ASCII conversion. Called when the document
+    /// changes underneath the editor (e.g. GIF import, new document) so
+    /// a stale cache can never be re-applied to the canvas by a later
+    /// sync (GPT review F-06).
+    pub fn clear_cells(&mut self) {
+        self.cells.clear();
+    }
+
     pub fn mode(&self) -> AsciiMode {
         self.mode
     }

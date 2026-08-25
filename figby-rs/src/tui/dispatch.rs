@@ -2298,6 +2298,10 @@ impl TuiApp {
 
                 self.ui.mode = AppMode::ImageEditor;
                 self.animation.timeline_visible = true;
+                // The GIF now owns the timeline/canvas; drop any stale
+                // image-editor conversion so a later sync can't clobber
+                // the imported content (GPT review F-06).
+                self.editor.image_editor.clear_cells();
                 self.editor.recomposite_canvas();
                 self.editor.mark_dirty();
                 self.frame.dirty = true;
@@ -2348,6 +2352,7 @@ impl TuiApp {
             }
         }
         *self.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
+        self.editor.image_editor.clear_cells();
         self.editor.recomposite_canvas();
         self.editor.mark_dirty();
         self.ui.mode = AppMode::ImageEditor;
