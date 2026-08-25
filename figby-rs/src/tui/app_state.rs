@@ -17,7 +17,7 @@ use super::{
 };
 use crate::config;
 
-const ICONS_YAML: &str = include_str!("../../../assets/tui/icons.yaml");
+const ICONS_YAML: &str = include_str!("../../assets/icons.yaml");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppMode {

@@ -726,7 +726,7 @@ mod tests {
 
     fn setup_font_dir() -> (tempfile::TempDir, String) {
         let tmpdir = tempfile::tempdir().unwrap();
-        let font_bytes = include_bytes!("../../fonts/standard.flf");
+        let font_bytes = include_bytes!("../assets/fonts/standard.flf");
         std::fs::write(tmpdir.path().join("standard.flf"), font_bytes).unwrap();
         let font_dir = tmpdir.path().to_str().unwrap().to_string();
         (tmpdir, font_dir)

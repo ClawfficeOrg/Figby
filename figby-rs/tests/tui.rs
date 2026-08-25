@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-const ICONS_YAML: &str = include_str!("../../assets/tui/icons.yaml");
+const ICONS_YAML: &str = include_str!("../assets/icons.yaml");
 
 #[test]
 fn test_icons_yaml_all_keys_present() {
@@ -894,7 +894,7 @@ fn test_font_editor_grid_renders_102_chars() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);
@@ -943,7 +943,7 @@ fn test_font_editor_search_by_code() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);
@@ -969,7 +969,7 @@ fn test_font_editor_search_by_char_value() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);
@@ -997,7 +997,7 @@ fn test_font_editor_select_opens_char_in_canvas() {
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::{FontEditor, FontEditorView};
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);
@@ -1026,7 +1026,7 @@ fn test_font_editor_esc_returns_to_overview() {
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::{FontEditor, FontEditorView};
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);
@@ -1067,7 +1067,7 @@ fn test_font_editor_grid_navigation() {
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::FontEditor;
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);
@@ -1102,7 +1102,7 @@ fn test_font_editor_grid_navigation() {
 
 fn header_editor_setup() -> (figby::tui::font_editor::FontEditor, figby::font::FIGfont) {
     use figby::font::parse_tlf_font;
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = figby::tui::font_editor::FontEditor::new();
     let header_font = font.clone();
@@ -2503,7 +2503,7 @@ fn test_font_editor_char_editor_toggle_cell() {
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::{FontEditor, FontEditorView};
 
-    let content = include_str!("../../fonts/standard.flf");
+    let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
     let mut editor = FontEditor::new();
     editor.load_font(font);

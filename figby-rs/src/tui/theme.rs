@@ -1,7 +1,7 @@
 use ratatui::style::Color;
 use serde::Deserialize;
 
-const DEFAULT_THEME_YAML: &str = include_str!("../../../assets/tui/themes/default.yaml");
+const DEFAULT_THEME_YAML: &str = include_str!("../../assets/themes/default.yaml");
 
 pub fn color_from_hex(hex: &str) -> Color {
     let hex = hex.trim_start_matches('#');

@@ -133,9 +133,9 @@ impl WebApp {
 
 fn load_embedded_fonts() -> Vec<FontEntry> {
     let embedded: &[(&str, &[u8])] = &[
-        ("standard", include_bytes!("../../fonts/standard.flf")),
-        ("banner", include_bytes!("../../fonts/banner.flf")),
-        ("big", include_bytes!("../../fonts/big.flf")),
+        ("standard", include_bytes!("../assets/fonts/standard.flf")),
+        ("banner", include_bytes!("../assets/fonts/banner.flf")),
+        ("big", include_bytes!("../assets/fonts/big.flf")),
     ];
 
     let mut fonts = Vec::new();

@@ -1420,7 +1420,7 @@ mod tests {
     }
 
     fn write_standard_font(dir: &std::path::Path) {
-        let bytes = include_bytes!("../../fonts/standard.flf");
+        let bytes = include_bytes!("../assets/fonts/standard.flf");
         std::fs::write(dir.join("standard.flf"), bytes).unwrap();
     }
 
@@ -1468,7 +1468,7 @@ mod tests {
         let tmpdir = temp_dir_uniq();
         std::fs::create_dir_all(&tmpdir).unwrap();
 
-        let font_bytes = include_bytes!("../../fonts/standard.flf");
+        let font_bytes = include_bytes!("../assets/fonts/standard.flf");
         let zip_path = tmpdir.join("standard.flf");
         let file = std::fs::File::create(&zip_path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
@@ -1514,7 +1514,7 @@ mod tests {
         std::fs::write(fontdir.join("standard.flf"), &content).unwrap();
 
         // Write the full font as bare path standard.flf
-        let full_bytes = include_bytes!("../../fonts/standard.flf");
+        let full_bytes = include_bytes!("../assets/fonts/standard.flf");
         std::fs::write(tmpdir.join("standard.flf"), full_bytes).unwrap();
 
         // Load with fontdir pointing to tmpdir/fontdir

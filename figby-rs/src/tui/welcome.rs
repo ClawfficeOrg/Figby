@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use super::theme::Theme;
 
-const MASCOT_RAW: &str = include_str!("../../../assets/img/figby.block.ascii.image.txt");
+const MASCOT_RAW: &str = include_str!("../../assets/img/figby.block.ascii.image.txt");
 
 /// (icon_key, key_char, label_suffix)  →  displays as `icon [K]label_suffix`
 const FONT_ACTIONS: &[(&str, char, &str)] = &[

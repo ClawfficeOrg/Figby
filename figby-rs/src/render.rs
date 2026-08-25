@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_add_char_10_as() {
-        let font_bytes = include_bytes!("../../fonts/standard.flf");
+        let font_bytes = include_bytes!("../assets/fonts/standard.flf");
         let font_str = String::from_utf8_lossy(font_bytes);
         let font = crate::font::parse_tlf_font(&font_str).unwrap();
         let mode = crate::smush::SmushMode::new(font.full_layout as u32);
@@ -1305,7 +1305,7 @@ mod tests {
 
     #[test]
     fn test_render_string_basic() {
-        let font_bytes = include_bytes!("../../fonts/standard.flf");
+        let font_bytes = include_bytes!("../assets/fonts/standard.flf");
         let font_str = String::from_utf8_lossy(font_bytes);
         let font = crate::font::parse_tlf_font(&font_str).unwrap();
         let rows = render_string(&font, "AaBbCc123!?");
@@ -1318,7 +1318,7 @@ mod tests {
 
     #[test]
     fn test_render_string_empty() {
-        let font_bytes = include_bytes!("../../fonts/standard.flf");
+        let font_bytes = include_bytes!("../assets/fonts/standard.flf");
         let font_str = String::from_utf8_lossy(font_bytes);
         let font = crate::font::parse_tlf_font(&font_str).unwrap();
         let rows = render_string(&font, "");
