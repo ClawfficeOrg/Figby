@@ -37,17 +37,17 @@ Independent verification results:
 
 ## Phase 1 — Core document correctness
 
-- [ ] **F-04 [verified]** Blocker: production GIF/APNG export (dispatch.rs:~2389) builds frames
+- [x] **F-04 [verified]** Blocker: production GIF/APNG export (dispatch.rs:~2389) builds frames
       from live layer_stack, bypassing `capture_timeline_frames` (export.rs:663)
       which correctly prefers `layer_state`. Route production through one compositor;
       add two-frame distinct-pixel round-trip test.
-- [ ] **F-05** Pick single timeline frame authority (snapshot vs keyframes). Fix navigation
+- [x] **F-05** Pick single timeline frame authority (snapshot vs keyframes). Fix navigation
       commit/load flattening into wrong layer (app_state.rs:869-878, 903-928,
       dispatch.rs:2618-2635). Multilayer docs corruptable by timeline nav.
 - [ ] **F-06** Make render read-only: sync_image_to_canvas on every redraw can overwrite paint
       ops with stale ImageEditor cache (mod.rs:480-486, app_state.rs:219-235).
       Regression test: paint → redraw → paint survives.
-- [ ] **F-07 [verified]** Revision-aware saves: `AsyncResult::SaveComplete`
+- [x] **F-07 [verified]** Revision-aware saves: `AsyncResult::SaveComplete`
       (event_loop.rs:138-147) unconditionally clears unsaved + may quit even if edits
       happened during async save. Add document revision counter.
 - [ ] **F-08** Uniform dirty tracking: font_editor mutations don't set unsaved flag;
