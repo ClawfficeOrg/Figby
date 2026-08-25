@@ -135,12 +135,36 @@ pub struct RenderConfig {
     pub font_dir: String,
     pub term_width: u32,
     pub override_width: Option<u32>,
+    /// Directory the template was loaded from. Image sources must resolve
+    /// (after canonicalization) inside this directory; defaults to the
+    /// process working directory when absent (GPT review F-10).
+    pub base_dir: Option<std::path::PathBuf>,
+    /// Expand `${VAR}` environment references in template text. Off by
+    /// default: a shared template could otherwise exfiltrate CI tokens or
+    /// other process secrets into rendered output (GPT review F-11).
+    pub expand_env: bool,
+}
+
+impl Default for RenderConfig {
+    fn default() -> Self {
+        Self {
+            font_dir: String::from("fonts"),
+            term_width: 80,
+            override_width: None,
+            base_dir: None,
+            expand_env: false,
+        }
+    }
 }
 
 /// Resolve `${VAR}` env var references in a text value.
-/// `$(...)` command substitution is intentionally NOT executed (security: untrusted templates).
-/// Plain string literals and `$(...)` syntax pass through unchanged.
-pub fn resolve_text_value(text: &str) -> Result<String, TemplateError> {
+///
+/// `$(...)` command substitution is intentionally NOT executed (security:
+/// untrusted templates). When `expand_env` is false, `${VAR}` references
+/// pass through literally — ambient environment expansion is opt-in
+/// because a shared template could otherwise leak process secrets into
+/// rendered output (GPT review F-11).
+pub fn resolve_text_value(text: &str, expand_env: bool) -> Result<String, TemplateError> {
     let mut result = String::new();
     let mut remaining = text;
 
@@ -153,6 +177,14 @@ pub fn resolve_text_value(text: &str) -> Result<String, TemplateError> {
                 TemplateError::ResolveError("unclosed env var `${...}`".to_string())
             })?;
             let var_name = &rest[..closing];
+            if !expand_env {
+                // Emit the reference verbatim.
+                result.push_str("${");
+                result.push_str(var_name);
+                result.push('}');
+                remaining = &rest[closing + 1..];
+                continue;
+            }
             let value = std::env::var(var_name).map_err(|_| {
                 TemplateError::ResolveError(format!("env var '{}' not set", var_name))
             })?;
@@ -587,13 +619,20 @@ pub fn render_template(
         }
 
         if let Some(ref img) = layer.image_tag {
+            const MAX_TEMPLATE_IMAGE_DIM: u32 = 2000;
             let mut options = rascii_art::RenderOptions::new();
-            if let Some(w) = img.width {
-                options = options.width(w);
+            // Default + bound dimensions: rascii panics when both are
+            // absent, and unbounded attacker-controlled sizes route
+            // through an unrestricted decoder (GPT review F-11).
+            let img_w = img.width.filter(|w| *w > 0).unwrap_or(80);
+            let img_h = img.height.filter(|h| *h > 0).unwrap_or(40);
+            if img_w > MAX_TEMPLATE_IMAGE_DIM || img_h > MAX_TEMPLATE_IMAGE_DIM {
+                return Err(TemplateError::ImageError(format!(
+                    "image dimensions {}×{} exceed max {}",
+                    img_w, img_h, MAX_TEMPLATE_IMAGE_DIM
+                )));
             }
-            if let Some(h) = img.height {
-                options = options.height(h);
-            }
+            options = options.width(img_w).height(img_h);
             if img.colored {
                 options = options.colored(true);
             }
@@ -603,7 +642,11 @@ pub fn render_template(
                 }
             }
 
-            // Security: reject absolute paths and '..' traversal (untrusted template).
+            // Security: the source must be a relative path with no '..'
+            // traversal, AND its fully-resolved location (symlinks
+            // included) must stay inside the template's base directory —
+            // lexical checks alone don't catch relative symlinks that
+            // escape containment (GPT review F-10).
             let img_path = std::path::Path::new(&img.source);
             if img_path.is_absolute()
                 || img_path
@@ -615,10 +658,33 @@ pub fn render_template(
                     img.source
                 )));
             }
+            let base = config
+                .base_dir
+                .clone()
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+            let canonical_base = base.canonicalize().map_err(|e| {
+                TemplateError::ImageError(format!(
+                    "template base directory '{}': {e}",
+                    base.display()
+                ))
+            })?;
+            let canonical_target = base.join(&img.source).canonicalize().map_err(|e| {
+                TemplateError::ImageError(format!("cannot resolve image '{}': {e}", img.source))
+            })?;
+            if !canonical_target.starts_with(&canonical_base) {
+                return Err(TemplateError::ImageError(format!(
+                    "image path '{}' resolves outside the template directory",
+                    img.source
+                )));
+            }
 
             let mut buf = String::new();
-            rascii_art::render_to(&img.source, &mut buf, &options)
-                .map_err(|e| TemplateError::ImageError(e.to_string()))?;
+            rascii_art::render_to(
+                canonical_target.to_string_lossy().as_ref(),
+                &mut buf,
+                &options,
+            )
+            .map_err(|e| TemplateError::ImageError(e.to_string()))?;
 
             let rows: Vec<String> = buf.lines().map(|l| l.to_string()).collect();
 
@@ -662,7 +728,7 @@ pub fn render_template(
                 _ => Justification::Left,
             };
 
-            let text = resolve_text_value(&layer.binding.text)?;
+            let text = resolve_text_value(&layer.binding.text, config.expand_env)?;
             let rows = render_figlet_text(font, &text, width, align);
 
             let placed_y: usize = match overlap {
@@ -942,6 +1008,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let output = render_template(&tmpl, &config).expect("should render");
         for row in &output {
@@ -962,6 +1030,8 @@ font = "standard"
             font_dir: ".".to_string(),
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let err = render_template(&tmpl, &config).unwrap_err();
         assert!(
@@ -989,6 +1059,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let output = render_template(&tmpl, &config).expect("should render");
         // Should produce 6 rows (standard font height) at least
@@ -1039,26 +1111,26 @@ font = "standard"
 
     #[test]
     fn test_resolve_text_value_literal() {
-        let result = resolve_text_value("Hello World").unwrap();
+        let result = resolve_text_value("Hello World", true).unwrap();
         assert_eq!(result, "Hello World");
     }
 
     #[test]
     fn test_resolve_text_value_empty() {
-        let result = resolve_text_value("").unwrap();
+        let result = resolve_text_value("", true).unwrap();
         assert_eq!(result, "");
     }
 
     #[test]
     fn test_resolve_env_var() {
-        let result = resolve_text_value("${HOME}").unwrap();
+        let result = resolve_text_value("${HOME}", true).unwrap();
         assert!(!result.is_empty(), "HOME should be set");
         assert!(result.contains('/'), "HOME should be a path");
     }
 
     #[test]
     fn test_resolve_env_var_in_context() {
-        let result = resolve_text_value("path=${HOME}/foo").unwrap();
+        let result = resolve_text_value("path=${HOME}/foo", true).unwrap();
         assert!(result.starts_with("path="), "should preserve prefix");
         assert!(result.ends_with("/foo"), "should preserve suffix");
         assert!(
@@ -1069,20 +1141,20 @@ font = "standard"
 
     #[test]
     fn test_resolve_env_var_not_set() {
-        let err = resolve_text_value("${DOES_NOT_EXIST_XYZZY}").unwrap_err();
+        let err = resolve_text_value("${DOES_NOT_EXIST_XYZZY}", true).unwrap_err();
         assert!(err.to_string().contains("not set"));
     }
 
     #[test]
     fn test_resolve_env_var_unclosed() {
-        let err = resolve_text_value("${UNCLOSED").unwrap_err();
+        let err = resolve_text_value("${UNCLOSED", true).unwrap_err();
         assert!(err.to_string().contains("unclosed"));
     }
 
     #[test]
     fn test_resolve_command_sub_not_executed() {
         // Security: $(...) must NOT execute — pass through as literal text.
-        let result = resolve_text_value("$(echo hello)").unwrap();
+        let result = resolve_text_value("$(echo hello)", true).unwrap();
         assert_eq!(
             result, "$(echo hello)",
             "command substitution must not execute"
@@ -1091,21 +1163,21 @@ font = "standard"
 
     #[test]
     fn test_resolve_command_sub_in_context_not_executed() {
-        let result = resolve_text_value("prefix_$(echo mid)_suffix").unwrap();
+        let result = resolve_text_value("prefix_$(echo mid)_suffix", true).unwrap();
         assert_eq!(result, "prefix_$(echo mid)_suffix");
     }
 
     #[test]
     fn test_resolve_command_sub_dangerous_not_executed() {
         // Ensure a destructive command is passed through verbatim, never run.
-        let result = resolve_text_value("$(rm -rf /)").unwrap();
+        let result = resolve_text_value("$(rm -rf /)", true).unwrap();
         assert_eq!(result, "$(rm -rf /)");
     }
 
     #[test]
     fn test_resolve_mixed_literal_and_env() {
         std::env::set_var("FIGBY_TEST_VAR", "42");
-        let result = resolve_text_value("$(echo A)${FIGBY_TEST_VAR}B").unwrap();
+        let result = resolve_text_value("$(echo A)${FIGBY_TEST_VAR}B", true).unwrap();
         // $(...) literal, ${VAR} expanded
         assert_eq!(result, "$(echo A)42B");
     }
@@ -1151,6 +1223,87 @@ width = 80
         assert_eq!(img.charset, "BLOCK");
     }
 
+    /// F-10 (GPT review): a relative symlink pointing outside the base
+    /// directory must be rejected even though it passes lexical checks.
+    #[test]
+    fn test_img_symlink_escape_rejected() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = std::env::temp_dir().join(format!("figby_tpl_{}", std::process::id()));
+        let base = tmp.join("base");
+        let outside = tmp.join("outside");
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        let secret = outside.join("secret.png");
+        std::fs::write(&secret, b"not really a png").unwrap();
+        // Relative symlink inside the template dir → points outside.
+        symlink(
+            std::path::Path::new("../outside/secret.png"),
+            base.join("link.png"),
+        )
+        .unwrap();
+
+        let ftmp = "---\n[canvas]\nwidth = 40\nheight = 10\n---\n{{img:link.png:20::false:0,0:}}\n";
+        let tmpl = parse_ftmp(ftmp).expect("parse must succeed");
+        let config = RenderConfig {
+            font_dir: ".".to_string(),
+            term_width: 40,
+            override_width: None,
+            base_dir: Some(base.clone()),
+            expand_env: false,
+        };
+        let err = render_template(&tmpl, &config).unwrap_err();
+        assert!(
+            err.to_string().contains("outside"),
+            "symlink escape must be rejected, got: {err}"
+        );
+
+        std::fs::remove_file(base.join("link.png")).ok();
+        std::fs::remove_file(secret).ok();
+        std::fs::remove_dir(outside).ok();
+        std::fs::remove_dir(base).ok();
+        std::fs::remove_dir(tmp).ok();
+    }
+
+    /// F-11 (GPT review): with expand_env=false (default), ${VAR} must
+    /// pass through literally instead of pulling ambient secrets.
+    #[test]
+    fn test_env_expansion_disabled_by_default() {
+        std::env::set_var("FIGBY_TEST_SECRET", "hunter2");
+        let result = resolve_text_value("pwd=${FIGBY_TEST_SECRET}", false).unwrap();
+        assert_eq!(result, "pwd=${FIGBY_TEST_SECRET}");
+        let expanded = resolve_text_value("pwd=${FIGBY_TEST_SECRET}", true).unwrap();
+        assert_eq!(expanded, "pwd=hunter2");
+        std::env::remove_var("FIGBY_TEST_SECRET");
+    }
+
+    /// F-11 (GPT review): zero and oversized image dimensions must be
+    /// bounded before reaching the decoder.
+    #[test]
+    fn test_img_dimension_bounds() {
+        // Both dims absent used to panic inside rascii; now defaulted.
+        let ftmp = "---\n[canvas]\nwidth = 40\nheight = 10\n---\n{{img:no-such-file.png}}\n";
+        let tmpl = parse_ftmp(ftmp).expect("parse must succeed");
+        let config = RenderConfig {
+            font_dir: ".".to_string(),
+            term_width: 40,
+            override_width: None,
+            base_dir: None,
+            expand_env: false,
+        };
+        // Missing file errors cleanly (not a panic) either at resolve time.
+        assert!(render_template(&tmpl, &config).is_err());
+
+        let ftmp_big =
+            "---\n[canvas]\nwidth = 40\nheight = 10\n---\n{{img:x.png:99999::false:0,0:}}\n";
+        let tmpl = parse_ftmp(ftmp_big).expect("parse must succeed");
+        let err = render_template(&tmpl, &config).unwrap_err();
+        assert!(
+            err.to_string().contains("exceed max"),
+            "oversized image must be rejected, got: {err}"
+        );
+    }
+
     #[test]
     fn test_img_absolute_path_rejected() {
         let ftmp =
@@ -1160,6 +1313,8 @@ width = 80
             font_dir: ".".to_string(),
             term_width: 40,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let err = render_template(&tmpl, &config).unwrap_err();
         assert!(
@@ -1176,6 +1331,8 @@ width = 80
             font_dir: ".".to_string(),
             term_width: 40,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let err = render_template(&tmpl, &config).unwrap_err();
         assert!(
@@ -1205,6 +1362,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let result = render_template(&tmpl, &config);
         // Should succeed because USER is normally set
@@ -1255,6 +1414,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let result = render_template(&tmpl, &config);
         assert!(result.is_ok(), "render should succeed: {:?}", result.err());
@@ -1421,6 +1582,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let output = render_template(&tmpl, &config).expect("should render");
 
@@ -1448,6 +1611,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let output = render_template(&tmpl, &config).expect("should render");
 
@@ -1475,6 +1640,8 @@ font = "standard"
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let output = render_template(&tmpl, &config).expect("should render");
 
@@ -1526,6 +1693,8 @@ y = 6
             font_dir,
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let output = render_template(&tmpl, &config).expect("should render");
 
@@ -1558,6 +1727,8 @@ mod render_guard_tests {
             font_dir: ".".to_string(),
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let result = render_template(&tmpl, &config);
         assert!(result.is_err(), "zero-width canvas must be rejected");
@@ -1574,6 +1745,8 @@ mod render_guard_tests {
             font_dir: ".".to_string(),
             term_width: 80,
             override_width: None,
+            base_dir: None,
+            expand_env: false,
         };
         let result = render_template(&tmpl, &config);
         assert!(

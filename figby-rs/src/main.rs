@@ -1265,6 +1265,10 @@ fn main() {
             font_dir,
             term_width,
             override_width,
+            // CLI templates: containment base is the template file's
+            // directory; env expansion stays opt-in (off).
+            base_dir: std::path::Path::new(path).parent().map(|d| d.to_path_buf()),
+            expand_env: false,
         };
 
         let output = match template::render_template(&tmpl, &config) {
