@@ -1,6 +1,8 @@
 # Rust
 target/
-Cargo.lock
+
+# Cargo.lock is tracked: Figby is an application, so the dependency
+# graph must be reproducible (GPT review F-19).
 
 # Build artifacts
 *.o
