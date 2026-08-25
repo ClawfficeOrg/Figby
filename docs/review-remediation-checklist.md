@@ -50,7 +50,7 @@ Independent verification results:
 - [x] **F-07 [verified]** Revision-aware saves: `AsyncResult::SaveComplete`
       (event_loop.rs:138-147) unconditionally clears unsaved + may quit even if edits
       happened during async save. Add document revision counter.
-- [ ] **F-08** Uniform dirty tracking: font_editor mutations don't set unsaved flag;
+- [x] **F-08** Uniform dirty tracking: font_editor mutations don't set unsaved flag;
       Open/New lack save/discard guard and partially reset state; image-mode
       "Save and Quit" early-returns unless Font Editor mode.
 - [ ] **F-09 [verified]** Undo entries store bare CanvasBuffer applied to whichever layer is
