@@ -61,6 +61,10 @@ impl From<gif::DecodingError> for GifImportError {
 }
 
 const MAX_TOTAL_CELLS: usize = 1_000_000;
+/// Hard cap on decoded frame count: with a tiny scaled output the
+/// per-cell budget alone would allow absurd frame counts (CPU/memory
+/// amplification — GPT review F-13).
+const MAX_FRAME_COUNT: usize = 10_000;
 
 /// How an imported GIF's frames should be sized for output.
 ///
@@ -206,27 +210,15 @@ pub fn import_gif_scaled(
 
     let bg_color_index = decoder.bg_color().unwrap_or(0);
 
-    // Collect all frames, bailing as soon as cumulative *output* cell count
-    // exceeds cap — that's what actually accumulates in composited_frames
-    // below (native-resolution frame data is never held for more than one
-    // frame at a time).
-    let mut raw_frames: Vec<gif::Frame<'static>> = Vec::new();
+    // Single-pass decode/composite: each frame is consumed as it is read
+    // so native-resolution data is never retained beyond the current
+    // frame (an earlier version cloned every native frame into
+    // raw_frames, letting a huge GIF scaled down to e.g. 1×1 pass the
+    // output-cell cap while holding all full-resolution buffers — GPT
+    // review F-13).
     let mut frame_count: usize = 0;
-    while let Some(frame) = decoder.read_next_frame()? {
-        raw_frames.push(frame.clone());
-        frame_count += 1;
-        if out_w.saturating_mul(out_h).saturating_mul(frame_count) > MAX_TOTAL_CELLS {
-            return Err(GifImportError::TooLarge {
-                width: out_w,
-                height: out_h,
-                frames: frame_count,
-            });
-        }
-    }
-
-    if raw_frames.is_empty() {
-        return Err(GifImportError::NoFrames);
-    }
+    let mut composited_frames: Vec<Vec<Vec<CanvasCell>>> = Vec::new();
+    let mut delays: Vec<u16> = Vec::new();
 
     let loop_count = match decoder.repeat() {
         gif::Repeat::Infinite => 0,
@@ -258,8 +250,6 @@ pub fn import_gif_scaled(
     };
     let mut canvas = vec![vec![transparent; width]; height];
     let mut saved_canvas: Vec<Vec<CanvasCell>> = canvas.clone();
-    let mut composited_frames: Vec<Vec<Vec<CanvasCell>>> = Vec::with_capacity(raw_frames.len());
-    let mut delays: Vec<u16> = Vec::with_capacity(raw_frames.len());
 
     // Track properties of the previous frame for disposal
     let mut prev_dispose = DisposalMethod::Any;
@@ -268,7 +258,15 @@ pub fn import_gif_scaled(
     let mut prev_left: usize = 0;
     let mut prev_top: usize = 0;
 
-    for frame in &raw_frames {
+    while let Some(frame) = decoder.read_next_frame()? {
+        frame_count += 1;
+        if frame_count > MAX_FRAME_COUNT {
+            return Err(GifImportError::TooLarge {
+                width: out_w,
+                height: out_h,
+                frames: frame_count,
+            });
+        }
         delays.push(frame.delay);
 
         // Apply previous frame's dispose method before rendering this frame
@@ -376,6 +374,20 @@ pub fn import_gif_scaled(
         } else {
             composited_frames.push(scale_canvas(&canvas, out_w, out_h));
         }
+
+        // Cumulative *output* cell budget — what actually accumulates in
+        // composited_frames.
+        if out_w.saturating_mul(out_h).saturating_mul(frame_count) > MAX_TOTAL_CELLS {
+            return Err(GifImportError::TooLarge {
+                width: out_w,
+                height: out_h,
+                frames: frame_count,
+            });
+        }
+    }
+
+    if composited_frames.is_empty() {
+        return Err(GifImportError::NoFrames);
     }
 
     Ok(GifImportResult {

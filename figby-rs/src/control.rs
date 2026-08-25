@@ -1281,8 +1281,6 @@ mod tests {
         assert_eq!(state.iso2022(&mut input), None);
     }
 
-    use super::*;
-
     /// F-16 (GPT review): a long run of control bytes must not overflow
     /// the stack. 1M shift-in/shift-out pairs previously meant 1M stack
     /// frames; now it's a flat loop.
