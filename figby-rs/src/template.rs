@@ -499,10 +499,33 @@ pub fn render_template(
     const MAX_CANVAS_CELLS: usize = 1_000_000;
     const MAX_MARGIN: usize = 1_000;
     const MAX_PADDING: usize = 1_000;
-    if width.saturating_mul(height) > MAX_CANVAS_CELLS {
+    // Reject zero dimensions: width=0 × height=huge passes a plain
+    // saturating_mul cell check but still allocates `height` row vectors
+    // (GPT review F-12).
+    if width == 0 || height == 0 {
         return Err(TemplateError::ParseError(format!(
-            "canvas {}×{} exceeds max {} cells",
-            width, height, MAX_CANVAS_CELLS
+            "canvas dimensions must be nonzero (got {}×{})",
+            width, height
+        )));
+    }
+    // Final padded/margined size must be budgeted too — padding and
+    // margin are applied after the base canvas check.
+    let pad2 = padding
+        .checked_mul(2)
+        .ok_or_else(|| TemplateError::ParseError("canvas padding overflow".to_string()))?;
+    let margin2 = margin
+        .checked_mul(2)
+        .ok_or_else(|| TemplateError::ParseError("canvas margin overflow".to_string()))?;
+    let total_width = (width + pad2)
+        .checked_add(margin2)
+        .ok_or_else(|| TemplateError::ParseError("canvas dimensions overflow".to_string()))?;
+    let total_height = (height + pad2)
+        .checked_add(margin2)
+        .ok_or_else(|| TemplateError::ParseError("canvas dimensions overflow".to_string()))?;
+    if total_width.saturating_mul(total_height) > MAX_CANVAS_CELLS {
+        return Err(TemplateError::ParseError(format!(
+            "canvas {}×{} (with padding/margin) exceeds max {} cells",
+            total_width, total_height, MAX_CANVAS_CELLS
         )));
     }
     if margin > MAX_MARGIN {
@@ -1517,5 +1540,45 @@ y = 6
             .map(|row| row.chars().filter(|&c| c == '.').count())
             .sum();
         assert!(dot_count > 0, "border should produce '.' chars");
+    }
+}
+
+#[cfg(test)]
+mod render_guard_tests {
+    use super::*;
+
+    /// F-12 (GPT review): width=0 × height=u32::MAX passes a plain
+    /// saturating_mul cell check but must not attempt an enormous
+    /// allocation.
+    #[test]
+    fn test_zero_dimension_rejected() {
+        let ftmp = "---\n[canvas]\nwidth = 0\nheight = 4294967295\n---\n";
+        let tmpl = parse_ftmp(ftmp).expect("template should parse");
+        let config = RenderConfig {
+            font_dir: ".".to_string(),
+            term_width: 80,
+            override_width: None,
+        };
+        let result = render_template(&tmpl, &config);
+        assert!(result.is_err(), "zero-width canvas must be rejected");
+    }
+
+    /// Padding and margin must count against the canvas budget.
+    #[test]
+    fn test_padding_margin_budgeted() {
+        // Base 810k cells is under the budget, but padding+margin push
+        // the final output past it.
+        let ftmp = "---\n[canvas]\nwidth = 900\nheight = 900\npadding = 100\nmargin = 100\n---\n";
+        let tmpl = parse_ftmp(ftmp).expect("template should parse");
+        let config = RenderConfig {
+            font_dir: ".".to_string(),
+            term_width: 80,
+            override_width: None,
+        };
+        let result = render_template(&tmpl, &config);
+        assert!(
+            result.is_err(),
+            "base cells + padding/margin must count against the budget"
+        );
     }
 }
