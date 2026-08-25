@@ -87,13 +87,84 @@ impl TuiApp {
         Ok(())
     }
 
-    pub(crate) fn trigger_quit(&mut self) {
+    pub fn trigger_quit(&mut self) {
         if self.editor.unsaved {
             self.dialogs.quit_confirm_dialog = true;
+            self.dialogs.pending_transition = Some(PendingDocAction::Quit);
             self.frame.dirty = true;
         } else {
             self.ui.should_quit = true;
         }
+    }
+
+    /// Whether a "save and proceed" option can actually save right now.
+    /// Image sessions have no direct save path (they export), so the
+    /// confirm dialog must not offer a no-op Save (GPT review F-08).
+    pub fn can_save_now(&self) -> bool {
+        self.ui.mode == AppMode::FontEditor && self.editor.font_editor.font.is_some()
+    }
+
+    /// Run the transition that was waiting behind the unsaved-changes
+    /// dialog. Called after the user picks Discard, or after a successful
+    /// save completes.
+    pub(crate) fn execute_pending_transition(&mut self) {
+        let action = self.dialogs.pending_transition.take();
+        match action {
+            Some(PendingDocAction::Quit) => {
+                self.dialogs.quit_after_save = false;
+                self.ui.should_quit = true;
+            }
+            Some(PendingDocAction::OpenFont) => {
+                let path = self.dialogs.pending_open_path.take();
+                if let Some(path) = path {
+                    self.perform_open_at(path);
+                } else {
+                    self.start_open();
+                }
+            }
+            Some(PendingDocAction::NewFileSession) => {
+                self.do_new_file_session(self.ui.session_type);
+            }
+            Some(PendingDocAction::FontNewBlankSession) => {
+                self.do_new_file_session(SessionType::Font);
+            }
+            None => {}
+        }
+    }
+
+    /// Fresh blank document of the given size, replacing ALL document and
+    /// transient state atomically — undo history, selection/clipboard,
+    /// tool transient state, image-editor cache, timeline, inline
+    /// playback and export-dialog timeline data (GPT review F-08: Open/
+    /// New used to reset only part of this).
+    pub(crate) fn reset_document(&mut self, w: u16, h: u16) {
+        use canvas::CanvasWidget;
+        self.editor.canvas = CanvasWidget::new(w, h);
+        self.editor.layer_stack = layers::LayerStack::new(w as usize, h as usize);
+        self.editor.layer_panel = layers::LayerPanel::new();
+        self.editor.layer_panel.theme = self.ctx.theme.clone();
+        self.editor.layer_panel.icons = self.ctx.icons.clone();
+        self.editor.undo.clear();
+        self.editor.selection = None;
+        self.editor.clipboard = None;
+        self.editor.selection_polygon_points.clear();
+        self.editor.selection_state = tools::selection::SelectionState::default();
+        self.editor.move_state = tools::move_tool::MoveState::default();
+        self.editor.rotate_state = tools::rotate_tool::RotateState::default();
+        self.editor.line_state = tools::line::LineState::default();
+        self.editor.fill_threshold = 0;
+        self.editor.image_editor = image_editor::ImageEditor::new();
+        self.editor.font_editor.font = None;
+        self.editor.font_editor.current_path = None;
+        self.animation.timeline_state = timeline::TimelineState::default();
+        self.animation.inline_player = None;
+        self.dialogs.export_dialog.timeline_available = false;
+        self.dialogs.export_dialog.frame_delays.clear();
+        // A fresh document starts clean.
+        self.editor.unsaved = false;
+        self.editor.revision = self.editor.revision.wrapping_add(1);
+        self.dialogs.pending_save_revision = None;
+        self.editor.recomposite_canvas();
     }
 
     pub(crate) fn process_event(&mut self, event: &AppEvent) {
@@ -155,6 +226,11 @@ impl TuiApp {
                                 self.dialogs.quit_after_save = false;
                                 self.ui.should_quit = true;
                             }
+                            if saved_unchanged && self.dialogs.pending_transition.is_some() {
+                                // Save & continue: the open/new that was
+                                // waiting behind the dialog now runs.
+                                self.execute_pending_transition();
+                            }
                         }
                         Err(e) => {
                             self.dialogs.pending_save_revision = None;
@@ -164,10 +240,24 @@ impl TuiApp {
                     },
                     AsyncResult::OpenComplete(r) => match r {
                         Ok((font, path)) => {
-                            self.editor.unsaved = false;
+                            // Opening replaces the whole document: drop
+                            // stale selection, timeline, playback and
+                            // image-editor state along with undo history
+                            // (GPT review F-08 — partial resets leaked
+                            // previous-document state into the new one).
                             self.editor.undo.clear();
+                            self.editor.selection = None;
+                            self.editor.clipboard = None;
+                            self.editor.selection_polygon_points.clear();
+                            self.editor.image_editor = image_editor::ImageEditor::new();
+                            self.animation.timeline_state = timeline::TimelineState::default();
+                            self.animation.inline_player = None;
+                            self.dialogs.export_dialog.timeline_available = false;
+                            self.dialogs.export_dialog.frame_delays.clear();
+                            self.editor.unsaved = false;
                             self.editor.font_editor.load_font(font);
                             self.editor.font_editor.current_path = Some(path.clone());
+                            self.editor.recomposite_canvas();
                             self.dialogs.recent_files.push(path);
                             self.dialogs.recent_files.save_to_disk();
                             self.dialogs.file_ops.error_message.clear();

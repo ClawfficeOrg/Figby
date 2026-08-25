@@ -240,6 +240,11 @@ pub struct FontEditor {
     pub brush_char: char,
     pub theme: Theme,
     pub grid_state: GlyphGridState,
+    /// Bumped on every mutation of the font's content (glyph paint,
+    /// header fields, smush rules, transforms). Lets the dispatcher
+    /// detect real mutations for dirty tracking without marking pure
+    /// navigation as unsaved changes (GPT review F-08).
+    pub mutation_epoch: u64,
 }
 
 impl FontEditor {
@@ -275,6 +280,7 @@ impl FontEditor {
             brush_char: '\u{2588}',
             theme: Theme::default(),
             grid_state: GlyphGridState::new(),
+            mutation_epoch: 0,
         }
     }
 
@@ -805,6 +811,10 @@ impl FontEditor {
         Widget::render(&paragraph, area, buf);
     }
 
+    fn note_mutation(&mut self) {
+        self.mutation_epoch = self.mutation_epoch.wrapping_add(1);
+    }
+
     pub fn handle_key(&mut self, code: KeyCode, modifiers: KeyModifiers, area_width: u16) -> bool {
         match self.view {
             FontEditorView::Overview => self.handle_key_overview(code, area_width),
@@ -848,23 +858,25 @@ impl FontEditor {
                 true
             }
             KeyCode::Char(' ') => {
+                let mut mutated = false;
                 if let FontEditorView::CharEditor(charcode) = self.view {
-                    if let Some(ref mut font) = self.font {
+                    let brush_char = self.brush_char;
+                    let gx = self.glyph_cursor_x as usize;
+                    let gy = self.glyph_cursor_y as usize;
+                    if let Some(font) = self.font.as_mut() {
                         if let Some(ch) = font.chars.get_mut(&charcode) {
                             let mut rows = ch.rows().to_vec();
-                            let y = self.glyph_cursor_y as usize;
-                            let x = self.glyph_cursor_x as usize;
-                            if y < rows.len() {
-                                let old_row: Vec<char> = rows[y].chars().collect();
-                                if x < old_row.len() {
-                                    let current = old_row[x];
+                            if gy < rows.len() {
+                                let old_row: Vec<char> = rows[gy].chars().collect();
+                                if gx < old_row.len() {
+                                    let current = old_row[gx];
                                     let new_row: String = old_row
                                         .iter()
                                         .enumerate()
                                         .map(|(i, &c)| {
-                                            if i == x {
+                                            if i == gx {
                                                 if current == ' ' {
-                                                    self.brush_char
+                                                    brush_char
                                                 } else {
                                                     ' '
                                                 }
@@ -873,12 +885,16 @@ impl FontEditor {
                                             }
                                         })
                                         .collect();
-                                    rows[y] = new_row;
+                                    rows[gy] = new_row;
+                                    mutated = true;
                                     ch.set_rows(rows);
                                 }
                             }
                         }
                     }
+                }
+                if mutated {
+                    self.note_mutation();
                 }
                 true
             }
@@ -964,6 +980,7 @@ impl FontEditor {
                 };
                 let bit = SMUSH_RULE_LABELS[self.smush_selected].1;
                 font.full_layout ^= bit as i32;
+                self.note_mutation();
                 true
             }
             KeyCode::Esc => {
@@ -1132,6 +1149,7 @@ impl FontEditor {
     }
 
     fn transform_resize(&mut self, new_height: u32) {
+        self.note_mutation();
         let Some(font) = self.font.as_mut() else {
             return;
         };
@@ -1165,6 +1183,7 @@ impl FontEditor {
     }
 
     fn transform_italicize(&mut self) {
+        self.note_mutation();
         let Some(font) = self.font.as_mut() else {
             return;
         };
@@ -1190,6 +1209,7 @@ impl FontEditor {
     }
 
     fn transform_bold(&mut self) {
+        self.note_mutation();
         let Some(font) = self.font.as_mut() else {
             return;
         };
@@ -1211,6 +1231,7 @@ impl FontEditor {
     }
 
     fn transform_mirror(&mut self, mode: MirrorMode) {
+        self.note_mutation();
         let Some(font) = self.font.as_mut() else {
             return;
         };
@@ -1237,6 +1258,7 @@ impl FontEditor {
     }
 
     fn transform_copy_glyph_from(&mut self, font_source: &str, fontdir: &str, code: u32) {
+        self.note_mutation();
         let dirs = [fontdir];
         let external = match load_font(font_source, &dirs) {
             Ok(f) => f,
@@ -1258,10 +1280,12 @@ impl FontEditor {
     }
 
     fn transform_rename(&mut self, new_name: &str) {
+        self.note_mutation();
         self.font_storage_name = new_name.to_string();
     }
 
     fn transform_duplicate(&mut self) {
+        self.note_mutation();
         let Some(font) = self.font.as_ref() else {
             return;
         };
@@ -1273,6 +1297,7 @@ impl FontEditor {
     }
 
     fn transform_import_font(&mut self, name: &str, fontdir: &str) {
+        self.note_mutation();
         let dirs = [fontdir];
         let external = match load_font(name, &dirs) {
             Ok(f) => f,
@@ -1318,7 +1343,7 @@ impl FontEditor {
             return false;
         };
 
-        match field {
+        let result = match field {
             0 => {
                 let chars: Vec<char> = val.chars().collect();
                 if chars.len() == 1 {
@@ -1402,7 +1427,11 @@ impl FontEditor {
                 }
             },
             _ => false,
+        };
+        if result {
+            self.note_mutation();
         }
+        result
     }
 
     pub fn sync_from_canvas(&mut self, code: u32, buffer: &super::canvas::CanvasBuffer) {

@@ -34,15 +34,7 @@ impl TuiApp {
                 self.frame.dirty = true;
             }
             WelcomeAction::NewFile => {
-                self.editor.font_editor.font = None;
-                self.editor.font_editor.current_path = None;
-                self.editor.undo.clear();
-                self.editor.canvas = crate::tui::canvas::CanvasWidget::new(32, 16);
-                self.editor.layer_stack = layers::LayerStack::new(32, 16);
-                self.editor.layer_panel = layers::LayerPanel::new();
-                self.editor.layer_panel.theme = self.ctx.theme.clone();
-                self.editor.layer_panel.icons = self.ctx.icons.clone();
-                self.editor.recomposite_canvas();
+                self.request_transition(PendingDocAction::NewFileSession);
                 self.welcome.screen.show = false;
                 self.welcome.fx = None;
                 self.frame.dirty = true;
@@ -93,15 +85,7 @@ impl TuiApp {
             }
             WelcomeAction::FontNewBlank => {
                 self.ui.session_type = SessionType::Font;
-                self.editor.font_editor.font = None;
-                self.editor.font_editor.current_path = None;
-                self.editor.undo.clear();
-                self.editor.canvas = crate::tui::canvas::CanvasWidget::new(32, 16);
-                self.editor.layer_stack = layers::LayerStack::new(32, 16);
-                self.editor.layer_panel = layers::LayerPanel::new();
-                self.editor.layer_panel.theme = self.ctx.theme.clone();
-                self.editor.layer_panel.icons = self.ctx.icons.clone();
-                self.editor.recomposite_canvas();
+                self.request_transition(PendingDocAction::FontNewBlankSession);
                 self.welcome.screen.show = false;
                 self.welcome.fx = None;
                 self.frame.dirty = true;
@@ -324,21 +308,72 @@ impl TuiApp {
         self.frame.dirty = true;
     }
 
+    /// Route a destructive transition through the unsaved-changes dialog
+    /// when needed (GPT review F-08). Clean documents proceed straight
+    /// through.
+    pub fn request_transition(&mut self, action: PendingDocAction) {
+        if !self.editor.unsaved {
+            self.execute_action(action);
+            return;
+        }
+        self.dialogs.pending_transition = Some(action);
+        self.dialogs.quit_confirm_dialog = true;
+        self.frame.dirty = true;
+    }
+
+    /// Immediately perform a transition (no confirmation). For OpenFont
+    /// this means the file picker, or the stashed path if one was already
+    /// resolved.
+    pub(crate) fn execute_action(&mut self, action: PendingDocAction) {
+        match action {
+            PendingDocAction::Quit => self.ui.should_quit = true,
+            PendingDocAction::OpenFont => {
+                let path = self.dialogs.pending_open_path.take();
+                match path {
+                    Some(path) => self.perform_open_at(path),
+                    None => self.start_open(),
+                }
+            }
+            PendingDocAction::NewFileSession => self.do_new_file_session(self.ui.session_type),
+            PendingDocAction::FontNewBlankSession => self.do_new_file_session(SessionType::Font),
+        }
+    }
+
+    /// Fresh blank document for the given session type (welcome "New").
+    pub(crate) fn do_new_file_session(&mut self, session_type: SessionType) {
+        self.ui.session_type = session_type;
+        self.reset_document(32, 16);
+        self.welcome.screen.show = false;
+        self.welcome.fx = None;
+        self.frame.dirty = true;
+    }
+
     pub(crate) fn handle_mouse_event(&mut self, mouse: MouseEvent) {
-        // Quit-confirm dialog: intercept all mouse events
+        // Unsaved-changes dialog: intercept all mouse events
         if self.dialogs.quit_confirm_dialog {
             if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
                 let btns = self.dialogs.quit_confirm_buttons;
-                if btns[0].contains((mouse.column, mouse.row).into()) {
+                let can_save = self.can_save_now();
+                if btns[0].contains((mouse.column, mouse.row).into()) && can_save {
                     self.dialogs.quit_confirm_dialog = false;
-                    self.dialogs.quit_after_save = true;
+                    let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
+                    if is_quit {
+                        self.dialogs.quit_after_save = true;
+                    }
                     self.frame.dirty = true;
                     self.start_save();
-                } else if btns[1].contains((mouse.column, mouse.row).into()) {
+                } else if btns[1].contains((mouse.column, mouse.row).into())
+                    || (btns[0].contains((mouse.column, mouse.row).into()) && !can_save)
+                {
+                    // Discard & proceed (also when Save is unavailable and
+                    // the user clicks where the save button used to be).
                     self.dialogs.quit_confirm_dialog = false;
-                    self.ui.should_quit = true;
+                    self.frame.dirty = true;
+                    self.execute_pending_transition();
                 } else if btns[2].contains((mouse.column, mouse.row).into()) {
                     self.dialogs.quit_confirm_dialog = false;
+                    self.dialogs.pending_transition = None;
+                    self.dialogs.pending_open_path = None;
                     self.frame.dirty = true;
                 }
             }
@@ -1142,21 +1177,37 @@ impl TuiApp {
             return None;
         }
 
-        // Quit-confirm dialog: intercept all keys before anything else
+        // Unsaved-changes dialog: intercept all keys before anything else.
+        // Y = save & proceed (only offered when saving is possible),
+        // N = discard & proceed, C/Esc = cancel the transition entirely
+        // (GPT review F-08).
         if self.dialogs.quit_confirm_dialog {
             match code {
                 KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => {
                     self.dialogs.quit_confirm_dialog = false;
-                    self.dialogs.quit_after_save = true;
                     self.frame.dirty = true;
-                    self.start_save();
+                    let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
+                    if self.can_save_now() {
+                        if is_quit {
+                            self.dialogs.quit_after_save = true;
+                        }
+                        // The pending transition stays armed; it runs when
+                        // SaveComplete reports an unchanged successful save.
+                        self.start_save();
+                    } else {
+                        // Nothing to save with — treat as discard.
+                        self.execute_pending_transition();
+                    }
                 }
                 KeyCode::Char('n') | KeyCode::Char('N') => {
                     self.dialogs.quit_confirm_dialog = false;
-                    self.ui.should_quit = true;
+                    self.frame.dirty = true;
+                    self.execute_pending_transition();
                 }
                 KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Esc => {
                     self.dialogs.quit_confirm_dialog = false;
+                    self.dialogs.pending_transition = None;
+                    self.dialogs.pending_open_path = None;
                     self.frame.dirty = true;
                 }
                 _ => {}
@@ -1948,11 +1999,18 @@ impl TuiApp {
             self.editor.font_editor.brush_char = self.editor.brush.ch;
         }
         let area_width = crossterm::terminal::size().unwrap_or((80, 24)).0;
+        let epoch_before = self.editor.font_editor.mutation_epoch;
         if self
             .editor
             .font_editor
             .handle_key(key.code, key.modifiers, area_width)
         {
+            if self.editor.font_editor.mutation_epoch != epoch_before {
+                // Real content change (glyph paint, header field, smush
+                // rule, transform) — navigation keys don't trip this, so
+                // dirty tracking is neither missed nor spurious (F-08).
+                self.editor.mark_dirty();
+            }
             if self.editor.font_editor.view != font_editor::FontEditorView::Overview {
                 self.editor.sync_font_char_to_canvas();
             }
@@ -2092,7 +2150,7 @@ impl TuiApp {
         }
     }
 
-    fn start_open(&mut self) {
+    pub(crate) fn start_open(&mut self) {
         if self.ui.mode != AppMode::FontEditor {
             return;
         }
@@ -2102,34 +2160,68 @@ impl TuiApp {
         self.frame.dirty = true;
     }
 
+    /// Request opening a font. If the document has unsaved changes, the
+    /// open waits behind the unsaved-changes dialog instead of silently
+    /// replacing work (GPT review F-08).
+    pub(crate) fn request_open(&mut self, target: Option<file_ops::OpenTarget>) {
+        if self.editor.unsaved && self.dialogs.pending_transition.is_none() {
+            self.dialogs.pending_transition = Some(PendingDocAction::OpenFont);
+            // Keep the resolved target for when the transition runs.
+            if let Some(t) = target {
+                self.dialogs.pending_open_path = Some(match t {
+                    file_ops::OpenTarget::File(p) => p,
+                    file_ops::OpenTarget::ZipEntry { zip_path, .. } => zip_path,
+                });
+            }
+            self.dialogs.quit_confirm_dialog = true;
+            self.frame.dirty = true;
+            return;
+        }
+        if let Some(path) = self.dialogs.pending_open_path.take() {
+            self.perform_open_at(path);
+            return;
+        }
+        self.perform_open();
+    }
+
+    pub(crate) fn perform_open_at(&mut self, path: std::path::PathBuf) {
+        if self.ctx.throbber.is_active() {
+            return;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.ctx.async_rx = Some(rx);
+        self.ctx.throbber.start("Loading...");
+        self.frame.dirty = true;
+        let path_clone = path.clone();
+        std::thread::spawn(move || {
+            let result = (|| -> Result<(crate::font::FIGfont, std::path::PathBuf), String> {
+                let content = std::fs::read_to_string(&path_clone)
+                    .map_err(|e| format!("Cannot read file: {e}"))?;
+                let font = crate::font::parse_tlf_font(&content)
+                    .map_err(|e| format!("Parse error: {e}"))?;
+                Ok((font, path_clone))
+            })();
+            let _ = tx.send(AsyncResult::OpenComplete(result));
+        });
+    }
+
     pub(crate) fn perform_open(&mut self) {
         if self.ctx.throbber.is_active() {
             return;
         }
         let target = self.dialogs.file_ops.resolve_open_target();
-        let (tx, rx) = mpsc::channel();
-        self.ctx.async_rx = Some(rx);
-        self.ctx.throbber.start("Loading...");
-        self.frame.dirty = true;
         match target {
-            file_ops::OpenTarget::File(path) => {
-                let path_clone = path.clone();
-                std::thread::spawn(move || {
-                    let result =
-                        (|| -> Result<(crate::font::FIGfont, std::path::PathBuf), String> {
-                            let content = std::fs::read_to_string(&path_clone)
-                                .map_err(|e| format!("Cannot read file: {e}"))?;
-                            let font = crate::font::parse_tlf_font(&content)
-                                .map_err(|e| format!("Parse error: {e}"))?;
-                            Ok((font, path_clone))
-                        })();
-                    let _ = tx.send(AsyncResult::OpenComplete(result));
-                });
-            }
+            file_ops::OpenTarget::File(_) => self.request_open(Some(target)),
             file_ops::OpenTarget::ZipEntry {
                 zip_path,
                 entry_name,
             } => {
+                // ZIP entries are read straight from the archive; the
+                // unsaved-changes guard applies at OpenComplete below.
+                let (tx, rx) = mpsc::channel();
+                self.ctx.async_rx = Some(rx);
+                self.ctx.throbber.start("Loading...");
+                self.frame.dirty = true;
                 std::thread::spawn(move || {
                     let result =
                         (|| -> Result<(crate::font::FIGfont, std::path::PathBuf), String> {

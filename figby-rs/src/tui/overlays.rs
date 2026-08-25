@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 
-use super::{dialogs, file_ops, keymap, timeline, AppMode, TuiApp};
+use super::{app_state::PendingDocAction, dialogs, file_ops, keymap, timeline, AppMode, TuiApp};
 
 impl TuiApp {
     /// Render all floating overlays (dialogs, keybindings, undo panel).
@@ -198,10 +198,23 @@ impl TuiApp {
                 .render(frame, frame.area(), &self.ctx.theme);
         }
 
-        // Quit-confirm dialog
+        // Unsaved-changes dialog
         if self.dialogs.quit_confirm_dialog {
             let area = frame.area();
-            let hint = "  [Y] Save and quit   [N] Discard and quit   [C] Cancel";
+            let proceed_label = if self.dialogs.pending_transition == Some(PendingDocAction::Quit) {
+                "quit"
+            } else {
+                "continue"
+            };
+            let can_save =
+                self.ui.mode == AppMode::FontEditor && self.editor.font_editor.font.is_some();
+            let hint = if can_save {
+                format!(
+                    "  [Y] Save and {proceed_label}   [N] Discard and {proceed_label}   [C] Cancel"
+                )
+            } else {
+                format!("  [N] Discard and {proceed_label}   [C] Cancel")
+            };
             let hint_len = hint.len() as u16;
             let w = (hint_len + 4).min(area.width);
             let h: u16 = 7.min(area.height);

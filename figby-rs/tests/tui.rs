@@ -3232,3 +3232,132 @@ fn test_render_does_not_overwrite_paint_with_stale_image_cache() {
         "render must not overwrite a paint with the stale image-editor cache"
     );
 }
+
+/// F-08 (GPT review): New with unsaved changes must open the confirm
+/// dialog instead of silently discarding; Discard proceeds and leaves a
+/// clean document.
+#[test]
+fn test_new_file_with_unsaved_changes_asks_confirmation() {
+    use crossterm::event::{KeyCode, KeyModifiers};
+    use figby::tui::TuiApp;
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.editor.mark_dirty();
+
+    // Trigger New via the same path the welcome action uses.
+    app.request_transition(figby::tui::PendingDocAction::NewFileSession);
+    assert!(
+        app.dialogs.quit_confirm_dialog,
+        "confirm dialog should open"
+    );
+    assert_eq!(
+        app.dialogs.pending_transition,
+        Some(figby::tui::PendingDocAction::NewFileSession)
+    );
+
+    // Paint something so we can verify it is discarded on N.
+    app.editor.layer_stack.active_layer_mut().buffer_mut().set(
+        0,
+        0,
+        figby::tui::canvas::CanvasCell {
+            ch: 'Z',
+            fg: None,
+            bg: None,
+            height: None,
+        },
+    );
+
+    // Discard & proceed.
+    app.handle_key_event(KeyCode::Char('n'));
+    assert!(!app.dialogs.quit_confirm_dialog);
+    assert_eq!(
+        app.dialogs.pending_transition, None,
+        "transition must be consumed"
+    );
+    assert!(!app.editor.unsaved, "fresh document starts clean");
+    assert_ne!(
+        app.editor
+            .layer_stack
+            .active_layer()
+            .buffer()
+            .get(0, 0)
+            .unwrap()
+            .ch,
+        'Z',
+        "old content must be gone after Discard"
+    );
+
+    let _ = KeyModifiers::NONE;
+}
+
+/// F-08 (GPT review): Cancel keeps the current document untouched.
+#[test]
+fn test_new_file_cancel_keeps_document() {
+    use crossterm::event::KeyCode;
+    use figby::tui::TuiApp;
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.editor.mark_dirty();
+    app.request_transition(figby::tui::PendingDocAction::NewFileSession);
+
+    app.handle_key_event(KeyCode::Esc);
+    assert!(!app.dialogs.quit_confirm_dialog);
+    assert_eq!(app.dialogs.pending_transition, None);
+    assert!(app.editor.unsaved, "document must remain as it was");
+    assert!(!app.ui.should_quit);
+}
+
+/// F-08 (GPT review): in image mode there is no save path, so the
+/// confirm dialog's Save option acts as Discard — the transition must
+/// still proceed instead of hanging forever (the old bug: Save & Quit
+/// did nothing outside the font editor).
+#[test]
+fn test_quit_save_option_in_image_mode_proceeds() {
+    use crossterm::event::KeyCode;
+    use figby::tui::{AppMode, TuiApp};
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.ui.mode = AppMode::ImageEditor;
+    app.editor.mark_dirty();
+
+    app.trigger_quit();
+    assert!(app.dialogs.quit_confirm_dialog);
+
+    // Y where saving is impossible → treated as discard, quit proceeds.
+    app.handle_key_event(KeyCode::Char('y'));
+    assert!(
+        app.ui.should_quit,
+        "quit must not hang when save is unavailable"
+    );
+}
+
+/// F-08 (GPT review): font editor content edits mark the document dirty;
+/// navigation keys do not.
+#[test]
+fn test_font_editor_dirty_tracking_via_mutation_epoch() {
+    use crossterm::event::KeyCode;
+    use figby::tui::TuiApp;
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    assert!(!app.editor.unsaved);
+
+    // The smush toggle needs an actual font to mutate.
+    let content = include_str!("../assets/fonts/standard.flf");
+    let font = figby::font::parse_tlf_font(content).expect("standard.flf should parse");
+    app.editor.font_editor.font = Some(font);
+
+    // Navigation keys in the glyph editor must not dirty the document.
+    let rev0 = app.editor.revision;
+    app.handle_key_event(KeyCode::Down);
+    app.handle_key_event(KeyCode::Right);
+    assert_eq!(app.editor.revision, rev0, "navigation must not mark dirty");
+
+    // A real mutation (smush rule toggle) must mark dirty. Switch to the
+    // smush editor view first via the font editor's own state.
+    app.editor.font_editor.view = figby::tui::font_editor::FontEditorView::SmushRuleEditor;
+    app.handle_key_event(KeyCode::Enter);
+    assert!(
+        app.editor.unsaved && app.editor.revision > rev0,
+        "smush edit is a document mutation"
+    );
+}

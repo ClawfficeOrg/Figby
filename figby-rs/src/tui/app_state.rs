@@ -1056,6 +1056,18 @@ impl AnimationState {
     }
 }
 
+/// A destructive document transition (quit / open / new) that is waiting
+/// for the user to confirm what to do about unsaved changes. Shared by
+/// the quit-confirm dialog so Open and New get the same save/discard/
+/// cancel treatment as quitting (GPT review F-08).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PendingDocAction {
+    Quit,
+    OpenFont,
+    NewFileSession,
+    FontNewBlankSession,
+}
+
 /// Dialog/overlay state — file ops, export, undo panel, settings panel, rascii import.
 pub struct DialogState {
     pub file_ops: file_ops::FileOpsDialog,
@@ -1077,6 +1089,10 @@ pub struct DialogState {
     /// hasn't been mutated since — edits made during the save keep the
     /// document dirty (GPT review F-07).
     pub pending_save_revision: Option<u64>,
+    /// The transition awaiting confirmation in the unsaved-changes dialog.
+    pub pending_transition: Option<PendingDocAction>,
+    /// Resolved path for an open that is waiting behind a confirmation.
+    pub pending_open_path: Option<std::path::PathBuf>,
 }
 
 /// Welcome/startup effects state.
@@ -1270,6 +1286,8 @@ impl TuiApp {
                 quit_confirm_buttons: [Rect::default(); 3],
                 quit_after_save: false,
                 pending_save_revision: None,
+                pending_transition: None,
+                pending_open_path: None,
             },
             interaction: InteractionState {
                 selection_drag_origin: None,
