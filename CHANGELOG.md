@@ -1,5 +1,29 @@
 # Changelog
 
+## [6.0.32] - 2026-08-25
+
+### Fixed
+- Tests embedded an untracked font (`Lixdu.ttf`), so clippy `--all-targets`
+  and `cargo test` failed to compile from a clean checkout (GPT review
+  F-01). Replaced with tracked, OFL-licensed Fira Mono fixture under
+  `figby-rs/tests/fixtures/`.
+- TUI smoke test used an 80-column backend that triggered the status
+  bar's item truncation and dropped the FPS label (F-02); widened to 120.
+- Terminal-capture player tests panicked in non-tty environments; they
+  now skip with a message instead of unwrapping.
+- De-flaked ZIP font tests: temp dir names now include a per-process
+  atomic counter, preventing collisions under coarse clock granularity.
+
+### Changed / Build
+- Embedded assets (theme yaml, icons.yaml, welcome mascot, web fonts)
+  moved into `figby-rs/assets/` so the packaged crate compiles;
+  `cargo package` now verifies (F-03).
+- `Cargo.lock` is tracked and CI runs with `--locked`; toolchain pinned
+  via `rust-toolchain.toml` (1.97.1) (F-19).
+- CI enforces fixture presence, locked clippy/tests with
+  `-D warnings --all-features`, and package verification; workflow has
+  explicit least-privilege permissions.
+
 ## [6.0.31] - 2026-07-12
 
 ### Added
