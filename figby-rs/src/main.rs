@@ -1230,7 +1230,10 @@ fn main() {
     }
 
     if let Some(ref path) = args.render_template {
-        let content = match std::fs::read_to_string(path) {
+        let content = match figby::bounded_io::read_bounded_string(
+            std::path::Path::new(path),
+            figby::bounded_io::MAX_TEXT_BYTES,
+        ) {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("Error reading template file '{}': {}", path, e);

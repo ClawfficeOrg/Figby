@@ -1286,7 +1286,10 @@ impl TuiApp {
                     font_editor,
                     image_editor: image_editor::ImageEditor::new(),
                     text_tool: tools::text::TextToolState::new("fonts"),
-                    undo: undo::UndoSystem::new(config.tui.undo_limit.unwrap_or(50)),
+                    // Config-supplied limits are clamped: a hostile config with a huge
+                    // undo_limit would pre-allocate unbounded history capacity
+                    // (GPT review F-23).
+                    undo: undo::UndoSystem::new(config.tui.undo_limit.unwrap_or(50).min(10_000)),
                     unsaved: false,
                     revision: 0,
                     selection: None,

@@ -23,6 +23,7 @@ mod canvas_inner {
 pub use canvas_inner::CanvasCell;
 
 pub mod atomic_io;
+pub mod bounded_io;
 pub mod config;
 pub mod control;
 pub mod font;
@@ -34,6 +35,7 @@ pub mod input;
 pub mod output;
 pub mod palette_import;
 pub mod render;
+pub mod sanitize;
 pub mod smush;
 pub mod template;
 #[cfg(not(target_arch = "wasm32"))]

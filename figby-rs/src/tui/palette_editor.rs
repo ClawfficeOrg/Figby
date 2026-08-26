@@ -348,10 +348,12 @@ impl PaletteEditor {
 
         let mut lines: Vec<Line> = Vec::new();
 
+        // Untrusted label: sanitized for terminal display (F-24); the
+        // raw buffer stays authoritative for saving.
         let name_display = if self.name_buffer.is_empty() {
             " <unnamed>".to_string()
         } else {
-            format!(" {}", self.name_buffer)
+            format!(" {}", crate::sanitize::sanitize_display(&self.name_buffer))
         };
         lines.push(Line::from(Span::styled(
             name_display,
@@ -376,7 +378,11 @@ impl PaletteEditor {
             lines.push(Line::from(vec![
                 Span::styled(indicator, Style::default().fg(theme.dialog.highlight)),
                 color_span,
-                Span::raw(format!(" {} ({})", swatch.name, swatch.hex)),
+                Span::raw(format!(
+                    " {} ({})",
+                    crate::sanitize::sanitize_display(&swatch.name),
+                    swatch.hex
+                )),
             ]));
 
             // Lighting pickers: show L/S swatches when lighting mode active

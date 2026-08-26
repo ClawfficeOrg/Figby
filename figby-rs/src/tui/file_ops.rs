@@ -88,7 +88,10 @@ impl RecentFiles {
             Some(p) => p,
             None => return Self::new(),
         };
-        let content = match std::fs::read_to_string(&path) {
+        let content = match crate::bounded_io::read_bounded_string(
+            &path,
+            crate::bounded_io::MAX_TEXT_BYTES,
+        ) {
             Ok(c) => c,
             Err(_) => return Self::new(),
         };
@@ -840,12 +843,17 @@ impl FileOpsDialog {
             let entry = self.directory_entries[i].clone();
             let is_selected = i == self.selected_entry;
             let prefix = if is_selected { " >" } else { "  " };
+            // Untrusted label (filesystem / ZIP entry name): sanitized
+            // for display only; selection still uses the raw entry (F-24).
             let text = if self.browsing_zip {
-                format!("{prefix}{entry}")
+                format!("{prefix}{}", crate::sanitize::sanitize_display(&entry))
             } else {
                 let is_dir = entry == ".." || parent.join(&entry).is_dir();
                 let suffix = if is_dir { "/" } else { "" };
-                format!("{prefix}{entry}{suffix}")
+                format!(
+                    "{prefix}{}{suffix}",
+                    crate::sanitize::sanitize_display(&entry)
+                )
             };
             let style = if is_selected {
                 Style::default().add_modifier(Modifier::REVERSED)
@@ -893,7 +901,8 @@ impl FileOpsDialog {
         } else if self.path_buffer.is_empty() {
             " (type path, browse with arrows, or paste)".to_string()
         } else {
-            self.path_buffer.clone()
+            // Typed paths are untrusted input: display sanitized (F-24).
+            crate::sanitize::sanitize_display(&self.path_buffer)
         };
         lines.push(Line::from(Span::styled(
             format!(" {}", path_display),

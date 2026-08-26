@@ -515,7 +515,10 @@ pub fn load_default() -> Theme {
 }
 
 pub fn load_custom(path: &str) -> Theme {
-    let content = match std::fs::read_to_string(path) {
+    let content = match crate::bounded_io::read_bounded_string(
+        std::path::Path::new(path),
+        crate::bounded_io::MAX_TEXT_BYTES,
+    ) {
         Ok(c) => c,
         Err(_) => return load_default(),
     };

@@ -10,6 +10,14 @@ pub struct ControlCommand {
     pub offset: i64,
 }
 
+/// Hard cap on parsed control-file commands: bounds both parser memory
+/// and the per-character remap scan (GPT review F-23).
+const MAX_CONTROL_COMMANDS: usize = 4096;
+
+/// Cap for numeric literals in control files; longer digit runs
+/// saturate instead of overflowing (GPT review F-23).
+const MAX_CONTROL_NUM: i64 = 0x7FFF_FFFF;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ControlState {
     pub commands: Vec<ControlCommand>,
@@ -255,13 +263,17 @@ fn read_num<R: Read>(reader: &mut ByteReader<R>) -> io::Result<i64> {
             Some(b'x' | b'X') => loop {
                 match reader.next()? {
                     Some(b @ b'0'..=b'9') => {
-                        acc = acc * 16 + (b - b'0') as u32;
+                        acc = acc.saturating_mul(16).saturating_add((b - b'0') as u32);
                     }
                     Some(b @ b'a'..=b'f') => {
-                        acc = acc * 16 + (b - b'a' + 10) as u32;
+                        acc = acc
+                            .saturating_mul(16)
+                            .saturating_add((b - b'a' + 10) as u32);
                     }
                     Some(b @ b'A'..=b'F') => {
-                        acc = acc * 16 + (b - b'A' + 10) as u32;
+                        acc = acc
+                            .saturating_mul(16)
+                            .saturating_add((b - b'A' + 10) as u32);
                     }
                     Some(b) => {
                         reader.unget(b);
@@ -275,7 +287,7 @@ fn read_num<R: Read>(reader: &mut ByteReader<R>) -> io::Result<i64> {
                 loop {
                     match reader.next()? {
                         Some(b @ b'0'..=b'7') => {
-                            acc = acc * 8 + (b - b'0') as u32;
+                            acc = acc.saturating_mul(8).saturating_add((b - b'0') as u32);
                         }
                         Some(b) => {
                             reader.unget(b);
@@ -290,10 +302,16 @@ fn read_num<R: Read>(reader: &mut ByteReader<R>) -> io::Result<i64> {
         Some(b) => {
             reader.unget(b);
             while let Some(c) = reader.next()? {
+                if acc as i64 > MAX_CONTROL_NUM / 10 {
+                    // Saturate: stop absorbing digits beyond the cap
+                    // instead of overflowing (GPT review F-23).
+                    reader.unget(c);
+                    break;
+                }
                 let c_upper = c.to_ascii_uppercase();
                 let pos = hex_digits.iter().position(|&d| d == c_upper);
                 match pos {
-                    Some(d) => acc = acc * 10 + d as u32,
+                    Some(d) => acc = acc.saturating_mul(10).saturating_add(d as u32),
                     None => {
                         reader.unget(c);
                         break;
@@ -420,6 +438,12 @@ pub fn read_control<P: AsRef<Path>>(path: P, state: &mut ControlState) -> Result
     let mut reader = ByteReader::new(BufReader::new(file));
 
     loop {
+        // Command-count cap: a hostile control file can otherwise grow
+        // state.commands without bound and make remap_char quadratic
+        // (GPT review F-23).
+        if state.commands.len() >= MAX_CONTROL_COMMANDS {
+            break;
+        }
         let command = match reader.next()? {
             None => break,
             Some(b) => b,

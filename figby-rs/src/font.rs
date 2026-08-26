@@ -115,6 +115,8 @@ pub enum FontError {
     IoError(std::io::Error),
     /// A ZIP archive processing error occurred.
     ZipError(String),
+    /// The input exceeded a size limit (GPT review F-21).
+    TooLarge(String),
 }
 
 impl PartialEq for FontError {
@@ -135,6 +137,7 @@ impl fmt::Display for FontError {
             FontError::ParseError(msg) => write!(f, "font parse error: {}", msg),
             FontError::IoError(e) => write!(f, "I/O error: {}", e),
             FontError::ZipError(msg) => write!(f, "ZIP error: {}", msg),
+            FontError::TooLarge(msg) => write!(f, "input too large: {}", msg),
         }
     }
 }
@@ -470,9 +473,18 @@ fn font_candidates(name: &str, fontdirs: &[&str]) -> Vec<String> {
     candidates
 }
 
-/// Read raw bytes from a font file path.
+/// Read raw bytes from a font file path, bounded (GPT review F-21).
+/// ZIP archives ride the same cap, bounding archive bytes too.
 fn read_font_bytes(path: &str) -> Result<Vec<u8>, FontError> {
-    Ok(std::fs::read(path)?)
+    use std::io::ErrorKind;
+    crate::bounded_io::read_bounded(Path::new(path), crate::bounded_io::MAX_FONT_BYTES).map_err(
+        |e| match e.kind() {
+            ErrorKind::NotFound => {
+                FontError::IoError(std::io::Error::new(ErrorKind::NotFound, e.to_string()))
+            }
+            _ => FontError::TooLarge(e.to_string()),
+        },
+    )
 }
 
 /// Check if byte slice starts with a ZIP local file header magic.
@@ -526,16 +538,33 @@ fn parse_font_bytes(content: &str) -> Result<FIGfont, FontError> {
 pub fn list_zip_font_entries(path: &Path) -> Result<Vec<String>, FontError> {
     use zip::ZipArchive;
 
+    const MAX_ZIP_ENTRIES: usize = 10_000;
+    const MAX_ZIP_NAME_BYTES: usize = 4 * 1024 * 1024;
+
     let file = std::fs::File::open(path)?;
     let mut archive = ZipArchive::new(file)
         .map_err(|e| FontError::ZipError(format!("failed to open ZIP archive: {}", e)))?;
+    if archive.len() > MAX_ZIP_ENTRIES {
+        return Err(FontError::TooLarge(format!(
+            "ZIP archive has {} entries, exceeding the {}-entry limit",
+            archive.len(),
+            MAX_ZIP_ENTRIES
+        )));
+    }
 
     let mut entries = Vec::new();
+    let mut total_name_bytes = 0usize;
     for i in 0..archive.len() {
         let entry = archive
             .by_index(i)
             .map_err(|e| FontError::ZipError(format!("failed to read ZIP entry {}: {}", i, e)))?;
         let name = entry.name().to_string();
+        total_name_bytes += name.len();
+        if total_name_bytes > MAX_ZIP_NAME_BYTES {
+            return Err(FontError::TooLarge(
+                "ZIP central-directory names exceed the aggregate size limit".to_string(),
+            ));
+        }
         if name.contains('/') || name.contains('\\') {
             continue;
         }

@@ -78,10 +78,12 @@ pub fn load_config() -> FigbyConfig {
         Some(p) => p,
         None => return FigbyConfig::default(),
     };
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(_) => return FigbyConfig::default(),
-    };
+    let content =
+        match crate::bounded_io::read_bounded_string(&path, crate::bounded_io::MAX_TEXT_BYTES) {
+            Ok(c) => c,
+            // Oversized or invalid config: fall back to defaults (GPT review F-21).
+            Err(_) => return FigbyConfig::default(),
+        };
     toml::from_str(&content).unwrap_or_default()
 }
 
