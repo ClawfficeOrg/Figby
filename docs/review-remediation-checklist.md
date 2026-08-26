@@ -64,24 +64,28 @@ Independent verification results:
 - [x] **F-11 [verified]** Disable/allowlist `${VAR}` env expansion (template.rs:156);
       bound template image dimensions; route rascii decoding through limited reader.
       Add test proving `$(...)` stays literal.
-- [ ] **F-12 [verified]** Canvas guard bypass: width=0 × height=u32::MAX passes
+- [x] **F-12 [verified]** Canvas guard bypass: width=0 × height=u32::MAX passes
       `saturating_mul` check then allocates billions of rows (template.rs:505-511);
       margin/padding outside budget. Same for new_image/gif_import dialogs (65,535 cap).
       Use checked arithmetic incl. padding; reject zero dims; consider flat buffer.
+      (template.rs fixed in 8b4e571; dialogs now share `canvas::MAX_CANVAS_CELLS`.)
 - [x] **F-13 [verified]** GIF import retains all native-resolution frames in `raw_frames`
       (gif_import.rs:213-216); scaled-cell budget doesn't count native bytes. Stream
       decode; cap native pixels/cumulative bytes independently.
 - [x] **F-14** Export pixel budgets: font-size-as-scale × canvas can exceed GBs
       (output.rs:240-305). Checked pre-allocation budget; stream scanlines to encoder.
-- [ ] **F-15 [verified]** WASM editor cursor is byte index advanced by 1 per char
+- [x] **F-15 [verified]** WASM editor cursor is byte index advanced by 1 per char
       (web.rs:39-58) → panic on multibyte edit. Switch to char/grapheme index.
-      Browser tests: é, CJK, emoji, combining marks.
+      Browser tests: é, CJK, emoji, combining marks. (Fixed in 2a55c2f; verified:
+      `WebApp.cursor_pos` is a char index with `test_multibyte_editing_no_panic`.)
 - [x] **F-16 [verified]** Replace recursion with loops: control.rs iso2022 (recursive
       re-entry per control byte) and input.rs HZ skip. Long adversarial-run tests.
-- [ ] **F-17 [verified]** normalize_hex slices at byte offsets without ASCII check
+- [x] **F-17 [verified]** normalize_hex slices at byte offsets without ASCII check
       (palette_import.rs:126-135) → `"éx"` panics. Validate ASCII+hex digits, return
       structured error. Sweep shadow-color/palette-editor for same pattern.
-      Property tests per palette format.
+      Property tests per palette format. (ASCII check landed in 46ca98b; added
+      proptest fuzz for every palette format + fixed the rascii_import `&s[..n]`
+      char-boundary truncation.)
 - [x] **F-18** Shared decoder limits + checked output budgets across main.rs CLI widths,
       image_input.rs resize/public API paths (unrestricted `image::open`).
 - [x] **F-21** Bounded readers everywhere (`take(limit+1)`); ZIP central-directory entry-count

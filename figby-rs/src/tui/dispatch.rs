@@ -3105,6 +3105,12 @@ impl TuiApp {
     fn apply_settings(&mut self) {
         let w = self.dialogs.settings.canvas_width as usize;
         let h = self.dialogs.settings.canvas_height as usize;
+        // F-12: the settings dialog clamps to 200×200, but a canvas already at
+        // an oversized size could round-trip here — refuse beyond budget.
+        if !canvas::canvas_cells_within_budget(w, h) {
+            self.frame.dirty = true;
+            return;
+        }
         if self.editor.canvas.buffer.width() != w || self.editor.canvas.buffer.height() != h {
             self.editor.canvas = canvas::CanvasWidget::new(w as u16, h as u16);
             self.editor.layer_stack.resize_all(w, h);

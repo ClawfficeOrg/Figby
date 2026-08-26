@@ -126,6 +126,17 @@ impl NewImageDialog {
                 return;
             }
         };
+        // F-12: a 65535×65535 canvas is 4.3 billion cells — reject anything
+        // beyond the shared cell budget before any allocation.
+        if !super::super::canvas::canvas_cells_within_budget(w as usize, h as usize) {
+            self.error_message = format!(
+                "{}×{} exceeds the {} cell budget",
+                w,
+                h,
+                super::super::canvas::MAX_CANVAS_CELLS
+            );
+            return;
+        }
         self.result_width = w;
         self.result_height = h;
         let palettes = builtin_palettes();
@@ -312,4 +323,45 @@ pub fn render_new_image_dialog(dialog: &NewImageDialog, frame: &mut Frame, area:
 
     let paragraph = Paragraph::new(lines);
     frame.render_widget(paragraph, inner);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// F-12 (GPT review): a 65535×65535 canvas is ~4.3 billion cells and must
+    /// be rejected by the cell budget instead of allocated.
+    #[test]
+    fn test_confirm_rejects_huge_canvas() {
+        let mut dialog = NewImageDialog::new();
+        dialog.width_buffer = "65535".to_string();
+        dialog.height_buffer = "65535".to_string();
+        dialog.confirm();
+        assert!(!dialog.confirmed);
+        assert!(
+            !dialog.error_message.is_empty(),
+            "error must explain the rejection"
+        );
+    }
+
+    #[test]
+    fn test_confirm_accepts_normal_canvas() {
+        let mut dialog = NewImageDialog::new();
+        dialog.width_buffer = "80".to_string();
+        dialog.height_buffer = "24".to_string();
+        dialog.confirm();
+        assert!(dialog.confirmed);
+        assert_eq!(dialog.result_width, 80);
+        assert_eq!(dialog.result_height, 24);
+    }
+
+    #[test]
+    fn test_confirm_rejects_zero_dimension() {
+        let mut dialog = NewImageDialog::new();
+        dialog.width_buffer = "0".to_string();
+        dialog.height_buffer = "10".to_string();
+        dialog.confirm();
+        assert!(!dialog.confirmed);
+        assert!(dialog.error_message.contains("1-65535"));
+    }
 }

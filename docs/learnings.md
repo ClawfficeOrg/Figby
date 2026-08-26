@@ -1686,3 +1686,6 @@ Three bugs found in phase merge review:
 - F-20: `git status --porcelain` rename lines are `R  old -> new`; strip the two status chars + space, then split on " -> " to stage both sides.
 - F-20: opencode validates its config at startup and hard-fails on bad JSON — always validate a generated permissions profile with a real (cheap) agent run before relying on it in an automation loop.
 - F-20: `env -u VAR` is fine on macOS/Linux but quoting breaks when paths contain spaces; for opencode sandbox use a subshell + `unset` + `export` instead of building `env VAR=x` strings.
+- F-12: u16 max × u16 max = ~4.3e9 cells — any dialog that accepts u16 width/height and then allocates needs the same 1M-cell budget as template/gif_import; put the constant once in canvas.rs (`MAX_CANVAS_CELLS`) and reuse it in every canvas-creating path.
+- F-15: cursor-as-char-index but text as String means edits must convert char index → byte offset via `char_indices().nth(pos)` before insert/remove; never mutate by char index directly.
+- F-17: `&s[..n]` truncation on any String that may hold multi-byte chars can panic; always truncate at char boundaries (`s.chars().take(n).collect()`). proptest fuzz for text-format parsers is the cheap way to keep no-panic guarantees.

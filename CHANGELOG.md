@@ -1,5 +1,24 @@
 # Changelog
 
+## [6.0.38] - 2026-08-26
+
+Remaining verified GPT-review bugs closed: F-12, F-15, F-17.
+
+### Fixed
+- **F-12** — new-image and GIF-import dialogs can no longer allocate
+  ~4.3-billion-cell canvases from the 65,535 u16 cap: both `confirm()`
+  paths now reject dimensions beyond a shared `canvas::MAX_CANVAS_CELLS`
+  (1,000,000) budget, and `apply_settings` refuses an oversized resize.
+  Template rendering already had its own zero-dim/checked-arithmetic guard.
+- **F-15** — WASM editor cursor is a character index, not a byte offset
+  (already fixed in 2a55c2f); verified with multibyte edit tests covering
+  é, CJK, emoji, and combining marks.
+- **F-17** — palette hex parsing already validates ASCII hex digits before
+  slicing (46ca98b); added proptest no-panic fuzz for every palette format
+  (Paletty/WezTerm/WindowsTerminal/ASE) plus `parse_hex_rgb`, and fixed the
+  same byte-slice-on-multibyte pattern in the rascii-import preview
+  truncation (`&s[..n]` → char-boundary truncation).
+
 ## [6.0.37] - 2026-08-26
 
 ### Changed

@@ -578,8 +578,11 @@ impl RasciiImportDialog {
         if !cells.is_empty() {
             for row in cells.iter().take(max_preview_lines) {
                 let s: String = row.iter().map(|c| c.ch).collect();
-                let truncated = if s.len() > inner.width as usize {
-                    format!("{}...", &s[..inner.width.saturating_sub(3) as usize])
+                let truncated = if s.chars().count() > inner.width as usize {
+                    // Truncate at a char boundary — `s` can contain multi-byte
+                    // chars, so `&s[..n]` could panic mid-char (GPT review F-17).
+                    let take = inner.width.saturating_sub(3) as usize;
+                    format!("{}...", s.chars().take(take).collect::<String>())
                 } else {
                     s
                 };

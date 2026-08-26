@@ -308,6 +308,18 @@ impl GifImportDialog {
             }
         };
 
+        // F-12: a 65535×65535 canvas is 4.3 billion cells — reject anything
+        // beyond the shared cell budget before any allocation.
+        if !super::super::canvas::canvas_cells_within_budget(cw as usize, ch as usize) {
+            self.error_message = format!(
+                "Canvas {}×{} exceeds the {} cell budget",
+                cw,
+                ch,
+                super::super::canvas::MAX_CANVAS_CELLS
+            );
+            return;
+        }
+
         let image_scale = if self.keep_proportions {
             GifScaleTarget::FitBox(iw as usize, ih as usize)
         } else {
@@ -833,5 +845,48 @@ mod tests {
         dlg.confirm();
         assert!(!dlg.confirmed);
         assert!(!dlg.error_message.is_empty());
+    }
+
+    /// F-12 (GPT review): a 65535×65535 canvas is ~4.3 billion cells and must
+    /// be rejected by the cell budget instead of allocated.
+    #[test]
+    fn test_confirm_rejects_huge_canvas() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("x.gif");
+        std::fs::write(&path, b"GIF89a").expect("write");
+
+        let mut dlg = GifImportDialog::new();
+        dlg.native_width = 8;
+        dlg.native_height = 8;
+        dlg.path_buffer = path.to_string_lossy().into_owned();
+        dlg.image_w_buf = "8".to_string();
+        dlg.image_h_buf = "8".to_string();
+        dlg.canvas_w_buf = "65535".to_string();
+        dlg.canvas_h_buf = "65535".to_string();
+        dlg.confirm();
+        assert!(!dlg.confirmed);
+        assert!(
+            dlg.error_message.contains("cell budget"),
+            "got: {}",
+            dlg.error_message
+        );
+    }
+
+    #[test]
+    fn test_confirm_accepts_small_canvas() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("x.gif");
+        std::fs::write(&path, b"GIF89a").expect("write");
+
+        let mut dlg = GifImportDialog::new();
+        dlg.native_width = 8;
+        dlg.native_height = 8;
+        dlg.path_buffer = path.to_string_lossy().into_owned();
+        dlg.image_w_buf = "8".to_string();
+        dlg.image_h_buf = "8".to_string();
+        dlg.canvas_w_buf = "40".to_string();
+        dlg.canvas_h_buf = "24".to_string();
+        dlg.confirm();
+        assert!(dlg.confirmed);
     }
 }

@@ -8,6 +8,20 @@ use std::time::{Duration, Instant};
 
 use super::theme::Theme;
 
+/// Maximum number of canvas cells (`width × height`) a document may allocate.
+/// Mirrors the budget used by template rendering (`template.rs`) and GIF
+/// import (`gif_import.rs`) — GPT review F-12. A u16 max × u16 max canvas
+/// (65535² ≈ 4.3 billion cells) would otherwise allocate absurd buffers from
+/// the new-image / GIF-import / settings dialogs.
+pub const MAX_CANVAS_CELLS: usize = 1_000_000;
+
+/// Whether a `w × h` canvas is within the cell budget and has nonzero
+/// dimensions. Used by every canvas-creating dialog so a hostile or typo'd
+/// dimension cannot allocate billions of rows (GPT review F-12).
+pub fn canvas_cells_within_budget(w: usize, h: usize) -> bool {
+    w != 0 && h != 0 && w.saturating_mul(h) <= MAX_CANVAS_CELLS
+}
+
 #[derive(Debug, Clone)]
 pub struct GlyphCursor {
     pub x: u16,

@@ -41,3 +41,45 @@ proptest! {
         let _ = parse_codetagged(&mut font, &lines);
     }
 }
+
+// F-17 (GPT review): palette parsing must never panic on arbitrary input —
+// multibyte/odd-shaped hex strings previously panicked on byte-offset
+// slicing. Every format is fuzzed for no-panic below.
+proptest! {
+    #[test]
+    fn fuzz_parse_hex_rgb_arbitrary_string(s in any::<String>()) {
+        let _ = figby::tui::theme::parse_hex_rgb(&s);
+    }
+
+    #[test]
+    fn fuzz_paletty_json_arbitrary_bytes(s in any::<Vec<u8>>()) {
+        let _ = figby::palette_import::import_swatches(
+            &s,
+            figby::palette_import::ImportFormat::PalettyJson,
+        );
+    }
+
+    #[test]
+    fn fuzz_wezterm_json_arbitrary_bytes(s in any::<Vec<u8>>()) {
+        let _ = figby::palette_import::import_swatches(
+            &s,
+            figby::palette_import::ImportFormat::WezTermJson,
+        );
+    }
+
+    #[test]
+    fn fuzz_windows_terminal_json_arbitrary_bytes(s in any::<Vec<u8>>()) {
+        let _ = figby::palette_import::import_swatches(
+            &s,
+            figby::palette_import::ImportFormat::WindowsTerminalJson,
+        );
+    }
+
+    #[test]
+    fn fuzz_ase_arbitrary_bytes(buf in prop::collection::vec(any::<u8>(), 0..1024)) {
+        let _ = figby::palette_import::import_swatches(
+            &buf,
+            figby::palette_import::ImportFormat::AdobeAse,
+        );
+    }
+}
