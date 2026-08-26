@@ -111,6 +111,33 @@ Key architectural decisions from Phase 0–1:
   `ansi_term` + `paste` unmaintained (via `image`→`exr`→`pulp`), `lru`
   0.16.4 unsound (via `ratzilla` wasm chain).
 
+### F-20 Phase A — ralph sandboxing invariants (6.0.36, branch `hardening/gpt-review`)
+
+Approved policy: `docs/f-20-ralph-sandbox-policy.md`. Design stance: never
+trust LLM judgment as a security boundary — enforce with process/env.
+Phase A (in code), Phase B/C pending:
+
+- **Agents never run git**: `invoke_agent` refuses `claude`/`copilot` (which
+  need skip-permissions/all-tools) unless `RALPH_ALLOW_UNSANDBOXED_CLI=1`;
+  the opencode path runs with `OPENCODE_CONFIG` = generated permissions
+  profile (allow read/glob/grep/list/write/edit/task + bash allow with
+  `git*`, `gh*`, `curl*`, `ssh*`, `sudo*`, package managers, credential-file
+  reads denied; `webfetch`/`websearch` denied; `external_directory` denied).
+- **Env scrub**: `scrub_agent_env` unsets every `*TOKEN*/*KEY*/*SECRET*/
+  *PASSWORD*/*CREDENTIAL*` var except provider model keys (kept: they are
+  the minimum to run the model; blast radius = model spend, not repo access,
+  and network is denied). Also strips git/CI/cloud creds explicitly and
+  points `GIT_CONFIG_GLOBAL` at an empty temp file.
+- **Explicit staging**: `stage_explicit` replaces every `git add -A`; it
+  stages exactly the `git status --porcelain` delta and dies on credential/
+  `.git` paths.
+- **Real gates**: `.githooks/pre-commit` (fmt/clippy/build/test, docs-only
+  fast-path) + `core.hooksPath` auto-set by ralph.sh; `run_gates()` runs the
+  same suite explicitly before every commit. False pre-commit claims removed
+  from ralph.sh prompts and `skills/ralph.md`.
+- opencode sandbox config must be valid JSON — validated by a live agent run
+  before merge; `OPENCODE_PURE=1` disables external plugins.
+
 ### UTF-8 Native Encoding
 Figby uses Rust `char`/`String` natively (UTF-8), not `wchar_t`.
 FIGlet C used `typedef long inchr` for internal char representation.

@@ -113,6 +113,14 @@ Independent verification results:
 - [ ] **F-20** Ralph workflow hardening: secret-free sandboxed agents, tool allowlist,
       stage explicit paths only, human approval gate before push/merge. Remove false
       claim about pre-commit hooks running gates.
+  - Policy approved 2026-08-26: `docs/f-20-ralph-sandbox-policy.md` (D1 both,
+    D2 agent verify cmds, D3 auto-push boundaries, D4 real hook).
+  - **Phase A done**: wrapper-owned explicit-path staging (`stage_explicit`),
+    agent env scrub + opencode tool allowlist + refusal of skip-permissions/
+    all-tools, real `.githooks/pre-commit` + explicit `run_gates` before every
+    commit, false pre-commit claims removed from ralph.sh and skills/ralph.md.
+  - **Phase B/C pending**: UNTRUSTED prompt delimiters + tripwire (R3), human
+    approval gate on merge/tag (R5).
 
 ## Suggested task numbering
 

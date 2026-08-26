@@ -1682,3 +1682,7 @@ Three bugs found in phase merge review:
 - F-27/F-30: when a doc claim can't be verified (e.g. "full flag parity"), qualify it to what tests actually assert and link the test; a bare claim will be re-flagged by the next review.
 - F-28: a git tag is not a package version — check Cargo.toml at the tag before writing "the version is X"; milestone tags (7.0.0) and package versions (6.0.x) can legitimately differ if documented.
 - F-29: strict rustdoc (-D warnings) fails on intra-doc links to private items; use plain backticks for private module/const names. WASM clippy should use --no-deps or dependency warnings fail the gate.
+- F-20: ralph.sh is POSIX sh — no process substitution `<( ... )`; use a heredoc-fed while loop when variables must survive the read (pipe = subshell = lost assignments).
+- F-20: `git status --porcelain` rename lines are `R  old -> new`; strip the two status chars + space, then split on " -> " to stage both sides.
+- F-20: opencode validates its config at startup and hard-fails on bad JSON — always validate a generated permissions profile with a real (cheap) agent run before relying on it in an automation loop.
+- F-20: `env -u VAR` is fine on macOS/Linux but quoting breaks when paths contain spaces; for opencode sandbox use a subshell + `unset` + `export` instead of building `env VAR=x` strings.

@@ -1,5 +1,31 @@
 # Changelog
 
+## [6.0.36] - 2026-08-26
+
+Phase A of F-20 (ralph sandboxing), per the approved policy at
+`docs/f-20-ralph-sandbox-policy.md` (GPT review F-20, High). The policy's
+design stance: never rely on LLM judgment as a security boundary — enforce
+with process and environment, so even a fully compromised agent prompt
+cannot reach git write ops, credentials, or network exfiltration.
+
+### Changed
+- **F-20 R1/R2** — sandboxed agents: `invoke_agent` refuses `claude`/`copilot`
+  (which would need `--dangerously-skip-permissions` / `--allow-all-tools`)
+  unless `RALPH_ALLOW_UNSANDBOXED_CLI=1`; the opencode path now injects a
+  generated permissions profile (file read/write/edit + the four cargo verify
+  commands allowed; `git`, `gh`, `curl`, `ssh`, `sudo`, package managers,
+  credential-file reads, `webfetch`/`websearch` denied; `external_directory`
+  denied) and scrubs credential-shaped environment variables (provider model
+  keys are the documented retained minimum needed to run the model).
+- **F-20 R4** — explicit-path staging: `stage_explicit` replaces every
+  `git add -A`; it stages exactly the working-tree delta and refuses
+  credential/`.git` paths.
+- **F-20 R6** — real gates: `.githooks/pre-commit` (fmt/clippy/build/test,
+  docs-only fast path) plus `run_gates()` invoked explicitly before every
+  commit; `core.hooksPath` is auto-set to `.githooks`. The false claim that a
+  pre-commit hook ran the gates is removed from `ralph.sh` prompts and
+  `skills/ralph.md`.
+
 ## [6.0.35] - 2026-08-26
 
 Phase 3 of the GPT-review remediation (`docs/GPT-review-8-20-26.md`, tracked

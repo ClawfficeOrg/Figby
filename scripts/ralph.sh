@@ -218,6 +218,14 @@ if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --o
   fi
 fi
 
+# — F-20 R6: install the real pre-commit gate (repo-local) —
+# gates live in .githooks/pre-commit; ralph.sh ALSO runs them explicitly
+# before any commit, so a missing/inactive hook never means "no gate".
+if ! git config --get core.hooksPath >/dev/null 2>&1; then
+  git config core.hooksPath .githooks
+  log "Set core.hooksPath=.githooks (pre-commit gate installed)."
+fi
+
 # — PID file + signal / sentinel stop mechanism —
 RALPH_PID_FILE="/tmp/ralph.pid"
 STOP_SENTINEL="$REPO_ROOT/scripts/STOP.md"
@@ -287,6 +295,151 @@ agent_cli() {
 
 AGENT_TIMEOUT="${RALPH_AGENT_TIMEOUT:-300}"
 
+# — F-20 sandbox, gate & staging helpers (see docs/f-20-ralph-sandbox-policy.md) —
+
+# Emit the names of credential-shaped environment variables to UNSET before
+# invoking an agent. Provider model keys (the minimum needed to run the model
+# at all) are retained; their blast radius is model-credit spend rather than
+# repo/service access, and the tool allowlist denies git + network, so they
+# cannot be exfiltrated to an attacker endpoint. Everything else that looks
+# like a secret is removed so a compromised agent cannot read it.
+scrub_agent_env() {
+  _keep="${RALPH_KEEP_PROVIDER_KEYS:-ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY DEEPSEEK_API_KEY OPENAI_BASE_URL}"
+  _scrub="GITHUB_TOKEN GH_TOKEN GITLAB_TOKEN BITBUCKET_TOKEN CIRCLE_TOKEN TRAVIS_TOKEN GIT_SSH_COMMAND GIT_ASKPASS AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_PROFILE AZURE_CLIENT_SECRET AZURE_TENANT_ID GOOGLE_API_KEY GCP_SA_KEY DO_API_TOKEN CF_API_TOKEN OPENCODE_SERVER_PASSWORD NETLIFY_AUTH_TOKEN VERCEL_TOKEN NPM_TOKEN CARGO_REGISTRY_TOKEN"
+  _ev=""
+  for _ev in $(env | cut -d= -f1); do
+    case "$_ev" in
+      *TOKEN*|*KEY*|*SECRET*|*PASSWORD*|*CREDENTIAL*)
+        case " $_keep " in
+          *" $_ev "*) ;;
+          *) _scrub="$_scrub $_ev" ;;
+        esac
+        ;;
+    esac
+  done
+  for _ev in $_scrub; do
+    printf '%s\n' "$_ev"
+  done
+}
+
+# write_sandbox_config <file> — write an opencode permissions profile that
+# allows file read/write/edit and the four cargo verify commands while
+# denying git, package managers, network fetch, sudo, and credential-file
+# reads (F-20 R1/R2). `external_directory` deny keeps the built-in
+# read/edit/glob tools inside the working tree.
+write_sandbox_config() {
+  _out="$1"
+  cat > "$_out" <<'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "write": "allow",
+    "edit": "allow",
+    "task": "allow",
+    "webfetch": "deny",
+    "websearch": "deny",
+    "bash": {
+      "*": "allow",
+      "git*": "deny",
+      "gh*": "deny",
+      "curl*": "deny",
+      "wget*": "deny",
+      "lynx*": "deny",
+      "ssh*": "deny",
+      "scp*": "deny",
+      "sftp*": "deny",
+      "rsync*": "deny",
+      "nc*": "deny",
+      "netcat*": "deny",
+      "ncat*": "deny",
+      "npx*": "deny",
+      "npm*": "deny",
+      "yarn*": "deny",
+      "pnpm*": "deny",
+      "pip*": "deny",
+      "pip3*": "deny",
+      "cargo publish*": "deny",
+      "cargo install*": "deny",
+      "cargo run*": "deny",
+      "docker*": "deny",
+      "podman*": "deny",
+      "sudo*": "deny",
+      "su*": "deny",
+      "eval*": "deny",
+      "exec*": "deny",
+      "rm -rf /": "deny",
+      "rm -rf ~*": "deny",
+      "chmod 777*": "deny",
+      "*/.ssh/*": "deny",
+      "*id_rsa*": "deny",
+      "*/.netrc*": "deny",
+      "*/.git-credentials*": "deny",
+      "*/.config/gh/*": "deny",
+      "*/.aws/*": "deny",
+      "*.pem": "deny"
+    },
+    "external_directory": {
+      "*": "deny"
+    }
+  }
+}
+EOF
+}
+
+# run_gates — run the same verification gates as .githooks/pre-commit,
+# explicitly, before any commit (F-20 R6). The false claim that a pre-commit
+# hook runs these automatically was removed; ralph.sh owns the gate now.
+run_gates() {
+  log "Running verification gates (F-20 R6)…"
+  if ! cargo fmt --manifest-path "$REPO_ROOT/figby-rs/Cargo.toml" -- --check 2>&1; then
+    warn "cargo fmt --check FAILED"; return 1
+  fi
+  if ! cargo clippy --manifest-path "$REPO_ROOT/figby-rs/Cargo.toml" --all-targets --all-features -- -D warnings 2>&1; then
+    warn "cargo clippy FAILED"; return 1
+  fi
+  if ! cargo build --manifest-path "$REPO_ROOT/figby-rs/Cargo.toml" 2>&1; then
+    warn "cargo build FAILED"; return 1
+  fi
+  if ! cargo test --manifest-path "$REPO_ROOT/figby-rs/Cargo.toml" 2>&1; then
+    warn "cargo test FAILED"; return 1
+  fi
+  good "All verification gates passed."
+  return 0
+}
+
+# stage_explicit [extra paths…] — stage exactly the working-tree changes the
+# agent produced (git status porcelain delta), never `git add -A` (F-20 R4).
+# Aborts if any changed path looks credential-ish or git-internal. Extra
+# paths (ralph-owned docs such as todo/memory/learnings) are staged on top.
+stage_explicit() {
+  _bad=0
+  _status="$(git status --porcelain)"
+  while IFS= read -r _line; do
+    [ -z "$_line" ] && continue
+    _path="${_line#?? }"
+    case "$_path" in
+      *".git/"* | ".git" | *"/.git/"*) _bad=1; warn "refusing to stage .git path: $_path" ;;
+      *"/.ssh/"* | ".ssh" | ".ssh/"* | *".netrc"* | *".git-credentials"* | *".config/gh/"* | *"/.aws/"* | ".aws" | ".aws/"* | *"id_rsa"* | *".pem"*) _bad=1; warn "refusing to stage credential-ish path: $_path" ;;
+    esac
+    case "$_path" in
+      *" -> "*) _path="${_path%% -> *} ${_path##* -> }" ;;
+    esac
+    git add -- $_path || _bad=1
+  done <<EOF
+$_status
+EOF
+  if [ "$_bad" -ne 0 ]; then
+    die "refusing to stage changes — unexpected path(s) in working tree"
+  fi
+  for _p in "$@"; do
+    [ -e "$_p" ] && git add -- "$_p" || true
+  done
+}
+
 invoke_agent() {
   _agent="$1"
   shift
@@ -294,6 +447,16 @@ invoke_agent() {
   shift
   _cli="$(agent_cli "$_agent")"
   _model="$(agent_model "$_agent")"
+
+  # F-20 R1: refuse CLIs that cannot express a tool allowlist (claude/copilot
+  # in this script would need --dangerously-skip-permissions / --allow-all-
+  # tools, which the policy forbids). Operator may override explicitly.
+  if [ "$_cli" = "claude" ] || [ "$_cli" = "copilot" ]; then
+    if [ "${RALPH_ALLOW_UNSANDBOXED_CLI:-0}" != "1" ]; then
+      die "agent CLI '$_cli' cannot run under the F-20 sandbox (no allowlist). Set RALPH_ALLOW_UNSANDBOXED_CLI=1 to override — at your own risk."
+    fi
+    warn "RALPH_ALLOW_UNSANDBOXED_CLI=1 — running '$_cli' WITHOUT an allowlist (unsandboxed, per policy escape hatch)."
+  fi
 
   _pf="$(mktemp)"
   printf '%s' "$_prompt" >"$_pf"
@@ -305,33 +468,39 @@ invoke_agent() {
     _timeout_cmd="gtimeout --foreground --kill-after=30s ${AGENT_TIMEOUT}s"
   fi
 
-  if [ "$_cli" = "claude" ] || [ "$_cli" = "copilot" ]; then
-    if [ "$_cli" = "claude" ]; then
-      _extra="--dangerously-skip-permissions"
-    else
-      _extra="--allow-all-tools"
-    fi
-    _prompt_text="$(cat "$_pf")"
-    rm -f "$_pf"
-    if [ "$QUIET" -eq 1 ]; then
-      $_timeout_cmd "$_cli" -p "$_prompt_text" --model "$_model" $_extra "$@" 2>/dev/null
-    else
-      $_timeout_cmd "$_cli" -p "$_prompt_text" --model "$_model" $_extra "$@"
-    fi
-    return $?
+  if [ "$_cli" = "opencode" ]; then
+    # F-20 R1/R2: sandboxed invocation — scrubbed env, isolated git config,
+    # injected permissions profile (allowlist), no external plugins.
+    _sb_cfg="$(mktemp)"
+    write_sandbox_config "$_sb_cfg"
+    _git_cfg="$(mktemp)"
+    : > "$_git_cfg"
+    (
+      for _v in $(scrub_agent_env); do unset "$_v"; done
+      export GIT_CONFIG_NOSYSTEM=1
+      export GIT_CONFIG_GLOBAL="$_git_cfg"
+      export OPENCODE_CONFIG="$_sb_cfg"
+      export OPENCODE_PURE=1
+      _cmd="cat \"$_pf\" | $_timeout_cmd \"$_cli\" run --model \"$_agent\" \"\$@\""
+      if [ "$QUIET" -eq 1 ]; then
+        _cmd="${_cmd} 2>/dev/null"
+      fi
+      eval "$_cmd"
+    )
+    _rc=$?
+    rm -f "$_pf" "$_sb_cfg" "$_git_cfg"
+    return $_rc
   fi
 
-  _cmd="cat \"$_pf\" | \"$_cli\" run --model \"$_agent\" \"$@\""
-  if [ "$QUIET" -eq 1 ]; then
-    _cmd="${_cmd} 2>/dev/null"
-  fi
-  if [ -n "$_timeout_cmd" ]; then
-    _cmd="$_timeout_cmd ${_cmd}"
-  fi
-  eval "$_cmd"
-  _rc=$?
+  # Unsandboxed escape hatch (only reachable with RALPH_ALLOW_UNSANDBOXED_CLI=1).
+  _prompt_text="$(cat "$_pf")"
   rm -f "$_pf"
-  return $_rc
+  if [ "$QUIET" -eq 1 ]; then
+    $_timeout_cmd "$_cli" -p "$_prompt_text" --model "$_model" "$@" 2>/dev/null
+  else
+    $_timeout_cmd "$_cli" -p "$_prompt_text" --model "$_model" "$@"
+  fi
+  return $?
 }
 
 resolve_dev_agent() {
@@ -615,7 +784,7 @@ Then list what must be fixed before the merge can proceed." \
       good "Review approved the merge — merging ${BASE_BRANCH} → main."
       # Commit any review-agent fixes before switching branches
       if ! git diff --quiet || ! git diff --cached --quiet; then
-        git add -A
+        stage_explicit docs/ralph-log.md
         git commit -m "fix: address phase ${MINOR_VERSION} review findings" || true
         git push origin "$BASE_BRANCH" 2>/dev/null || true
       fi
@@ -686,28 +855,43 @@ ${REVIEW_OUT}" \
       while [ $FIX_ATTEMPT -lt $FIX_MAX ]; do
         FIX_ATTEMPT=$((FIX_ATTEMPT + 1))
         log "Fix commit attempt ${FIX_ATTEMPT}/${FIX_MAX}"
-        git add -A
+        if ! GATE_OUT="$(run_gates 2>&1)"; then
+          if [ $FIX_ATTEMPT -eq $FIX_MAX ]; then
+            warn "Fix commit still failing after ${FIX_MAX} attempts — discarding unstaged changes and retrying the review anyway."
+            git checkout -- . 2>/dev/null || true
+            git clean -fd 2>/dev/null || true
+            break
+          fi
+          invoke_agent "$ARCHITECT_AGENT" "The verification gates failed for the review-fix commit for phase ${MINOR_VERSION}.
+Fix every failure shown below. Change only what is required to pass.
+When done print exactly: FIXES_DONE.
+
+Verification gates output (gates run explicitly before commit — F-20 R6):
+${GATE_OUT}" \
+            2>&1 | tee "/tmp/ralph-review-fix-gate-${MINOR_VERSION}-${REVIEW_ATTEMPT}-${FIX_ATTEMPT}.log"
+          continue
+        fi
+        stage_explicit docs/ralph-log.md
         if git commit -m "$FIX_MSG" >"$FIX_COMMIT_LOG" 2>&1; then
           cat "$FIX_COMMIT_LOG"
-          good "Pre-commit checks passed — commit succeeded."
+          good "Verification gates passed — commit succeeded."
           git push origin "$BASE_BRANCH"
           break
         fi
         cat "$FIX_COMMIT_LOG"
-        warn "Pre-commit hook failed on fix commit attempt ${FIX_ATTEMPT}."
+        warn "git commit failed on fix commit attempt ${FIX_ATTEMPT}."
         if [ $FIX_ATTEMPT -eq $FIX_MAX ]; then
           warn "Fix commit still failing after ${FIX_MAX} attempts — discarding unstaged changes and retrying the review anyway."
           git checkout -- . 2>/dev/null || true
           git clean -fd 2>/dev/null || true
           break
         fi
-        HOOK_OUT="$(cat "$FIX_COMMIT_LOG")"
-        invoke_agent "$ARCHITECT_AGENT" "The pre-commit hook rejected the review-fix commit for phase ${MINOR_VERSION}.
-Fix every failure shown below. Change only what is required to pass.
+        invoke_agent "$ARCHITECT_AGENT" "git commit failed for the review-fix commit for phase ${MINOR_VERSION}.
+Fix the cause shown below. Change only what is required to pass.
 When done print exactly: FIXES_DONE.
 
-Pre-commit hook output:
-${HOOK_OUT}" \
+git output:
+$(cat "$FIX_COMMIT_LOG")" \
           2>&1 | tee "/tmp/ralph-review-fix-hook-${MINOR_VERSION}-${REVIEW_ATTEMPT}-${FIX_ATTEMPT}.log"
       done
     fi
@@ -771,13 +955,14 @@ Produce:
   invoke_agent "$DEV_AGENT" "You are Ralph, the autonomous task agent for the Figby repository.
 Implement task ${TASK_ID} in full, following every rule in the skill file below.
 All cargo commands should use: cargo \$CMD ${MANIFEST}
-The pre-commit hook runs automatically on git commit — never use --no-verify.
+ralph.sh runs the verification gates (fmt, clippy, build, test) explicitly
+before committing — never use --no-verify.
 Do not commit yet. Write all files, then verify your work by running ONLY:
   cargo fmt ${MANIFEST} --check
   cargo clippy ${MANIFEST} --all-targets --all-features -- -D warnings
-Do NOT run cargo test or cargo nextest — tests are gated behind the pre-commit
-hook which runs automatically on git commit and has no tool-call timeout.
-Fix any fmt or clippy failures until both pass clean.
+  cargo build ${MANIFEST}
+  cargo test ${MANIFEST}
+Fix any failures until all four pass clean.
 When finished print exactly: IMPLEMENTATION_DONE.
 
 TASK ID: ${TASK_ID}
@@ -814,7 +999,7 @@ ${SKILL_TEXT}
 After fixing all failures print exactly: REVIEW_DONE." \
     2>&1 | tee /tmp/ralph-review-"$TASK_ID".log
 
-  # Commit with retry — pre-commit hook is the single check gate
+  # Commit with retry — verification gates run explicitly first (F-20 R6)
   log "Committing task ${TASK_ID}"
 
   COMMIT_MSG="$(
@@ -833,10 +1018,29 @@ Task: ${TASK_BLOCK}"
     COMMIT_ATTEMPTS=$((COMMIT_ATTEMPTS + 1))
     log "Commit attempt ${COMMIT_ATTEMPTS}/${MAX_ATTEMPTS}"
 
-    git add -A
+    if ! GATE_OUT="$(run_gates 2>&1)"; then
+      warn "Verification gates failed on attempt ${COMMIT_ATTEMPTS}."
+      if [ $COMMIT_ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+        ralph_log "BLOCKED on task ${TASK_ID}: verification gates still failing after ${MAX_ATTEMPTS} attempts."
+        git checkout "$BASE_BRANCH" >/dev/null 2>&1
+        git branch -D "$BRANCH" >/dev/null 2>&1 || true
+        die "Giving up on ${TASK_ID} after ${MAX_ATTEMPTS} gate attempts."
+      fi
+      log "Asking architect agent to fix gate failures…"
+      invoke_agent "$ARCHITECT_AGENT" "The verification gates failed for task ${TASK_ID} in the Figby repository.
+Fix every failure shown below. Change only what is required to pass.
+When done print exactly: FIXES_DONE.
+
+Verification gates output (gates run explicitly before commit — F-20 R6):
+${GATE_OUT}" \
+        2>&1 | tee /tmp/ralph-fix-"$TASK_ID"-"$COMMIT_ATTEMPTS".log
+      continue
+    fi
+
+    stage_explicit docs/ralph-log.md
     if git commit -m "$COMMIT_MSG" >"$COMMIT_LOG" 2>&1; then
       cat "$COMMIT_LOG"
-      good "Pre-commit checks passed — commit succeeded."
+      good "Verification gates passed — commit succeeded."
       break
     fi
 
@@ -847,10 +1051,10 @@ Task: ${TASK_BLOCK}"
     fi
 
     cat "$COMMIT_LOG"
-    warn "Pre-commit hook failed on attempt ${COMMIT_ATTEMPTS}."
+    warn "git commit failed on attempt ${COMMIT_ATTEMPTS}."
 
     if [ $COMMIT_ATTEMPTS -eq $MAX_ATTEMPTS ]; then
-      ralph_log "BLOCKED on task ${TASK_ID}: pre-commit hook still failing after ${MAX_ATTEMPTS} attempts."
+      ralph_log "BLOCKED on task ${TASK_ID}: commit still failing after ${MAX_ATTEMPTS} attempts."
       git checkout "$BASE_BRANCH" >/dev/null 2>&1
       git branch -D "$BRANCH" >/dev/null 2>&1 || true
       die "Giving up on ${TASK_ID} after ${MAX_ATTEMPTS} commit attempts."
@@ -858,11 +1062,11 @@ Task: ${TASK_BLOCK}"
 
     HOOK_OUT="$(cat "$COMMIT_LOG")"
     log "Asking architect agent to fix failures…"
-    invoke_agent "$ARCHITECT_AGENT" "The pre-commit hook rejected the commit for task ${TASK_ID} in the Figby repository.
-Fix every failure shown below. Change only what is required to pass.
+    invoke_agent "$ARCHITECT_AGENT" "git commit failed for task ${TASK_ID} in the Figby repository.
+Fix the cause shown below. Change only what is required to pass.
 When done print exactly: FIXES_DONE.
 
-Pre-commit hook output:
+git commit output:
 ${HOOK_OUT}" \
       2>&1 | tee /tmp/ralph-fix-"$TASK_ID"-"$COMMIT_ATTEMPTS".log
   done

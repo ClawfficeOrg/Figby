@@ -1,0 +1,32 @@
+#!/bin/sh
+# pre-commit — real verification gate (F-20 R6, see docs/f-20-ralph-sandbox-policy.md).
+#
+# Runs the same gates ralph.sh invokes explicitly before every commit. This
+# hook protects human commits too (install: `git config core.hooksPath .githooks`).
+#
+# Fast path: docs-only commits (docs/, README.md, CHANGELOG.md) run fmt only —
+# the full cargo test suite is reserved for commits that touch source.
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+MANIFEST="--manifest-path figby-rs/Cargo.toml"
+
+non_docs="$(git diff --cached --name-only | grep -vE '^(docs/|CHANGELOG\.md$|README\.md$)' || true)"
+
+echo "[pre-commit] cargo fmt --check"
+cargo fmt $MANIFEST -- --check
+
+if [ -n "$non_docs" ]; then
+  echo "[pre-commit] cargo clippy -D warnings"
+  cargo clippy $MANIFEST --all-targets --all-features -- -D warnings
+
+  echo "[pre-commit] cargo build"
+  cargo build $MANIFEST
+
+  echo "[pre-commit] cargo test"
+  cargo test $MANIFEST
+fi
+
+echo "[pre-commit] gates passed."

@@ -23,9 +23,9 @@ Before any work:
 
 ### Implementation Rules
 - **Language**: Rust. All cargo commands use `--manifest-path figby-rs/Cargo.toml`
-- **Quality gates**: End by running fmt and clippy only (tests run on pre-commit hook)
+- **Quality gates**: End by running the full gate set — fmt, clippy, build, test (all with `--manifest-path figby-rs/Cargo.toml`). ralph.sh runs these explicitly before committing (F-20 R6); `.githooks/pre-commit` is the human-facing safety net.
 - **Branch**: Create `task-X.Y.Z` off `release/X.Y` (ralph.sh handles this)
-- **Commit**: Never use `--no-verify` — let pre-commit run
+- **Commit**: Never use `--no-verify` — the verification gates run before every commit
 - **Model context**: Large diffs are passed via `--add-dir`, not inline
 
 ### Self-Review Checklist
