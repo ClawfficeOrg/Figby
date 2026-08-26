@@ -773,7 +773,7 @@ Implement task ${TASK_ID} in full, following every rule in the skill file below.
 All cargo commands should use: cargo \$CMD ${MANIFEST}
 The pre-commit hook runs automatically on git commit — never use --no-verify.
 Do not commit yet. Write all files, then verify your work by running ONLY:
-  cargo fmt --check
+  cargo fmt ${MANIFEST} --check
   cargo clippy ${MANIFEST} --all-targets --all-features -- -D warnings
 Do NOT run cargo test or cargo nextest — tests are gated behind the pre-commit
 hook which runs automatically on git commit and has no tool-call timeout.

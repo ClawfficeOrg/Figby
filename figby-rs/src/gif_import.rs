@@ -168,7 +168,7 @@ pub fn import_gif(path: &Path) -> Result<GifImportResult, GifImportError> {
 
 /// Same as [`import_gif`], but scales every composited frame to
 /// `scale`. Useful for playing back a GIF larger than the terminal (or
-/// larger than [`MAX_TOTAL_CELLS`] would otherwise allow at native
+/// larger than `MAX_TOTAL_CELLS` would otherwise allow at native
 /// resolution) at a terminal-friendly size.
 pub fn import_gif_scaled(
     path: &Path,

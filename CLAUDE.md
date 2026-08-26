@@ -46,7 +46,7 @@ v6 — Pre-Release Hardening & Polish. See `docs/todo-v6.md`.
 ## After every task
 
 1. Summarize what changed.
-2. Run `cargo build`, `cargo test`, `cargo clippy` (fix failures before committing), `cargo fmt` (auto-fix then re-check).
+2. Run `cargo build`, `cargo test`, `cargo clippy` (fix failures before committing), `cargo fmt` (auto-fix then re-check) — all with `--manifest-path figby-rs/Cargo.toml` (the repo root has no `Cargo.toml`; see `AGENTS.md`).
 3. Ask (interactive) or auto-do (auto mode): conventional-commit message, bump `figby-rs/Cargo.toml` version + README + CHANGELOG.md (create if absent).
 
 See `AGENTS.md` §Post-Task Checklist for full procedure.

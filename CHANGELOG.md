@@ -1,5 +1,43 @@
 # Changelog
 
+## [6.0.35] - 2026-08-26
+
+Phase 3 of the GPT-review remediation (`docs/GPT-review-8-20-26.md`, tracked
+in `docs/review-remediation-checklist.md`) — distribution, claims, CI, and
+developer commands (F-27, F-28, F-29, F-30).
+
+### Changed
+- **F-27** Qualified README parity claims: full-flag-parity and
+  "bit-identical output" claims now say "coverage of every implemented flag"
+  and "byte-identical across active differential tests"; a new
+  "Known divergences from C FIGlet" section documents the five failing
+  scenarios (tests 21, 23, 26, 35, 37).
+- **F-27** `-F` is now documented (README + `--help`) as removed, matching C
+  FIGlet 2.2.5 (which dropped it for `figlist`); the binary's error message
+  says so.
+- **F-27** The C expected-output generator and the Rust differential tests
+  are now driven by one authoritative table
+  (`figby-rs/tests/cparity/scenarios.tsv`); a sync-guard test fails if the
+  table and the `#[ignore]` statuses drift apart. Two paragraph tests
+  (45, 54) now pass and are enabled.
+- **F-28** Owner URLs and Cargo metadata point at `ClawfficeOrg/Figby`
+  (the canonical owner) instead of `DoseOfGose`; README Project Status
+  clarifies that the `6.0.x` package version is canonical while `7.0.x` git
+  tags are milestone markers; the milestone index gains v8.
+- **F-28** The legacy `snapcraft.yaml` (packaged the C `figlet`, not the
+  Rust app, on EOL `core18`) is quarantined under `packaging/snap-legacy/`
+  with a README; Snap shipping is declared not-yet-available.
+- **F-29** CI expanded to a real matrix: Linux fmt/clippy/test, strict
+  rustdoc, `cargo package` + tag-gated publish dry-run, MSRV check,
+  Windows/macOS build + focused tests, WASM check + clippy, and a `cargo
+  audit` gate. Action versions are pinned to release tags, and permissions
+  are least-privilege.
+- **F-29** Fixed strict-rustdoc private-link errors
+  (`gif_import.rs` `MAX_TOTAL_CELLS`, `tui/mod.rs` module links).
+- **F-30** All developer commands standardized on explicit
+  `--manifest-path figby-rs/Cargo.toml` in AGENTS.md, README, CLAUDE.md, and
+  `scripts/ralph.sh` (the repo root has no `Cargo.toml`).
+
 ## [6.0.34] - 2026-08-26
 
 Phase 3 of the GPT-review remediation (`docs/GPT-review-8-20-26.md`, tracked

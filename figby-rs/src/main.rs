@@ -251,7 +251,10 @@ struct CliArgs {
     flag_v: bool,
     #[arg(short = 'N', help = "Disable multi-byte input processing")]
     flag_N: bool,
-    #[arg(short = 'F', help = "Display font information [not implemented]")]
+    #[arg(
+        short = 'F',
+        help = "Removed (matches C FIGlet 2.2.5) — list fonts with figlist"
+    )]
     flag_F: bool,
     #[arg(
         short = 'I',
@@ -1230,7 +1233,10 @@ fn main() {
     }
 
     if args.flag_F {
-        eprintln!("Error: -F option is not implemented in this version");
+        eprintln!(
+            "Error: the -F option was removed (as in C FIGlet 2.2.5); \
+             use 'figlist' to list fonts."
+        );
         process::exit(1);
     }
 

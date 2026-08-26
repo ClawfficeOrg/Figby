@@ -12,17 +12,41 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
 
+# Toolchain is pinned repo-wide via rust-toolchain.toml (channel 1.97.1),
+# so every job builds with the same MSRV-grade compiler. Actions use pinned
+# release tags (no mutable major tags) and the workflow declares
+# least-privilege permissions (contents: read) — GPT review F-29.
+
 jobs:
-  ci:
+  fmt:
+    name: fmt (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pinned toolchain (rust-toolchain.toml)
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4.2.2
+      - uses: dtolnay/rust-toolchain@1.97.1
         with:
-          toolchain: "1.97.1"
-          components: rustfmt, clippy
+          components: rustfmt
+      - name: cargo fmt --check
+        run: cargo fmt --manifest-path figby-rs/Cargo.toml -- --check
+
+  test:
+    name: test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            figby-rs/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('figby-rs/Cargo.lock') }}
 
       - name: Fail if compile-time fixtures are untracked
         run: |
@@ -42,8 +66,56 @@ jobs:
           done
           exit $missing
 
+      - name: cargo clippy (locked)
+        run: cargo clippy --locked --manifest-path figby-rs/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: cargo test (locked)
+        run: cargo test --locked --manifest-path figby-rs/Cargo.toml --no-fail-fast
+
+  docs:
+    name: rustdoc (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - name: Strict rustdoc (broken intra-doc links are errors)
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --locked --manifest-path figby-rs/Cargo.toml --no-deps
+
+  package:
+    name: package verify + release dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - name: cargo package verification
+        run: cargo package --locked --manifest-path figby-rs/Cargo.toml
+      - name: cargo publish dry-run (release tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: cargo publish --locked --manifest-path figby-rs/Cargo.toml --dry-run
+
+  msrv:
+    name: MSRV check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - name: cargo check (locked, all targets)
+        run: cargo check --locked --manifest-path figby-rs/Cargo.toml --all-targets
+
+  cross:
+    name: build + focused tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: dtolnay/rust-toolchain@1.97.1
+
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: |
             ~/.cargo/registry
@@ -51,14 +123,30 @@ jobs:
             figby-rs/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('figby-rs/Cargo.lock') }}
 
-      - name: cargo fmt --check
-        run: cargo fmt --manifest-path figby-rs/Cargo.toml -- --check
+      - name: cargo build (locked)
+        run: cargo build --locked --manifest-path figby-rs/Cargo.toml --all-targets
 
-      - name: cargo clippy (locked)
-        run: cargo clippy --locked --manifest-path figby-rs/Cargo.toml --all-targets --all-features -- -D warnings
+      - name: cargo test (locked, lib)
+        run: cargo test --locked --manifest-path figby-rs/Cargo.toml --lib
 
-      - name: cargo test (locked)
-        run: cargo test --locked --manifest-path figby-rs/Cargo.toml --no-fail-fast
+  wasm:
+    name: wasm check + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          targets: wasm32-unknown-unknown
+      - name: cargo check (wasm32, locked)
+        run: cargo check --locked --manifest-path figby-rs/Cargo.toml --target wasm32-unknown-unknown
+      - name: cargo clippy (wasm32, locked, no-deps)
+        run: cargo clippy --locked --manifest-path figby-rs/Cargo.toml --target wasm32-unknown-unknown --no-deps -- -D warnings
 
-      - name: cargo package verification
-        run: cargo package --locked --manifest-path figby-rs/Cargo.toml
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: taiki-e/install-action@cargo-audit
+      - name: cargo audit (advisory gate)
+        run: cargo audit --file figby-rs/Cargo.lock

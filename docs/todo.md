@@ -15,6 +15,7 @@ versioned files below. Do not add task lines directly here.
 | v6 | [todo-v6.md](todo-v6.md) | Pre-Release Hardening & Polish | Complete |
 | v7.0 | [todo-v7.md](todo-v7.md) | Animation Editor, Playback & Architecture | Complete |
 | v7.1 | [todo-v7.md](todo-v7.md) | Dialog, Keybindings & Props Polish | Active |
+| v8 | [todo-v8.md](todo-v8.md) | Part Twah (multi-document, figmap, backlog batch) | Active |
 
 ## Conventions
 

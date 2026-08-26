@@ -469,7 +469,6 @@ fn test_44_ascii_control_file() {
 }
 
 #[test]
-#[ignore = "TODO 2.10.1: paragraph mode (-p) has known output divergence from C FIGlet"]
 fn test_45_paragraph_narrow() {
     let output = run_figby(
         &["-f", "standard", "-p", "-w30"],
@@ -574,7 +573,6 @@ fn test_53_control_file_extended_charset() {
 }
 
 #[test]
-#[ignore = "TODO: paragraph mode output differs from C baseline"]
 fn test_54_paragraph_narrow_width() {
     // Paragraph mode with narrow output width
     let input = b"Hello World Foo Bar Baz Qux\nAnother line here\n";
@@ -599,4 +597,67 @@ fn test_55_wide_center_justification() {
         !big_output.is_empty(),
         "big font center justified should not be empty"
     );
+}
+
+/// Cross-check that the authoritative C-parity scenario table
+/// (`tests/cparity/scenarios.tsv`, single source of truth — GPT review F-27)
+/// stays in sync with the `#[ignore]` status of these tests:
+///
+/// - every `known-divergence` row must be an ignored test here;
+/// - every fixture-backed `active` row must have a `tests/resNNN.txt` file;
+/// - every `active` row must NOT be ignored (no silent regression).
+#[test]
+fn test_cparity_table_in_sync() {
+    let root = repo_root();
+    let table_path = root.join("figby-rs/tests/cparity/scenarios.tsv");
+    let table = std::fs::read_to_string(&table_path)
+        .unwrap_or_else(|_| panic!("missing scenario table: {:?}", table_path));
+
+    // The tests currently ignored for C divergence — must match the
+    // table's `known-divergence` rows exactly.
+    let ignored_for_divergence: &[u32] = &[21, 23, 26, 35, 37];
+
+    let mut divergences: Vec<u32> = Vec::new();
+    let mut active: Vec<u32> = Vec::new();
+
+    for line in table.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let mut fields = trimmed.splitn(5, '\t');
+        let num: u32 = fields
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap_or_else(|e| panic!("bad test number in table row: {line:?} ({e})"));
+        let _args = fields.next().unwrap();
+        let _input = fields.next().unwrap();
+        let status = fields.next().unwrap();
+        match status {
+            "known-divergence" => divergences.push(num),
+            "active" => active.push(num),
+            "special" => {}
+            other => panic!("unknown status {other:?} in table row {line:?}"),
+        }
+    }
+
+    divergences.sort_unstable();
+    assert_eq!(
+        divergences, ignored_for_divergence,
+        "scenario table `known-divergence` rows must match the ignored tests \
+         (enable a test here once it passes, or mark it known-divergence in \
+         the table when it is newly failing)"
+    );
+
+    for num in &active {
+        let res = root.join(format!("tests/res{:03}.txt", num));
+        assert!(
+            res.exists(),
+            "active scenario {} has no expected-output file {:?} \
+             (run scripts/regenerate-expected.sh)",
+            num,
+            res
+        );
+    }
 }

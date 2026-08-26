@@ -15,21 +15,25 @@ that supports all FIGlet 2.2.5 features plus UTF-8 natively.
 
 ## Development Commands
 
+All commands run from the repo root. The crate lives in `figby-rs/`, so every
+`cargo` invocation passes `--manifest-path figby-rs/Cargo.toml` (the repo root
+has no `Cargo.toml` — a bare `cargo build` fails or targets the wrong path).
+
 ```bash
 # Build Rust crate
-cargo build -p figby
+cargo build --manifest-path figby-rs/Cargo.toml
 
 # Run tests
-cargo test -p figby
+cargo test --manifest-path figby-rs/Cargo.toml
 
 # Check formatting
-cargo fmt --check
+cargo fmt --manifest-path figby-rs/Cargo.toml --check
 
 # Run clippy
-cargo clippy -p figby --all-targets --all-features -- -D warnings
+cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets --all-features -- -D warnings
 
 # Test with fonts
-cargo run -p figby -- -f fonts/standard "Hello"
+cargo run --manifest-path figby-rs/Cargo.toml -- -f fonts/standard "Hello"
 
 # Run figby from repo root (binary is in figby-rs/target)
 ../figby-rs/target/debug/figby < tests/input.txt
@@ -89,7 +93,7 @@ After completing any implementation work, do ALL of the following (or ask the us
    cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings
    cargo fmt --manifest-path figby-rs/Cargo.toml --check
    ```
-   If `cargo fmt --check` fails, run `cargo fmt` and re-verify before committing.
+   If `cargo fmt --check` fails, run `cargo fmt --manifest-path figby-rs/Cargo.toml` and re-verify before committing.
 3. **Commit** — write a proper conventional-commit message (`feat:`, `fix:`, `refactor:`, etc.) with a concise subject and body that explains *why*, not just *what*. Co-author line required.
 4. **Version bump** — increment the patch version (or minor/major if scope warrants) in:
    - `figby-rs/Cargo.toml` (`version = "X.Y.Z"`)

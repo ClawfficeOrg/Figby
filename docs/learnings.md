@@ -1678,3 +1678,7 @@ Three bugs found in phase merge review:
 - F-26: negative keyframe offsets crop (not clamp) in capture_timeline_frames via `signed_src_range`; `.max(0)` on a signed offset is almost always the wrong compositing fix.
 - F-26: reorder-right moves a frame to index `to - 1` after the removal shift; pointing `current_frame` at `to` lands on the wrong logical frame.
 - F-26: centiseconds (`delay` 1/100s) is the one timing unit across GIF import/export, player, and now TimelineFrame — keep it uniform; conversions to/from fps (`100/fps`) are only for defaults.
+- F-27: in this repo, "single source of truth" for C-parity = a TSV that BOTH the regen script (shell) and a Rust sync-guard test read; the status column (active/known-divergence/special) must mirror #[ignore] attributes — a test asserts it, so enabling a diverging test means editing both files.
+- F-27/F-30: when a doc claim can't be verified (e.g. "full flag parity"), qualify it to what tests actually assert and link the test; a bare claim will be re-flagged by the next review.
+- F-28: a git tag is not a package version — check Cargo.toml at the tag before writing "the version is X"; milestone tags (7.0.0) and package versions (6.0.x) can legitimately differ if documented.
+- F-29: strict rustdoc (-D warnings) fails on intra-doc links to private items; use plain backticks for private module/const names. WASM clippy should use --no-deps or dependency warnings fail the gate.

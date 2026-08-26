@@ -79,6 +79,38 @@ Key architectural decisions from Phase 0–1:
 - **ANSI multi-frame**: production export composes timeline frames for
   Ansi too (previously GIF/APNG only → ANSI export got only current frame).
 
+### Distribution, claims, CI, developer commands (F-27–F-30, 6.0.35, branch `hardening/gpt-review`)
+
+- **C-parity single table**: `figby-rs/tests/cparity/scenarios.tsv` is the
+  one source of truth for differential scenarios (args/input/status:
+  `active`/`known-divergence`/`special`). `scripts/regenerate-expected.sh`
+  regenerates `tests/res*.txt` from C by iterating the table;
+  `test_cparity_table_in_sync` fails if the table's `known-divergence` set
+  drifts from the `#[ignore]`d tests. 5 divergences remain: tests 21, 23,
+  26, 35, 37 (paragraph, `-kpc`, JIS0201, control chars, `-m191`).
+- **`-F` is removed (matches C 2.2.5)**: C figlet treats `-F` as an illegal
+  option (dropped for `figlist`); Figby documents + errors the same way.
+  Do not "implement" it as a font lister.
+- **Version identity**: package version (Cargo `6.0.x`) is canonical; `7.0.x`
+  git tags are milestone markers for the animation line. Keep README Project
+  Status consistent with that split.
+- **Owner**: canonical owner is `ClawfficeOrg/Figby` (`origin`); `upstream`
+  is `CompewterTutor/Figby`. Cargo `repository` + README URLs must use the
+  canonical owner.
+- **Legacy snap** quarantined at `packaging/snap-legacy/` (packaged C figlet,
+  EOL `core18`). A real Figby snap must build `figby-rs/` (not `c-figlet/`),
+  declare app `figby`, use `core22`/`core24`.
+- **CI matrix** in `.github/workflows/ci.yml`: fmt / test(Linux clippy+test) /
+  docs (strict rustdoc `RUSTDOCFLAGS="-D warnings"`) / package (+tag-gated
+  `cargo publish --dry-run`) / msrv / cross (win+mac build + `--lib` tests) /
+  wasm (check + clippy `--no-deps`) / audit. Actions pinned to release tags.
+  Strict rustdoc needs `--no-deps` (deps emit doc warnings).
+- **Root commands**: repo root has no `Cargo.toml` — every cargo invocation
+  must pass `--manifest-path figby-rs/Cargo.toml` (docs, scripts, CI).
+- Known `cargo audit` warnings (allowed, gating on real failures only):
+  `ansi_term` + `paste` unmaintained (via `image`→`exr`→`pulp`), `lru`
+  0.16.4 unsound (via `ratzilla` wasm chain).
+
 ### UTF-8 Native Encoding
 Figby uses Rust `char`/`String` natively (UTF-8), not `wchar_t`.
 FIGlet C used `typedef long inchr` for internal char representation.

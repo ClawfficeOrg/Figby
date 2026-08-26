@@ -100,15 +100,15 @@ Independent verification results:
 
 - [x] **F-26** Animation fixes: signed keyframe offsets, per-frame delay inside TimelineFrame,
       ANSI anim gets all frames, variable timing in playback, scheduler-driven preview.
-- [ ] **F-27** Qualify README parity claims; `-F` listed in README but unimplemented in binary
+- [x] **F-27** Qualify README parity claims; `-F` listed in README but unimplemented in binary
       (main.rs). Enable 2 passing ignored paragraph tests; drive C generator + Rust
       scenarios from one table; triage 5 failing ignored C-parity tests.
-- [ ] **F-28** Align owner URLs (DoseOfGose → ClawfficeOrg), version identity (6.0.31 vs tag
+- [x] **F-28** Align owner URLs (DoseOfGose → ClawfficeOrg), version identity (6.0.31 vs tag
       7.0.0 vs v8 work), milestone index; quarantine/port snapcraft.yaml (packages C figlet).
-- [ ] **F-29** CI matrix: Windows/macOS, WASM check+clippy, strict rustdoc (fix private-link
+- [x] **F-29** CI matrix: Windows/macOS, WASM check+clippy, strict rustdoc (fix private-link
       errors gif_import.rs:165, tui/mod.rs:1), MSRV, cargo-deny/audit, package verify,
       release dry-run, pinned action tags, least-privilege permissions.
-- [ ] **F-30** Standardize root commands: root workspace manifest or explicit
+- [x] **F-30** Standardize root commands: root workspace manifest or explicit
       `--manifest-path figby-rs/Cargo.toml` everywhere (AGENTS.md, README, scripts).
 - [ ] **F-20** Ralph workflow hardening: secret-free sandboxed agents, tool allowlist,
       stage explicit paths only, human approval gate before push/merge. Remove false

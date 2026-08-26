@@ -1,6 +1,6 @@
 # Figby
 
-[![CI](https://github.com/DoseOfGose/figby/actions/workflows/ci.yml/badge.svg)](https://github.com/DoseOfGose/figby/actions)
+[![CI](https://github.com/ClawfficeOrg/figby/actions/workflows/ci.yml/badge.svg)](https://github.com/ClawfficeOrg/figby/actions)
 [![Crates.io](https://img.shields.io/crates/v/figby)](https://crates.io/crates/figby)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
@@ -16,7 +16,8 @@ Original C source lives in `c-figlet/` for reference; the Rust port lives in
 
 ## Features
 
-- Full FIGlet 2.2.5 CLI flag parity (27 flags)
+- Full FIGlet 2.2.5 CLI flag coverage (27 flags; `-F` is removed, matching C
+  FIGlet — see [Known divergences](#known-divergences-from-c-figlet))
 - FIGfont (`.flf`) and TOIlet (`.tlf`) font support
 - Kerning and smushing (all 11 rules: H1–H6, V1–V5)
 - Multi-byte input: UTF-8, DBCS, Shift-JIS, HZ
@@ -33,11 +34,11 @@ Original C source lives in `c-figlet/` for reference; the Rust port lives in
 - `--play <file.gif>`: play an animated GIF fullscreen in the terminal, then
   exit — no TUI required. Scales to fit the terminal by default (or to
   `--play-width <N>` columns), so GIFs larger than the terminal — or larger
-  than would otherwise fit the animation import size cap — still play. Add
-  `--loop` to repeat until any key is pressed instead of playing once. See
+  than would otherwise fit the animation import size cap — still play. Honors
+  the GIF's real per-frame timing. Add `--loop` to repeat until any key is
+  pressed instead of playing once. See
   [docs/sonnet5-review.md](docs/sonnet5-review.md) for current known
-  limitations of the animation subsystem (e.g. playback doesn't yet honor a
-  GIF's real per-frame timing, only an approximate FPS).
+  limitations of the animation subsystem.
 
 ## Installation
 
@@ -50,7 +51,7 @@ cargo install --path figby-rs
 ### Build from git
 
 ```bash
-git clone https://github.com/DoseOfGose/figby.git
+git clone https://github.com/ClawfficeOrg/figby.git
 cd figby
 cargo build --manifest-path figby-rs/Cargo.toml --release
 ```
@@ -59,7 +60,7 @@ The binary is at `figby-rs/target/release/figby`.
 
 ### Pre-built binaries
 
-Not yet available. Track progress via [GitHub Releases](https://github.com/DoseOfGose/figby/releases).
+Not yet available. Track progress via [GitHub Releases](https://github.com/ClawfficeOrg/figby/releases).
 
 ### System package managers
 
@@ -113,7 +114,7 @@ figby [OPTIONS] [MESSAGE]
 | `-p` | Paragraph mode |
 | `-n` | No paragraph mode |
 | `-A` | Read input from stdin (positional args also work) |
-| `-F` | List available fonts and exit |
+| `-F` | Removed (matches C FIGlet 2.2.5) — list fonts with `figlist` |
 | `-h` | Print help |
 | `-V` | Print version |
 | `--tui` | Launch the full-screen TUI editor (drawing, layers, animation timeline) |
@@ -203,21 +204,42 @@ figby -d /path/to/fonts -f myfont "Hello"
 | ISO 2022 | Yes | Yes |
 | Deutsch mode | Yes | Yes |
 | ZIP fonts | Yes | Yes (`zip` crate) |
-| CLI flags | 27 flags | Full parity |
-| Output compatibility | Baseline | Bit-identical (verified) |
+| CLI flags | 27 flags | Coverage of every implemented flag |
+| Output compatibility | Baseline | Byte-identical across active differential tests |
 | Memory safety | Manual | Guaranteed (Rust) |
 | Error handling | Silent fallbacks | Explicit `Result` |
 | Internal encoding | `wchar_t` / `inchr` | `char` (Unicode scalar) |
 | Global state | 20+ globals | None (encapsulated) |
 
-Figby produces **output-identical** results to C FIGlet 2.2.5 for all standard
-fonts and inputs. Differences are intentional improvements in safety, clarity,
-and maintainability.
+Figby's output is byte-identical to C FIGlet 2.2.5 across the active
+differential test suite (`figby-rs/tests/run_tests.rs`, fixtures regenerated
+from C by `scripts/regenerate-expected.sh`). A small set of known divergences
+remains intentionally ignored — see below. All other differences are
+intentional improvements in safety, clarity, and maintainability.
+
+## Known divergences from C FIGlet
+
+These behaviors differ from C FIGlet 2.2.5 and are tracked as `#[ignore]`d
+differential tests (test numbers refer to `figby-rs/tests/run_tests.rs`).
+They are real gaps to close, not intentional departures:
+
+| Test | Scenario | Status |
+|------|----------|--------|
+| 21 | Paragraph mode (`-p -w250`) | Known divergence |
+| 23 | Combined `-kpc` flags | Known divergence |
+| 26 | JIS0201 control file | Known divergence |
+| 35 | Control-character skipping | Known divergence |
+| 37 | Smush all rules (`-m191`) | Known divergence |
 
 ## Project Status
 
 Active development — a safe, idiomatic Rust FIGlet port that has grown into
 a full ASCII-art TUI editor.
+
+**Version identity:** the Cargo package version (currently `6.0.x`, see
+`CHANGELOG.md`) is the canonical release version. `7.0.x` git tags are
+milestone markers for the animation-editor line, not package versions — the
+package continued on the `6.0.x` hardening line after `7.0.0-rc.1`.
 
 - **v1** — C-to-Rust port (complete): parser, render engine, CLI, control
   files, multi-byte input, test suite. See [docs/todo-v1.md](docs/todo-v1.md).
@@ -227,6 +249,11 @@ a full ASCII-art TUI editor.
 - **v6** — Pre-release hardening & polish (complete): security fixes, green
   test suite, CI gate, parser hardening, architecture cleanup. See
   [docs/todo-v6.md](docs/todo-v6.md).
+- **v7.0/v7.1** — Animation editor, playback & architecture (v7.0 complete,
+  v7.1 active): usable animation editor, keymap/props overhaul, module
+  architecture split. See [docs/todo-v7.md](docs/todo-v7.md).
+- **v8** — Next backlog batch ("Part Twah"): multi-document tab strip, figmap
+  file format, and smaller wins. See [docs/todo-v8.md](docs/todo-v8.md).
 
 ## Roadmap
 
@@ -250,7 +277,7 @@ Contributions welcome! Here's how to get started:
 ### Setup
 
 ```bash
-git clone https://github.com/DoseOfGose/figby.git
+git clone https://github.com/ClawfficeOrg/figby.git
 cd figby
 cargo build --manifest-path figby-rs/Cargo.toml -p figby
 cargo test --manifest-path figby-rs/Cargo.toml -p figby
@@ -258,14 +285,18 @@ cargo test --manifest-path figby-rs/Cargo.toml -p figby
 
 ### Quality gates
 
-Before committing, ensure:
+Before committing, ensure (all from the repo root, using the crate's
+`--manifest-path` — the root has no `Cargo.toml`):
 
 ```bash
 # Check formatting
-cargo fmt --check
+cargo fmt --manifest-path figby-rs/Cargo.toml -- --check
 
 # Run linter (deny all warnings)
 cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets --all-features -- -D warnings
+
+# Run tests
+cargo test --manifest-path figby-rs/Cargo.toml
 ```
 
 ### Conventions
@@ -281,10 +312,11 @@ cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets --all-features --
 1. Fork the repo
 2. Create a feature branch off `main`
 3. Implement your changes
-4. Ensure `cargo fmt --check` and `cargo clippy` pass
+4. Ensure `cargo fmt --manifest-path figby-rs/Cargo.toml -- --check` and
+   `cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets --all-features -- -D warnings` pass
 5. Open a pull request
 
-File issues at [github.com/DoseOfGose/figby/issues](https://github.com/DoseOfGose/figby/issues).
+File issues at [github.com/ClawfficeOrg/figby/issues](https://github.com/ClawfficeOrg/figby/issues).
 
 ## License
 

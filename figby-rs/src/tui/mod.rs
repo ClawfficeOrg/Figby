@@ -1,7 +1,7 @@
 //! Top-level TUI application glue.
 //!
 //! The bulk of the application lives in topical submodules — see
-//! [`app_state`], [`event_loop`], [`dispatch`], and the feature-specific
+//! `app_state`, `event_loop`, `dispatch`, and the feature-specific
 //! submodules below. This file keeps only the module declarations, public
 //! re-exports, the high-level `render` pipeline, and a couple of shared free
 //! helpers.
