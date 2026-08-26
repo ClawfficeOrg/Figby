@@ -22,6 +22,7 @@ mod canvas_inner {
 }
 pub use canvas_inner::CanvasCell;
 
+pub mod atomic_io;
 pub mod config;
 pub mod control;
 pub mod font;

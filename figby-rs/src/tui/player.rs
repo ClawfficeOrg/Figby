@@ -632,6 +632,18 @@ pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io
     }
 
     terminal::enable_raw_mode()?;
+    // RAII guard (GPT review F-25): restores cursor visibility and raw
+    // mode on ANY exit path, including errors mid-playback — previously
+    // cleanup ran only on the normal tail.
+    struct RawModeGuard;
+    impl Drop for RawModeGuard {
+        fn drop(&mut self) {
+            let _ = write!(io::stdout(), "\x1b[?25h\x1b[0m\x1b[2J\x1b[H");
+            let _ = io::stdout().flush();
+            let _ = terminal::disable_raw_mode();
+        }
+    }
+    let _raw_guard = RawModeGuard;
     write!(io::stdout(), "\x1b[?25l\x1b[2J")?;
     io::stdout().flush()?;
 
@@ -683,9 +695,7 @@ pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io
         }
     }
 
-    write!(io::stdout(), "\x1b[?25h\x1b[0m\x1b[2J\x1b[H")?;
-    io::stdout().flush()?;
-    terminal::disable_raw_mode()?;
+    // Teardown happens in RawModeGuard::drop.
     Ok(())
 }
 

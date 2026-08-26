@@ -2628,7 +2628,8 @@ impl TuiApp {
                         }
                     }
                 };
-                std::fs::write(&path_buf, &bytes).map_err(|e| format!("IoError({e})"))?;
+                crate::atomic_io::atomic_write(&path_buf, &bytes)
+                    .map_err(|e| format!("IoError({e})"))?;
                 if let Some(stack) = layer_stack {
                     let mode = format;
                     if mode == crate::tui::export::ExportMode::Png {

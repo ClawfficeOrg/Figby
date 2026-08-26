@@ -166,7 +166,8 @@ impl PaletteEditor {
         };
         let json =
             serde_json::to_string_pretty(&file).map_err(|e| format!("Serialization error: {e}"))?;
-        std::fs::write(&path, &json).map_err(|e| format!("Write error: {e}"))?;
+        crate::atomic_io::atomic_write(&path, json.as_bytes())
+            .map_err(|e| format!("Write error: {e}"))?;
         Ok(())
     }
 

@@ -3,14 +3,46 @@ use crossterm::event::{
     Event, KeyEventKind,
 };
 use crossterm::execute;
-use std::io;
+use std::io::{self, Write};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use super::*;
 
+/// RAII guard: restores the terminal (raw mode, alternate screen,
+/// mouse/bracketed-paste modes) on Drop — including panics and early
+/// returns. Previously cleanup ran only on the normal tail of the
+/// event loop, so a read/render error left the user's terminal in raw
+/// mode (GPT review F-25).
+struct TerminalRestoreGuard;
+
+impl Drop for TerminalRestoreGuard {
+    fn drop(&mut self) {
+        let _ = execute!(io::stdout(), DisableBracketedPaste, DisableMouseCapture);
+        ratatui::restore();
+        let _ = io::stdout().flush();
+    }
+}
+
 impl TuiApp {
+    /// Install a panic hook that restores terminal state before
+    /// delegating to the previous hook, so a panic during render/event
+    /// handling cannot leave raw mode enabled (GPT review F-25).
+    fn install_panic_hook() {
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let _ = execute!(io::stdout(), DisableBracketedPaste, DisableMouseCapture);
+            ratatui::restore();
+            prev_hook(info);
+        }));
+    }
+
     pub fn run(&mut self) -> io::Result<()> {
+        Self::install_panic_hook();
+        // The guard owns ALL teardown: nothing below needs a manual
+        // restore, and every exit path (including `?` and panic unwinds)
+        // goes through Drop.
+        let _terminal_guard = TerminalRestoreGuard;
         let mut terminal = ratatui::init();
         execute!(io::stdout(), EnableBracketedPaste, EnableMouseCapture)?;
 
@@ -78,12 +110,7 @@ impl TuiApp {
             }
         }
 
-        execute!(
-            terminal.backend_mut(),
-            DisableBracketedPaste,
-            DisableMouseCapture
-        )?;
-        ratatui::restore();
+        // Teardown happens in TerminalRestoreGuard::drop.
         Ok(())
     }
 

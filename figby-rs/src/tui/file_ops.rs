@@ -117,7 +117,7 @@ impl RecentFiles {
             .map(|p| p.to_string_lossy().to_string())
             .collect::<Vec<_>>()
             .join("\n");
-        let _ = std::fs::write(&path, &content);
+        let _ = crate::atomic_io::atomic_write(&path, content.as_bytes());
     }
 
     fn storage_path() -> Option<PathBuf> {
@@ -1248,15 +1248,9 @@ impl Default for FileOpsDialog {
 
 pub fn save_font(font: &FIGfont, path: &Path) -> std::io::Result<()> {
     let content = crate::font_gen::generate_figfont(font);
-    let tmp_path = {
-        let parent = path.parent().unwrap_or_else(|| Path::new("."));
-        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("font");
-        parent.join(format!(".{}.tmp", stem))
-    };
-
-    std::fs::write(&tmp_path, &content)?;
-    std::fs::rename(&tmp_path, path)?;
-    Ok(())
+    // Atomic + symlink-safe replacement (GPT review F-22); the old code
+    // wrote a predictable `.stem.tmp` and followed any symlink there.
+    crate::atomic_io::atomic_write(path, content.as_bytes())
 }
 
 #[cfg(test)]

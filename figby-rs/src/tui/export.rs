@@ -403,7 +403,8 @@ impl ExportDialog {
                 }
             }
         };
-        std::fs::write(&path, &bytes).map_err(|e| ExportError::IoError(e.to_string()))?;
+        crate::atomic_io::atomic_write(&path, &bytes)
+            .map_err(|e| ExportError::IoError(e.to_string()))?;
         self.error_message.clear();
         Ok(())
     }
@@ -458,7 +459,8 @@ impl ExportDialog {
             } else {
                 export_cells_to_png(&cells, font_size)?
             };
-            std::fs::write(&path, &bytes).map_err(|e| ExportError::IoError(e.to_string()))?;
+            crate::atomic_io::atomic_write(&path, &bytes)
+                .map_err(|e| ExportError::IoError(e.to_string()))?;
         }
 
         Ok(())
