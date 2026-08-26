@@ -71,7 +71,7 @@ Independent verification results:
 - [x] **F-13 [verified]** GIF import retains all native-resolution frames in `raw_frames`
       (gif_import.rs:213-216); scaled-cell budget doesn't count native bytes. Stream
       decode; cap native pixels/cumulative bytes independently.
-- [ ] **F-14** Export pixel budgets: font-size-as-scale × canvas can exceed GBs
+- [x] **F-14** Export pixel budgets: font-size-as-scale × canvas can exceed GBs
       (output.rs:240-305). Checked pre-allocation budget; stream scanlines to encoder.
 - [ ] **F-15 [verified]** WASM editor cursor is byte index advanced by 1 per char
       (web.rs:39-58) → panic on multibyte edit. Switch to char/grapheme index.
@@ -82,7 +82,7 @@ Independent verification results:
       (palette_import.rs:126-135) → `"éx"` panics. Validate ASCII+hex digits, return
       structured error. Sweep shadow-color/palette-editor for same pattern.
       Property tests per palette format.
-- [ ] **F-18** Shared decoder limits + checked output budgets across main.rs CLI widths,
+- [x] **F-18** Shared decoder limits + checked output budgets across main.rs CLI widths,
       image_input.rs resize/public API paths (unrestricted `image::open`).
 - [ ] **F-21** Bounded readers everywhere (`take(limit+1)`); ZIP central-directory entry-count
       + aggregate-name caps (font.rs:526-549); move enumeration off UI thread.
