@@ -237,6 +237,40 @@ fn rasterize_char(
     result
 }
 
+/// Per-frame pixel budget for raster exports. A frame larger than this
+/// is rejected BEFORE allocation instead of attempting a multi-gigabyte
+/// matrix (GPT review F-14). Generous enough for the UI's maximum
+/// 200×200-cell canvas at font size 72 (~5.1 MP).
+const MAX_EXPORT_PIXELS: usize = 16_777_216;
+
+/// Validate cell grid + scale against [`MAX_EXPORT_PIXELS`] using
+/// checked arithmetic, so `width=0 × height=huge` and overflow tricks
+/// are rejected too.
+fn check_export_budget(cells: &[Vec<CanvasCell>], scale: u8) -> Result<(), ExportError> {
+    if cells.is_empty() || cells[0].is_empty() {
+        return Err(ExportError::InvalidCells("empty cell grid".to_string()));
+    }
+    if scale == 0 {
+        return Err(ExportError::InvalidCells(
+            "font size must be positive".to_string(),
+        ));
+    }
+    let sc = scale as usize;
+    let w = (cells[0].len() as u64) * 8 * sc as u64;
+    let h = (cells.len() as u64) * 16 * sc as u64;
+    let pixels = w
+        .checked_mul(h)
+        .ok_or_else(|| ExportError::InvalidCells("export dimensions overflow".to_string()))?;
+    if pixels > MAX_EXPORT_PIXELS as u64 {
+        return Err(ExportError::InvalidCells(format!(
+            "export of {w}×{h} pixels ({pixels}) exceeds the {}-pixel budget; \
+             reduce canvas size or font size",
+            MAX_EXPORT_PIXELS
+        )));
+    }
+    Ok(())
+}
+
 fn render_frame(
     cells: &[Vec<CanvasCell>],
     scale: u8,
@@ -250,8 +284,16 @@ fn render_frame(
         return Vec::new();
     }
 
-    let w = cells[0].len() * char_w;
-    let h = cells.len() * char_h;
+    // Callers have run check_export_budget; compute with checked math
+    // anyway so a missed call cannot overflow.
+    let w = match (
+        cells[0].len().checked_mul(char_w),
+        cells.len().checked_mul(char_h),
+    ) {
+        (Some(w), Some(h)) => (w, h),
+        _ => return Vec::new(),
+    };
+    let (w, h) = w;
 
     let mut pixels = vec![vec![(0u8, 0u8, 0u8, 0u8); w]; h];
 
@@ -287,6 +329,7 @@ pub fn export_cells_to_png(
     cells: &[Vec<CanvasCell>],
     font_size: u8,
 ) -> Result<Vec<u8>, ExportError> {
+    check_export_budget(cells, font_size)?;
     let pixels = render_frame(cells, font_size, false);
     if pixels.is_empty() || pixels[0].is_empty() {
         return Err(ExportError::InvalidCells("empty cell grid".to_string()));
@@ -313,6 +356,7 @@ pub fn export_cells_to_png_with_alpha(
     font_size: u8,
     transparent: bool,
 ) -> Result<Vec<u8>, ExportError> {
+    check_export_budget(cells, font_size)?;
     let pixels = render_frame(cells, font_size, transparent);
     if pixels.is_empty() || pixels[0].is_empty() {
         return Err(ExportError::InvalidCells("empty cell grid".to_string()));
@@ -409,6 +453,9 @@ pub fn export_cells_to_gif(
         return Err(ExportError::InvalidCells("no frames".to_string()));
     }
 
+    for cells in frame_cells {
+        check_export_budget(cells, font_size)?;
+    }
     let pixels = render_frame(&frame_cells[0], font_size, false);
     if pixels.is_empty() || pixels[0].is_empty() {
         return Err(ExportError::InvalidCells("empty cell grid".to_string()));
@@ -464,6 +511,9 @@ pub fn export_cells_to_apng(
         return Err(ExportError::InvalidCells("no frames".to_string()));
     }
 
+    for cells in frame_cells {
+        check_export_budget(cells, font_size)?;
+    }
     let pixels = render_frame(&frame_cells[0], font_size, false);
     if pixels.is_empty() || pixels[0].is_empty() {
         return Err(ExportError::InvalidCells("empty cell grid".to_string()));
@@ -510,6 +560,27 @@ pub fn export_cells_to_apng(
 mod tests {
     use super::*;
     use crate::CanvasCell;
+
+    /// F-14 (GPT review): oversized exports must be rejected before any
+    /// large allocation.
+    #[test]
+    fn test_export_budget_rejects_oversized() {
+        // 2000 cols × 2000 rows at scale 72 = 1_152_000 × 2_304_000 px.
+        let cells = make_buffer(2000, 2000, 'X', None, None);
+        let err = export_cells_to_png(&cells, 72).unwrap_err();
+        assert!(
+            err.to_string().contains("exceeds"),
+            "oversized export must be rejected, got: {err}"
+        );
+    }
+
+    /// F-14 (GPT review): zero scale is rejected cleanly.
+    #[test]
+    fn test_export_budget_rejects_zero_scale() {
+        let cells = make_buffer(4, 4, 'X', None, None);
+        let err = export_cells_to_png(&cells, 0).unwrap_err();
+        assert!(err.to_string().contains("font size"));
+    }
 
     fn make_buffer(
         rows: usize,

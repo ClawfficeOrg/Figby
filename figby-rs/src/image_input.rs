@@ -10,6 +10,21 @@ fn image_limits() -> image::io::Limits {
     lim
 }
 
+/// Hard cap on ASCII output width requested of resize/conversion
+/// helpers, regardless of caller-supplied values (GPT review F-18).
+pub const MAX_ASCII_WIDTH: usize = 10_000;
+
+/// Pixel budget for resizes — output larger than this is refused by
+/// returning an empty matrix (the established "invalid input" result).
+const MAX_RESIZE_PIXELS: u64 = 64_000_000;
+
+fn resize_budget_ok(width: usize, height: usize) -> bool {
+    matches!(
+        (width as u64).checked_mul(height as u64),
+        Some(px) if px > 0 && px <= MAX_RESIZE_PIXELS
+    )
+}
+
 /// Default ASCII character map (darkest to brightest).
 pub const DEFAULT_CHAR_MAP: &str = " .-:=+*#%@";
 
@@ -80,7 +95,12 @@ pub fn rgb_from_dynamic(img: &DynamicImage) -> Vec<Vec<RgbPixel>> {
 
 /// Bilinear resize a luminance matrix to new dimensions.
 pub fn bilinear_resize(matrix: &[Vec<u8>], new_width: usize, new_height: usize) -> Vec<Vec<u8>> {
-    if matrix.is_empty() || matrix[0].is_empty() || new_width == 0 || new_height == 0 {
+    if matrix.is_empty()
+        || matrix[0].is_empty()
+        || new_width == 0
+        || new_height == 0
+        || !resize_budget_ok(new_width, new_height)
+    {
         return Vec::new();
     }
     let src_h = matrix.len();
@@ -113,7 +133,12 @@ pub fn bilinear_resize_rgb(
     new_width: usize,
     new_height: usize,
 ) -> Vec<Vec<RgbPixel>> {
-    if matrix.is_empty() || matrix[0].is_empty() || new_width == 0 || new_height == 0 {
+    if matrix.is_empty()
+        || matrix[0].is_empty()
+        || new_width == 0
+        || new_height == 0
+        || !resize_budget_ok(new_width, new_height)
+    {
         return Vec::new();
     }
     let src_h = matrix.len();
@@ -176,6 +201,7 @@ pub fn luminance_to_ascii(matrix: &[Vec<u8>], target_width: usize, char_map: &st
     if matrix.is_empty() || matrix[0].is_empty() || target_width == 0 {
         return String::new();
     }
+    let target_width = target_width.min(MAX_ASCII_WIDTH);
     let src_h = matrix.len();
     let src_w = matrix[0].len();
     let target_height = ((target_width as f64 * src_h as f64 / src_w as f64) * 0.5)
@@ -1251,5 +1277,31 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// F-18 (GPT review): resize budgets refuse absurd output dimensions
+    /// by returning empty (the established invalid-input result).
+    #[test]
+    fn test_bilinear_resize_budget_refusal() {
+        let src = vec![vec![128u8; 10]; 10];
+        // 1e9 x 1e9 pixels far exceeds the budget.
+        assert!(bilinear_resize(&src, 1_000_000_000, 1_000_000_000).is_empty());
+        // Zero dims still refused.
+        assert!(bilinear_resize(&src, 0, 5).is_empty());
+        // Normal sizes still work.
+        assert_eq!(bilinear_resize(&src, 5, 5).len(), 5);
+    }
+
+    /// F-18 (GPT review): conversion helpers clamp caller-supplied
+    /// target widths to MAX_ASCII_WIDTH.
+    #[test]
+    fn test_luminance_to_ascii_clamps_width() {
+        let src = vec![vec![128u8; 8]; 8];
+        let out = luminance_to_ascii(&src, usize::MAX, DEFAULT_CHAR_MAP);
+        let max_line = out.lines().map(|l| l.chars().count()).max().unwrap_or(0);
+        assert!(
+            max_line <= MAX_ASCII_WIDTH,
+            "output width {max_line} must be capped at {MAX_ASCII_WIDTH}"
+        );
     }
 }
