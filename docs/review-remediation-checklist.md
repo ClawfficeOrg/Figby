@@ -86,14 +86,14 @@ Independent verification results:
       image_input.rs resize/public API paths (unrestricted `image::open`).
 - [ ] **F-21** Bounded readers everywhere (`take(limit+1)`); ZIP central-directory entry-count
       + aggregate-name caps (font.rs:526-549); move enumeration off UI thread.
-- [ ] **F-22** Secure atomic writes: predictable `.stem.tmp` symlink-following write
+- [x] **F-22** Secure atomic writes: predictable `.stem.tmp` symlink-following write
       (file_ops.rs:1249-1259); all exports write direct-to-destination. Tempfile in dest
       dir + atomic rename.
 - [ ] **F-23** Checked numeric parsing in control files (control.rs:291-348); command caps;
       validate config `undo_limit` before `Vec::with_capacity`; app-wide memory budget.
 - [ ] **F-24** One display-sanitization routine (ESC/OSC/C1/bidi/zero-width) for palette names,
       filenames, ZIP entries, typed paths.
-- [ ] **F-25** RAII terminal guard + panic hook restoring raw mode/alt-screen
+- [x] **F-25** RAII terminal guard + panic hook restoring raw mode/alt-screen
       (event_loop.rs:13-87, player).
 
 ## Phase 3 — Distribution & claims
