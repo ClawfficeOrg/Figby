@@ -307,6 +307,15 @@ cargo test --manifest-path figby-rs/Cargo.toml
 - **No global state** — all state passed explicitly as function parameters
 - Tasks tracked in `docs/todo-*.md` — each task maps to a `task-X.Y.Z` branch
 
+### Ralph (autonomous task loop)
+
+`scripts/ralph.sh` drives the autonomous task loop used by the maintainer.
+This repo is now feature-complete and in bug-chasing mode, so ralph is rarely
+run here. **Discussion, issues, and improvements for the ralph skill/loop
+belong in the [`~/Zoidot`](file:///Users/hippo/git_repos/Zoidot) repo**, not
+this one. See [`docs/f-20-ralph-sandbox-policy.md`](docs/f-20-ralph-sandbox-policy.md)
+for the current ralph sandboxing policy.
+
 ### Pull requests
 
 1. Fork the repo

@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.0.37] - 2026-08-26
+
+### Changed
+- README notes that Figby is feature-complete / bug-chasing and points ralph
+  skill/loop discussions to the `~/Zoidot` repo; the ralph sandboxing policy
+  is linked from the README.
+
 ## [6.0.36] - 2026-08-26
 
 Phase A of F-20 (ralph sandboxing), per the approved policy at
