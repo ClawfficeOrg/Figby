@@ -98,7 +98,7 @@ Independent verification results:
 
 ## Phase 3 — Distribution & claims
 
-- [ ] **F-26** Animation fixes: signed keyframe offsets, per-frame delay inside TimelineFrame,
+- [x] **F-26** Animation fixes: signed keyframe offsets, per-frame delay inside TimelineFrame,
       ANSI anim gets all frames, variable timing in playback, scheduler-driven preview.
 - [ ] **F-27** Qualify README parity claims; `-F` listed in README but unimplemented in binary
       (main.rs). Enable 2 passing ignored paragraph tests; drive C generator + Rust

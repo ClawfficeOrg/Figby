@@ -53,6 +53,20 @@ impl TuiApp {
             self.handle_event()?;
 
             let now = Instant::now();
+            // Scheduler-driven export preview (GPT review F-26): the export
+            // dialog's frame preview advances on elapsed time here, from the
+            // event loop, never from inside the render pass — previously it
+            // ticked during render_overlays, so it stalled whenever redraws
+            // were suppressed (RenderMode::Dirty with nothing dirty).
+            let preview_advanced = if self.dialogs.export_dialog.active {
+                let elapsed = now.saturating_duration_since(self.frame.last_draw_time);
+                self.dialogs.export_dialog.preview_tick(elapsed)
+            } else {
+                false
+            };
+            if preview_advanced {
+                self.frame.dirty = true;
+            }
             // Same throttle pattern as the throbber below: redraw at most
             // once per the animation's own frame interval, rather than
             // busy-looping — `advance()` only actually changes
@@ -60,7 +74,7 @@ impl TuiApp {
             let inline_playing_due = self.animation.inline_player.as_ref().is_some_and(|p| {
                 p.is_playing()
                     && now.saturating_duration_since(self.frame.last_draw_time)
-                        >= Duration::from_millis(1000 / p.fps().max(1) as u64)
+                        >= p.frame_interval()
             });
             let needs_redraw = match self.ctx.render_mode {
                 RenderMode::Fast => true,

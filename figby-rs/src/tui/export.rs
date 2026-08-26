@@ -4,6 +4,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
+use std::time::Duration;
 
 use crate::output::{
     export_cells_to_ansi, export_cells_to_ansi_multi, export_cells_to_apng, export_cells_to_gif,
@@ -84,6 +85,11 @@ pub struct ExportDialog {
     pub frame_delays: Vec<u16>,
     pub preview_frame: usize,
     pub preview_playing: bool,
+    /// Elapsed time since the preview last advanced, accumulated by the
+    /// event loop. Preview ticking is scheduler-driven (GPT review F-26):
+    /// it advances on elapsed time, never from inside the render pass, so
+    /// it cannot stall when redraws are suppressed.
+    pub preview_accum: Duration,
     pub play_requested: bool,
     pub timeline_available: bool,
     pub timeline_frames: Vec<Vec<Vec<CanvasCell>>>,
@@ -107,6 +113,7 @@ impl ExportDialog {
             frame_delays: Vec::new(),
             preview_frame: 0,
             preview_playing: false,
+            preview_accum: Duration::ZERO,
             play_requested: false,
             timeline_available: false,
             timeline_frames: Vec::new(),
@@ -144,6 +151,24 @@ impl ExportDialog {
         self.frame_delays = vec![delay; frame_count];
         self.preview_frame = 0;
         self.preview_playing = false;
+        self.preview_accum = Duration::ZERO;
+    }
+
+    /// Populate timeline export data from a `TimelineState`, using each
+    /// frame's own `delay` (which travels with the frame through insert/
+    /// delete/reorder — GPT review F-26) instead of a uniform FPS-derived
+    /// value that would flatten imported GIF timing.
+    pub fn set_timeline_from_timeline(&mut self, timeline: &TimelineState) {
+        if timeline.frames.is_empty() {
+            self.clear_timeline();
+            return;
+        }
+        self.timeline_available = true;
+        self.fps = timeline.fps;
+        self.frame_delays = timeline.frame_delays();
+        self.preview_frame = 0;
+        self.preview_playing = false;
+        self.preview_accum = Duration::ZERO;
     }
 
     pub fn clear_timeline(&mut self) {
@@ -152,6 +177,7 @@ impl ExportDialog {
         self.timeline_frames.clear();
         self.preview_frame = 0;
         self.preview_playing = false;
+        self.preview_accum = Duration::ZERO;
         self.play_requested = false;
     }
 
@@ -173,25 +199,44 @@ impl ExportDialog {
         }
         self.timeline_frames = frames;
         self.timeline_available = true;
-        let count = self.timeline_frames.len();
-        let delay = (100u16 / self.fps.max(1) as u16).max(1);
-        self.frame_delays = vec![delay; count];
+        self.fps = timeline.fps;
+        self.frame_delays = timeline.frame_delays();
         self.preview_frame = 0;
         self.preview_playing = false;
+        self.preview_accum = Duration::ZERO;
     }
 
-    pub fn preview_tick(&mut self) {
+    /// Advance the preview by elapsed `delta`, scheduler-driven (GPT review
+    /// F-26): time accumulates and is consumed one frame's delay at a time,
+    /// honoring per-frame delays. Returns whether the preview frame moved
+    /// (so the caller can request a redraw). Never called from render code.
+    pub fn preview_tick(&mut self, delta: Duration) -> bool {
         if !self.active
             || !self.preview_playing
             || !self.timeline_available
             || (self.format != ExportMode::Gif && self.format != ExportMode::Apng)
         {
-            return;
+            return false;
         }
         let count = self.frame_delays.len();
-        if count > 0 {
-            self.preview_frame = (self.preview_frame + 1) % count;
+        if count == 0 {
+            return false;
         }
+        self.preview_accum += delta;
+        let mut advanced = false;
+        let mut guard = 0;
+        while guard < count {
+            let delay = self.frame_delays[self.preview_frame].max(1) as u64;
+            let interval = Duration::from_millis(delay * 10);
+            if self.preview_accum < interval {
+                break;
+            }
+            self.preview_accum -= interval;
+            self.preview_frame = (self.preview_frame + 1) % count;
+            advanced = true;
+            guard += 1;
+        }
+        advanced
     }
 
     fn refresh_directory(&mut self) {
@@ -253,6 +298,7 @@ impl ExportDialog {
                     let delay = (100u16 / self.fps.max(1) as u16).max(1);
                     let count = self.frame_delays.len();
                     self.frame_delays = vec![delay; count];
+                    self.preview_accum = Duration::ZERO;
                     return true;
                 }
                 KeyCode::Char('L') | KeyCode::Char('l') => {
@@ -269,6 +315,7 @@ impl ExportDialog {
                 }
                 KeyCode::Char('V') | KeyCode::Char('v') => {
                     self.preview_playing = !self.preview_playing;
+                    self.preview_accum = Duration::ZERO;
                     return true;
                 }
                 KeyCode::Char(' ') => {
@@ -662,6 +709,24 @@ impl Default for ExportDialog {
     }
 }
 
+/// Source index range for compositing a layer at a signed keyframe offset
+/// into a canvas. A negative offset crops the leading edge of the source
+/// (the layer is shifted left/up and its left/top columns fall off-canvas);
+/// a positive offset crops the trailing edge. The old code clamped the
+/// offset to zero with `.max(0)`, which flattened negative-position
+/// keyframes onto the canvas edge instead of cropping them (GPT review
+/// F-26). Returns `[start, end)` source indices that land in `[0, canvas)`.
+fn signed_src_range(offset: i16, src_len: usize, canvas_len: usize) -> std::ops::Range<usize> {
+    let start = (-offset).max(0) as usize;
+    let end = if offset >= 0 {
+        canvas_len.saturating_sub(offset as usize)
+    } else {
+        canvas_len.saturating_add((-offset) as usize)
+    };
+    let end = src_len.min(end).max(start);
+    start..end
+}
+
 pub fn capture_timeline_frames(
     timeline: &TimelineState,
     layer_stack: &LayerStack,
@@ -692,12 +757,13 @@ pub fn capture_timeline_frames(
                     if props.opacity == 0 {
                         continue;
                     }
-                    let ox = props.position_offset.0.max(0) as usize;
-                    let oy = props.position_offset.1.max(0) as usize;
-                    for y in 0..height.min(buf.height()) {
-                        for x in 0..width.min(buf.width()) {
-                            let bx = x + ox;
-                            let by = y + oy;
+                    let (ox, oy) = props.position_offset;
+                    let x_range = signed_src_range(ox, buf.width(), width);
+                    let y_range = signed_src_range(oy, buf.height(), height);
+                    for y in y_range.clone() {
+                        for x in x_range.clone() {
+                            let bx = (x as i16 + ox) as usize;
+                            let by = (y as i16 + oy) as usize;
                             if bx >= width || by >= height {
                                 continue;
                             }
@@ -744,12 +810,13 @@ pub fn capture_timeline_frames(
                 if props.opacity == 0 {
                     continue;
                 }
-                let ox = props.position_offset.0.max(0) as usize;
-                let oy = props.position_offset.1.max(0) as usize;
-                for y in 0..height.min(layer.buffer.height()) {
-                    for x in 0..width.min(layer.buffer.width()) {
-                        let bx = x + ox;
-                        let by = y + oy;
+                let (ox, oy) = props.position_offset;
+                let x_range = signed_src_range(ox, layer.buffer.width(), width);
+                let y_range = signed_src_range(oy, layer.buffer.height(), height);
+                for y in y_range.clone() {
+                    for x in x_range.clone() {
+                        let bx = (x as i16 + ox) as usize;
+                        let by = (y as i16 + oy) as usize;
                         if bx >= width || by >= height {
                             continue;
                         }
@@ -1025,16 +1092,35 @@ mod tests {
     fn test_export_gif_preview_tick() {
         let mut dialog = ExportDialog::new();
         dialog.enter_export(ExportMode::Gif);
-        dialog.set_timeline(12, 5);
+        dialog.set_timeline(12, 5); // uniform 8cs → 80ms per frame
         dialog.preview_playing = true;
-        dialog.preview_tick();
+        assert!(dialog.preview_tick(Duration::from_millis(80)));
         assert_eq!(dialog.preview_frame, 1);
-        dialog.preview_tick();
+        assert!(dialog.preview_tick(Duration::from_millis(80)));
         assert_eq!(dialog.preview_frame, 2);
         // Cycle around
         dialog.preview_frame = 4;
-        dialog.preview_tick();
+        assert!(dialog.preview_tick(Duration::from_millis(80)));
         assert_eq!(dialog.preview_frame, 0);
+    }
+
+    #[test]
+    fn test_export_gif_preview_tick_respects_per_frame_delays() {
+        // Variable timing: frame 0 holds 50ms, frame 1 holds 200ms.
+        let mut dialog = ExportDialog::new();
+        dialog.enter_export(ExportMode::Gif);
+        dialog.set_per_frame_delays(vec![5, 20, 5]);
+        dialog.timeline_available = true;
+        dialog.preview_playing = true;
+        // Exactly frame 0's 50ms → advance to frame 1.
+        assert!(dialog.preview_tick(Duration::from_millis(50)));
+        assert_eq!(dialog.preview_frame, 1);
+        // 199ms is just short of frame 1's 200ms → no advance.
+        assert!(!dialog.preview_tick(Duration::from_millis(199)));
+        assert_eq!(dialog.preview_frame, 1);
+        // 1ms crosses 200ms → advance to frame 2.
+        assert!(dialog.preview_tick(Duration::from_millis(1)));
+        assert_eq!(dialog.preview_frame, 2);
     }
 
     #[test]
@@ -1043,7 +1129,7 @@ mod tests {
         dialog.enter_export(ExportMode::Gif);
         dialog.set_timeline(12, 5);
         dialog.preview_playing = false;
-        dialog.preview_tick();
+        assert!(!dialog.preview_tick(Duration::from_millis(500)));
         assert_eq!(dialog.preview_frame, 0);
     }
 
@@ -1145,6 +1231,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: vec![buf0],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1152,6 +1239,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
+            delay: 10,
             document_state: vec![buf1],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1186,6 +1274,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1224,6 +1313,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![
                 Some(LayerKeyframe::default()),
@@ -1254,6 +1344,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1261,6 +1352,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe {
                 position_offset: (1, 0),
@@ -1272,6 +1364,85 @@ mod tests {
         assert_eq!(frames[0][0][0].ch, 'X');
         assert_eq!(frames[1][0][0].ch, ' ');
         assert_eq!(frames[1][0][1].ch, 'X');
+    }
+
+    #[test]
+    fn test_capture_negative_keyframe_offset_crops_leading_edge() {
+        // A negative offset shifts the layer left/up; source columns/rows
+        // that fall off-canvas must be cropped, not clamped to zero (F-26).
+        let mut stack = LayerStack::new(4, 3);
+        for (x, ch) in [(0usize, 'a'), (1, 'b'), (2, 'c'), (3, 'd')] {
+            stack.layers[0].buffer.set(
+                x,
+                0,
+                CanvasCell {
+                    ch,
+                    fg: Some(Color::Red),
+                    bg: None,
+                    height: None,
+                },
+            );
+        }
+        let mut timeline = TimelineState::default();
+        timeline.add_frame(TimelineFrame {
+            thumbnail: vec![],
+            has_keyframe: true,
+            label: "F0".into(),
+            delay: 10,
+            document_state: Vec::new(),
+            layer_keyframes: vec![Some(LayerKeyframe {
+                position_offset: (-2, 0),
+                ..Default::default()
+            })],
+        });
+        let frames = capture_timeline_frames(&timeline, &stack, 4, 3);
+        assert_eq!(frames.len(), 1);
+        // 'a' and 'b' crop off-canvas; 'c' and 'd' land at x=0,1.
+        let row = &frames[0][0];
+        let chars: Vec<char> = row.iter().map(|c| c.ch).collect();
+        assert_eq!(chars, vec!['c', 'd', ' ', ' ']);
+    }
+
+    #[test]
+    fn test_capture_negative_vertical_offset_crops_top() {
+        let mut stack = LayerStack::new(2, 3);
+        stack.layers[0].buffer.set(
+            0,
+            0,
+            CanvasCell {
+                ch: 'T',
+                fg: Some(Color::Red),
+                bg: None,
+                height: None,
+            },
+        );
+        stack.layers[0].buffer.set(
+            0,
+            2,
+            CanvasCell {
+                ch: 'B',
+                fg: Some(Color::Red),
+                bg: None,
+                height: None,
+            },
+        );
+        let mut timeline = TimelineState::default();
+        timeline.add_frame(TimelineFrame {
+            thumbnail: vec![],
+            has_keyframe: true,
+            label: "F0".into(),
+            delay: 10,
+            document_state: Vec::new(),
+            layer_keyframes: vec![Some(LayerKeyframe {
+                position_offset: (0, -2),
+                ..Default::default()
+            })],
+        });
+        let frames = capture_timeline_frames(&timeline, &stack, 2, 3);
+        // y=0 (top row) crops off-canvas; y=2 content lands at row 0.
+        assert_eq!(frames[0][0][0].ch, 'B');
+        assert_eq!(frames[0][1][0].ch, ' ');
+        assert_eq!(frames[0][2][0].ch, ' ');
     }
 
     #[test]
@@ -1292,6 +1463,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1299,6 +1471,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe {
                 opacity: 0,
@@ -1341,6 +1514,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![
                 Some(LayerKeyframe::default()),
@@ -1376,6 +1550,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1384,7 +1559,11 @@ mod tests {
         assert!(dialog.timeline_available);
         assert_eq!(dialog.timeline_frames.len(), 1);
         assert_eq!(dialog.timeline_frames[0][0][0].ch, 'A');
-        assert_eq!(dialog.frame_delays, vec![8]);
+        assert_eq!(
+            dialog.frame_delays,
+            vec![10],
+            "delay taken from the frame itself"
+        );
     }
 
     #[test]
@@ -1644,6 +1823,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: vec![buf],
             layer_keyframes: vec![Some(LayerKeyframe {
                 position_offset: (1, 1),
@@ -1699,6 +1879,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: vec![buf0],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
@@ -1706,6 +1887,7 @@ mod tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F1".into(),
+            delay: 10,
             document_state: vec![buf1],
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });

@@ -1380,18 +1380,22 @@ impl TuiApp {
         if self.dialogs.export_dialog.active {
             let prev_format = self.dialogs.export_dialog.format;
             self.dialogs.export_dialog.handle_key(code);
-            // If format changed to GIF and timeline has frames, populate timeline data.
-            // Skip this if frame_delays already matches the frame count — that means
-            // real per-frame timing (e.g. from a GIF import) is already sitting there,
-            // and set_timeline() would flatten it to a uniform FPS-derived delay.
+            // If format changed to an animated format and timeline has frames,
+            // populate timeline data. Skip this if frame_delays already
+            // matches the frame count — that means timing is already sitting
+            // there (e.g. an FPS-preset override during this session), and
+            // re-deriving would clobber it. Per-frame delays come from the
+            // frames themselves (F-26).
             let count = self.animation.timeline_state.frames.len();
-            if self.dialogs.export_dialog.format == export::ExportMode::Gif
-                && prev_format != export::ExportMode::Gif
+            if (self.dialogs.export_dialog.format == export::ExportMode::Gif
+                || self.dialogs.export_dialog.format == export::ExportMode::Apng
+                || self.dialogs.export_dialog.format == export::ExportMode::Ansi)
+                && prev_format != self.dialogs.export_dialog.format
                 && count > 0
                 && self.dialogs.export_dialog.frame_delays.len() != count
             {
-                let fps = self.animation.timeline_state.fps;
-                self.dialogs.export_dialog.set_timeline(fps, count);
+                let ts = &self.animation.timeline_state;
+                self.dialogs.export_dialog.set_timeline_from_timeline(ts);
             }
             if self.dialogs.export_dialog.play_requested {
                 self.dialogs.export_dialog.play_requested = false;
@@ -1929,13 +1933,14 @@ impl TuiApp {
                     _ => export::ExportMode::Png,
                 };
                 self.dialogs.export_dialog.enter_export(mode);
-                if (mode == export::ExportMode::Gif || mode == export::ExportMode::Apng)
+                if (mode == export::ExportMode::Gif
+                    || mode == export::ExportMode::Apng
+                    || mode == export::ExportMode::Ansi)
                     && !self.animation.timeline_state.frames.is_empty()
                 {
-                    self.dialogs.export_dialog.set_timeline(
-                        self.animation.timeline_state.fps,
-                        self.animation.timeline_state.frames.len(),
-                    );
+                    self.dialogs
+                        .export_dialog
+                        .set_timeline_from_timeline(&self.animation.timeline_state);
                 }
                 self.frame.dirty = true;
                 None
@@ -2430,6 +2435,11 @@ impl TuiApp {
                             thumbnail,
                             has_keyframe: false,
                             label: format!("F{}", i),
+                            // Timing is part of frame identity (F-26): the
+                            // GIF's real per-frame delay rides with the
+                            // frame, so reorder/insert/delete keep it
+                            // attached to its content.
+                            delay: gif_data.frame_delays.get(i).copied().unwrap_or(10),
                             document_state: vec![frame_buf],
                             layer_keyframes: vec![Some(timeline::LayerKeyframe::default())],
                         });
@@ -2551,13 +2561,16 @@ impl TuiApp {
         };
 
         // Compose timeline frames if animation format + timeline has frames.
-        // Use the shared compositor (same one as preview/tests/ANSI anim) so
-        // captured frame snapshots (document_state) are respected; an earlier
-        // inline copy of this logic skipped them and exported repeated
-        // copies of the live canvas (GPT review F-04).
+        // Use the shared compositor (same one as preview/tests) so captured
+        // frame snapshots (document_state) are respected; an earlier inline
+        // copy of this logic skipped them and exported repeated copies of
+        // the live canvas (GPT review F-04). ANSI is included here too —
+        // previously only GIF/APNG composed, so an ANSI animation export
+        // received just the *current* frame (GPT review F-26).
         let frames: Vec<Vec<Vec<canvas::CanvasCell>>> = if (format
             == crate::tui::export::ExportMode::Gif
-            || format == crate::tui::export::ExportMode::Apng)
+            || format == crate::tui::export::ExportMode::Apng
+            || format == crate::tui::export::ExportMode::Ansi)
             && timeline_available
             && !self.animation.timeline_state.frames.is_empty()
         {
@@ -2663,9 +2676,11 @@ impl TuiApp {
         if frames.is_empty() {
             return;
         }
+        // Per-frame delays ride with the timeline frames (F-26).
+        let delays = self.animation.timeline_state.frame_delays();
         let fps = self.dialogs.export_dialog.fps;
         let start_frame = self.dialogs.export_dialog.preview_frame;
-        self.play_standalone_preview(frames, fps, start_frame);
+        self.play_standalone_preview(frames, delays, fps, start_frame);
     }
 
     /// Fullscreen "preview standalone" playback — takes over the whole
@@ -2678,6 +2693,7 @@ impl TuiApp {
     fn play_standalone_preview(
         &mut self,
         frames: Vec<Vec<Vec<canvas::CanvasCell>>>,
+        delays: Vec<u16>,
         fps: u8,
         start_frame: usize,
     ) {
@@ -2685,6 +2701,11 @@ impl TuiApp {
             frames[start_frame..].to_vec()
         } else {
             frames
+        };
+        let delays = if start_frame < delays.len() {
+            delays[start_frame..].to_vec()
+        } else {
+            delays
         };
 
         if frames.is_empty() {
@@ -2699,7 +2720,7 @@ impl TuiApp {
         // here would add a channel + lifecycle surface purely to reproduce
         // the same blocking behavior, with a real risk of the two writers
         // racing on stdout if not synchronized carefully.
-        if let Err(e) = player::play_fullscreen(frames, fps) {
+        if let Err(e) = player::play_fullscreen_timed(frames, fps, Some(delays)) {
             let _ = e;
         }
 
@@ -2731,7 +2752,8 @@ impl TuiApp {
         }
         let fps = self.animation.timeline_state.fps;
         let start_frame = self.animation.timeline_state.current_frame;
-        self.play_inline(frames, fps, start_frame);
+        let delays = self.animation.timeline_state.frame_delays();
+        self.play_inline(frames, delays, fps, start_frame);
     }
 
     /// Start in-canvas animation playback: `render_canvas_area` renders the
@@ -2743,14 +2765,16 @@ impl TuiApp {
     fn play_inline(
         &mut self,
         frames: Vec<Vec<Vec<canvas::CanvasCell>>>,
+        delays: Vec<u16>,
         fps: u8,
         start_frame: usize,
     ) {
         if frames.is_empty() {
             return;
         }
-        let player =
-            player::AnimationPlayer::new(frames, fps.max(1)).with_loop(self.animation.loop_enabled);
+        let player = player::AnimationPlayer::new(frames, fps.max(1))
+            .with_frame_delays(delays)
+            .with_loop(self.animation.loop_enabled);
         player.seek(start_frame);
         player.play();
         self.animation.inline_player = Some(player);
@@ -2829,13 +2853,14 @@ impl TuiApp {
                     _ => export::ExportMode::Png,
                 };
                 self.dialogs.export_dialog.enter_export(mode);
-                if (mode == export::ExportMode::Gif || mode == export::ExportMode::Apng)
+                if (mode == export::ExportMode::Gif
+                    || mode == export::ExportMode::Apng
+                    || mode == export::ExportMode::Ansi)
                     && !self.animation.timeline_state.frames.is_empty()
                 {
-                    self.dialogs.export_dialog.set_timeline(
-                        self.animation.timeline_state.fps,
-                        self.animation.timeline_state.frames.len(),
-                    );
+                    self.dialogs
+                        .export_dialog
+                        .set_timeline_from_timeline(&self.animation.timeline_state);
                 }
                 self.ui.menu_bar_state.reset();
             }
@@ -3029,6 +3054,7 @@ impl TuiApp {
                     thumbnail,
                     has_keyframe: true,
                     label: format!("F{}", self.animation.timeline_state.frames.len()),
+                    delay: self.animation.timeline_state.default_delay(),
                     document_state: vec![buffer],
                     layer_keyframes,
                 };
@@ -3118,6 +3144,7 @@ mod playback_reconciliation_tests {
                 thumbnail: capture_thumbnail(&buf, 8, 3),
                 has_keyframe: true,
                 label: format!("F{}", i),
+                delay: 10,
                 document_state: vec![buf],
                 layer_keyframes: Vec::new(),
             };
@@ -3202,6 +3229,7 @@ mod sidebar_keybindings_tests {
                 thumbnail: capture_thumbnail(&buf, 8, 3),
                 has_keyframe: true,
                 label: format!("F{}", i),
+                delay: 10,
                 document_state: vec![buf],
                 layer_keyframes: Vec::new(),
             };

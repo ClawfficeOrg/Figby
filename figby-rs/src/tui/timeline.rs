@@ -32,6 +32,12 @@ pub struct TimelineFrame {
     pub thumbnail: Vec<Vec<char>>,
     pub has_keyframe: bool,
     pub label: String,
+    /// Hold time for this frame in centiseconds (1/100 s), the GIF
+    /// convention used everywhere else in this codebase. Lives *inside* the
+    /// frame so insert/delete/reorder/duplicate carry timing with the
+    /// content (GPT review F-26) — a separate delays vector can detach from
+    /// the frames it describes.
+    pub delay: u16,
     /// Committed pixel state: one buffer per layer, in render order
     /// (bottom-to-top). Empty when the frame has no committed snapshot —
     /// such frames derive pixels from the live layer stack.
@@ -199,6 +205,20 @@ impl Default for TimelineState {
 }
 
 impl TimelineState {
+    /// Default hold time (centiseconds) for a freshly captured frame at the
+    /// timeline's current fps — e.g. 12fps → 8cs (≈83ms). `.max(1)` keeps a
+    /// very high fps from producing a zero (meaningless) delay.
+    pub fn default_delay(&self) -> u16 {
+        (100u16 / self.fps.max(1) as u16).max(1)
+    }
+
+    /// Per-frame hold times in timeline order. Because `delay` lives inside
+    /// `TimelineFrame`, this always matches the frames it accompanies — even
+    /// after insert/delete/reorder/duplicate (GPT review F-26).
+    pub fn frame_delays(&self) -> Vec<u16> {
+        self.frames.iter().map(|f| f.delay.max(1)).collect()
+    }
+
     /// Refresh the display-only layer-name column from the current layer
     /// stack. Must be called any time a frame is added (manual capture,
     /// menu "Add Frame", GIF import) — the timeline widget sizes its
@@ -287,7 +307,11 @@ impl TimelineState {
 
         let old = self.current_frame;
         if from == old {
-            self.current_frame = to;
+            // The moved frame lands at `insert_at` above: `to` when moving
+            // left, `to - 1` when moving right (removal shifts everything
+            // after `from` left by one). Pointing at `to` unconditionally
+            // tracked the wrong logical frame for a rightward move (F-26).
+            self.current_frame = insert_at;
         } else if from < old && to >= old {
             self.current_frame = old.saturating_sub(1);
         } else if from > old && to <= old {
@@ -457,6 +481,7 @@ impl TimelineState {
                 thumbnail: start_frame.thumbnail.clone(),
                 has_keyframe: has_kf,
                 label: format!("tween {}/{}", i + 1, num_frames),
+                delay: start_frame.delay.max(1),
                 document_state: Vec::new(),
                 layer_keyframes: frame_layers,
             });
@@ -1191,6 +1216,7 @@ mod tests {
             thumbnail: thumb,
             has_keyframe: has_kf,
             label: label.to_string(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: Vec::new(),
         }
@@ -1746,6 +1772,87 @@ mod tests {
         state.reorder_frame(3, 0).unwrap();
         let labels: Vec<&str> = state.frames.iter().map(|f| f.label.as_str()).collect();
         assert_eq!(labels, vec!["3", "0", "1", "2"]);
+    }
+
+    #[test]
+    fn test_reorder_forward_keeps_current_frame_on_moved_frame() {
+        // Moving the current frame right: the frame is inserted at `to - 1`
+        // (index 1), so current_frame must follow it there, not jump to `to`
+        // (index 2), which would point at a different logical frame (F-26).
+        let mut state = TimelineState {
+            frames: (0..4)
+                .map(|i| make_frame(vec![vec!['X'; 3]; 2], false, &format!("{}", i)))
+                .collect(),
+            current_frame: 0,
+            ..TimelineState::default()
+        };
+        state.reorder_frame(0, 2).unwrap();
+        assert_eq!(state.current_frame, 1, "moved frame's new slot");
+        assert_eq!(state.frames[state.current_frame].label, "0");
+    }
+
+    #[test]
+    fn test_reorder_backward_keeps_current_frame_on_moved_frame() {
+        // Moving the current frame left: inserted at index `to` (0).
+        let mut state = TimelineState {
+            frames: (0..4)
+                .map(|i| make_frame(vec![vec!['X'; 3]; 2], false, &format!("{}", i)))
+                .collect(),
+            current_frame: 3,
+            ..TimelineState::default()
+        };
+        state.reorder_frame(3, 0).unwrap();
+        assert_eq!(state.current_frame, 0, "moved frame's new slot");
+        assert_eq!(state.frames[state.current_frame].label, "3");
+    }
+
+    #[test]
+    fn test_reorder_forward_keeps_current_frame_on_tracked_content() {
+        // Moving frame 0 right past the current frame (2): frame 2 slides
+        // left by one, so current_frame must decrement to keep pointing at it.
+        let mut state = TimelineState {
+            frames: (0..4)
+                .map(|i| make_frame(vec![vec!['X'; 3]; 2], false, &format!("{}", i)))
+                .collect(),
+            current_frame: 2,
+            ..TimelineState::default()
+        };
+        state.reorder_frame(0, 3).unwrap();
+        assert_eq!(state.current_frame, 1);
+        assert_eq!(state.frames[state.current_frame].label, "2");
+    }
+
+    #[test]
+    fn test_frame_delays_match_frames_after_reorder() {
+        // Per-frame delays travel with their frames through reorder: the
+        // delay for the frame labeled "3" must stay with it (F-26).
+        let mut state = TimelineState::default();
+        state.add_frame(make_frame(vec![], false, "a"));
+        state.frames[0].delay = 7;
+        state.add_frame(make_frame(vec![], false, "b"));
+        state.frames[1].delay = 23;
+        state.add_frame(make_frame(vec![], false, "c"));
+        state.frames[2].delay = 5;
+        state.add_frame(make_frame(vec![], false, "d"));
+        state.frames[3].delay = 11;
+
+        state.reorder_frame(1, 3).unwrap();
+        let labels: Vec<&str> = state.frames.iter().map(|f| f.label.as_str()).collect();
+        assert_eq!(labels, vec!["a", "c", "b", "d"]);
+        assert_eq!(state.frame_delays(), vec![7, 5, 23, 11]);
+    }
+
+    #[test]
+    fn test_frame_delays_default_from_fps() {
+        let mut state = TimelineState {
+            fps: 12,
+            ..TimelineState::default()
+        };
+        assert_eq!(state.default_delay(), 8);
+        state.fps = 24;
+        assert_eq!(state.default_delay(), 4);
+        state.fps = 200;
+        assert_eq!(state.default_delay(), 1, "clamped to a positive delay");
     }
 
     #[test]

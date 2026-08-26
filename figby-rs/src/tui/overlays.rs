@@ -16,7 +16,6 @@ impl TuiApp {
             let overlay = super::centered_overlay(frame.area());
             frame.render_widget(Clear, overlay);
             self.dialogs.export_dialog.render(frame, overlay);
-            self.dialogs.export_dialog.preview_tick();
         }
 
         // File ops overlay

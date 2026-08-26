@@ -58,6 +58,27 @@ Key architectural decisions from Phase 0–1:
   `--locked`, toolchain pinned by root `rust-toolchain.toml` (1.97.1).
   CI also asserts fixtures exist and verifies `cargo package`.
 
+### Animation timing & transforms (F-26, 6.0.34, branch `hardening/gpt-review`)
+
+- **Timing is part of frame identity**: `TimelineFrame.delay` (centiseconds,
+  GIF convention) lives on the frame, so insert/delete/reorder/duplicate
+  carry timing with content. `TimelineState::frame_delays()` is the single
+  producer of export/playback delays; the export dialog's
+  `set_timeline_from_timeline` replaces `set_timeline` in production paths
+  (FPS-preset override stays per-session via `dialog.frame_delays`).
+- **Signed compositor**: `capture_timeline_frames` uses `signed_src_range`
+  (source index window) so negative keyframe offsets crop the leading edge
+  instead of being clamped to 0.
+- **Player variable timing**: `AnimationPlayer` takes optional per-frame
+  delays (`with_frame_delays`); `advance()` steps per-frame intervals,
+  `frame_interval()` drives event-loop throttle and sleep loops.
+  `play_fullscreen_timed`/`play_raw_timed` wrap the fixed-FPS versions.
+- **Scheduler-driven preview**: export-dialog preview ticks on elapsed time
+  in `run()` (never inside `render_overlays`), honoring per-frame delays;
+  returns whether the frame moved so the loop can mark dirty.
+- **ANSI multi-frame**: production export composes timeline frames for
+  Ansi too (previously GIF/APNG only → ANSI export got only current frame).
+
 ### UTF-8 Native Encoding
 Figby uses Rust `char`/`String` natively (UTF-8), not `wchar_t`.
 FIGlet C used `typedef long inchr` for internal char representation.

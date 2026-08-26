@@ -1006,6 +1006,7 @@ impl AnimationState {
                         thumbnail,
                         has_keyframe: true,
                         label: format!("F{}", self.timeline_state.frames.len()),
+                        delay: self.timeline_state.default_delay(),
                         document_state: vec![buffer],
                         layer_keyframes,
                     };
@@ -1772,6 +1773,7 @@ mod editor_state_tests {
             thumbnail: vec![],
             has_keyframe: true,
             label: "F0".into(),
+            delay: 10,
             document_state: Vec::new(),
             layer_keyframes: vec![None, None],
         });

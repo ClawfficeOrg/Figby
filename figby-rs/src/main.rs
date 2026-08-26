@@ -1133,16 +1133,21 @@ fn main() {
                     process::exit(1);
                 }
             };
-        // play_raw is a single-fps engine (no per-frame delay support), so
-        // approximate an overall fps from the GIF's first real frame delay —
-        // the same convention used when a GIF import seeds the TUI
-        // timeline's fps (see tui/mod.rs's perform_import_gif).
+        // Per-frame delays from the source GIF are passed through so
+        // playback honors its real (possibly variable) timing instead of a
+        // uniform FPS approximation (GPT review F-26). `fps` below remains
+        // the fallback cadence for frames without an explicit delay.
         let first_delay_cs = gif_result.frame_delays.first().copied().unwrap_or(10);
         let fps = 100u16
             .checked_div(first_delay_cs.max(1))
             .map(|f| f.clamp(1, 60) as u8)
             .unwrap_or(10);
-        if let Err(e) = figby::tui::player::play_raw(gif_result.frames, fps, args.play_loop) {
+        if let Err(e) = figby::tui::player::play_raw_timed(
+            gif_result.frames,
+            fps,
+            Some(gif_result.frame_delays),
+            args.play_loop,
+        ) {
             eprintln!("Playback error: {e}");
             process::exit(1);
         }

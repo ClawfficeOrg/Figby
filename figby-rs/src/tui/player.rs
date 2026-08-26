@@ -26,6 +26,10 @@ const MAX_SPEED: f64 = 4.0;
 pub struct AnimationPlayer {
     frames: Vec<AnimationFrame>,
     fps: u8,
+    /// Per-frame hold times in centiseconds. `None` → uniform `fps` timing.
+    /// When present, `advance()` uses the current frame's own delay, so
+    /// GIF-imported variable timing survives playback (GPT review F-26).
+    frame_delays: Option<Vec<u16>>,
     current_frame: Cell<usize>,
     playing: Cell<bool>,
     loop_: Cell<bool>,
@@ -38,6 +42,10 @@ impl std::fmt::Debug for AnimationPlayer {
         f.debug_struct("AnimationPlayer")
             .field("frames", &self.frames.len())
             .field("fps", &self.fps)
+            .field(
+                "frame_delays",
+                &self.frame_delays.as_ref().map(|d| d.len()).unwrap_or(0),
+            )
             .field("current_frame", &self.current_frame)
             .field("playing", &self.playing)
             .field("loop_", &self.loop_)
@@ -51,12 +59,21 @@ impl AnimationPlayer {
         Self {
             frames,
             fps,
+            frame_delays: None,
             current_frame: Cell::new(0),
             playing: Cell::new(false),
             loop_: Cell::new(false),
             speed: Cell::new(1.0),
             accumulator: Cell::new(0.0),
         }
+    }
+
+    /// Consuming builder to attach per-frame hold times (centiseconds).
+    /// Shorter than the frame count → missing frames fall back to 10cs.
+    pub fn with_frame_delays(mut self, delays: Vec<u16>) -> Self {
+        self.frame_delays = Some(delays);
+        self.accumulator.set(0.0);
+        self
     }
 
     pub fn play(&self) {
@@ -107,38 +124,54 @@ impl AnimationPlayer {
             return 0;
         }
 
-        let effective_fps = self.fps as f64 * self.speed.get();
-        let frame_interval = 1.0 / effective_fps;
-
         let mut acc = self.accumulator.get() + delta.as_secs_f64();
-        let mut advanced = 0u64;
-
-        while acc >= frame_interval {
-            acc -= frame_interval;
-            advanced += 1;
-        }
-
-        if advanced == 0 {
-            self.accumulator.set(acc);
-            return 0;
-        }
-
+        let mut advanced = 0usize;
         let total = self.frames.len();
-        let current = self.current_frame.get();
 
-        if self.loop_.get() {
-            let new_frame = (current + advanced as usize) % total;
-            self.current_frame.set(new_frame);
-        } else {
-            let new_frame = (current + advanced as usize).min(total.saturating_sub(1));
-            self.current_frame.set(new_frame);
-            if new_frame >= total.saturating_sub(1) {
-                self.playing.set(false);
+        loop {
+            let cur = self.current_frame.get();
+            let interval = self.frame_interval_for(cur);
+            if acc < interval {
+                break;
+            }
+            acc -= interval;
+            advanced += 1;
+            if self.loop_.get() {
+                self.current_frame.set((cur + 1) % total);
+            } else {
+                if cur + 1 >= total {
+                    // Final frame has had its natural on-screen interval.
+                    self.current_frame.set(cur);
+                    self.playing.set(false);
+                    acc = 0.0;
+                    break;
+                }
+                self.current_frame.set(cur + 1);
             }
         }
 
         self.accumulator.set(acc);
-        advanced as usize
+        advanced
+    }
+
+    /// Hold time for the frame at `idx` in seconds, scaled by playback
+    /// speed. Uses the per-frame delay when present, otherwise the
+    /// uniform fps-derived interval.
+    fn frame_interval_for(&self, idx: usize) -> f64 {
+        if let Some(delays) = &self.frame_delays {
+            let d = delays.get(idx).copied().unwrap_or(10).max(1) as f64;
+            d / 100.0 / self.speed.get().max(0.001)
+        } else {
+            1.0 / (self.fps as f64 * self.speed.get())
+        }
+    }
+
+    /// Duration until the current frame should advance — used by callers
+    /// that throttle redraws/sleeps to the animation's own cadence, which
+    /// is per-frame when variable timing is attached (GPT review F-26).
+    pub fn frame_interval(&self) -> Duration {
+        let s = self.frame_interval_for(self.current_frame.get());
+        Duration::from_secs_f64(s.max(0.0001))
     }
 
     pub fn progress(&self) -> (usize, usize) {
@@ -465,10 +498,28 @@ impl TerminalSession {
 /// and handles keyboard input. Does NOT manage alternate screen — caller is
 /// responsible for that.
 pub fn play_fullscreen(frames: Vec<AnimationFrame>, fps: u8) -> io::Result<()> {
+    play_fullscreen_timed(frames, fps, None)
+}
+
+/// `play_fullscreen` with per-frame hold times (centiseconds) so imported
+/// GIF timing isn't flattened to a uniform FPS (GPT review F-26).
+pub fn play_fullscreen_timed(
+    frames: Vec<AnimationFrame>,
+    fps: u8,
+    delays: Option<Vec<u16>>,
+) -> io::Result<()> {
     let session = TerminalSession::capture()?;
 
     let mut all_frames = vec![session.captured_frame.clone()];
     all_frames.extend(frames);
+
+    // The prepended capture is always blank; give it the first real
+    // frame's hold time so playback doesn't stall on it.
+    let mut delays = delays;
+    if let Some(d) = delays.as_mut() {
+        let first = d.first().copied().unwrap_or(10);
+        d.insert(0, first);
+    }
 
     // Cap frame dimensions to terminal size to avoid rendering issues
     let (term_w, term_h) = terminal::size()?;
@@ -485,7 +536,10 @@ pub fn play_fullscreen(frames: Vec<AnimationFrame>, fps: u8) -> io::Result<()> {
         }
     }
 
-    let player = AnimationPlayer::new(all_frames, fps);
+    let mut player = AnimationPlayer::new(all_frames, fps);
+    if let Some(d) = delays {
+        player = player.with_frame_delays(d);
+    }
     player.play();
 
     let backend = CrosstermBackend::new(io::stdout());
@@ -493,7 +547,6 @@ pub fn play_fullscreen(frames: Vec<AnimationFrame>, fps: u8) -> io::Result<()> {
     terminal.clear()?;
     terminal.hide_cursor()?;
 
-    let tick = Duration::from_millis(1000 / fps.max(1) as u64);
     let mut finished = false;
 
     while !finished {
@@ -502,6 +555,7 @@ pub fn play_fullscreen(frames: Vec<AnimationFrame>, fps: u8) -> io::Result<()> {
             f.render_widget(&player, area);
         })?;
 
+        let tick = player.frame_interval();
         if event::poll(tick)? {
             if let Event::Key(key) = event::read()? {
                 let consumed = player.handle_key(key.code);
@@ -619,13 +673,28 @@ pub fn render_frame_raw(frame: &AnimationFrame) -> String {
 /// bypassed — any keypress exits immediately. This is the "banner" mode:
 /// loop until dismissed, rather than play-once-and-return.
 pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io::Result<()> {
+    play_raw_timed(frames, fps, None, loop_playback)
+}
+
+/// `play_raw` with per-frame hold times (centiseconds) so GIF-imported
+/// variable timing isn't discarded (GPT review F-26). `fps` is still used
+/// as the fallback for any frame without an explicit delay.
+pub fn play_raw_timed(
+    frames: Vec<AnimationFrame>,
+    fps: u8,
+    delays: Option<Vec<u16>>,
+    loop_playback: bool,
+) -> io::Result<()> {
     if frames.is_empty() {
         return Ok(());
     }
 
     let total = frames.len();
     let precomputed: Vec<String> = frames.iter().map(render_frame_raw).collect();
-    let player = AnimationPlayer::new(frames, fps);
+    let mut player = AnimationPlayer::new(frames, fps);
+    if let Some(d) = delays {
+        player = player.with_frame_delays(d);
+    }
     player.play();
     if loop_playback {
         player.toggle_loop();
@@ -656,7 +725,7 @@ pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io
         write_playback_progress_bar(&player, cur, total)?;
         io::stdout().flush()?;
 
-        let frame_interval = Duration::from_secs_f64(1.0 / (fps as f64 * player.speed_mult()));
+        let frame_interval = player.frame_interval();
         std::thread::sleep(frame_interval);
 
         if event::poll(Duration::ZERO)? {
@@ -874,6 +943,65 @@ mod tests {
         let n = player.advance(Duration::from_millis(100));
         assert_eq!(n, 2);
         assert_eq!(player.current_frame(), 2);
+    }
+
+    #[test]
+    fn test_player_variable_frame_delays() {
+        // Delays in centiseconds: 50ms, 200ms, 50ms. FPS is ignored when
+        // per-frame delays are attached (GPT review F-26).
+        let frames = make_test_frames(3, 3, 2);
+        let player = AnimationPlayer::new(frames, 30).with_frame_delays(vec![5, 20, 5]);
+        player.play();
+
+        assert_eq!(player.advance(Duration::from_millis(50)), 1);
+        assert_eq!(player.current_frame(), 1);
+        // 199ms is short of frame 1's 200ms → stays.
+        assert_eq!(player.advance(Duration::from_millis(199)), 0);
+        assert_eq!(player.current_frame(), 1);
+        // 1ms crosses 200ms → frame 2.
+        assert_eq!(player.advance(Duration::from_millis(1)), 1);
+        assert_eq!(player.current_frame(), 2);
+    }
+
+    #[test]
+    fn test_player_variable_frame_delays_fallback_when_shorter() {
+        // Only 2 delays for 3 frames: the third falls back to 10cs (100ms).
+        let frames = make_test_frames(3, 3, 2);
+        let player = AnimationPlayer::new(frames, 10).with_frame_delays(vec![20, 5]);
+        player.play();
+        // 200ms → frame 1.
+        assert_eq!(player.advance(Duration::from_millis(200)), 1);
+        assert_eq!(player.current_frame(), 1);
+        // 50ms → frame 2; 100ms (fallback) → non-looping end.
+        player.advance(Duration::from_millis(50));
+        assert_eq!(player.current_frame(), 2);
+        player.advance(Duration::from_millis(100));
+        assert!(!player.is_playing(), "stops on the last frame");
+    }
+
+    #[test]
+    fn test_player_variable_frame_delays_loop() {
+        let frames = make_test_frames(2, 3, 2);
+        let player = AnimationPlayer::new(frames, 10)
+            .with_frame_delays(vec![5, 5])
+            .with_loop(true);
+        player.play();
+        // 50 + 50ms → wraps back to frame 0.
+        player.advance(Duration::from_millis(100));
+        assert_eq!(player.current_frame(), 0);
+        assert!(player.is_playing());
+    }
+
+    #[test]
+    fn test_player_frame_interval_reflects_per_frame_delay() {
+        let frames = make_test_frames(2, 3, 2);
+        let player = AnimationPlayer::new(frames, 10).with_frame_delays(vec![5, 20]);
+        assert_eq!(player.frame_interval(), Duration::from_millis(50));
+        player.seek(1);
+        assert_eq!(player.frame_interval(), Duration::from_millis(200));
+        // Speed scales the interval.
+        player.set_speed(2.0);
+        assert_eq!(player.frame_interval(), Duration::from_millis(100));
     }
 
     #[test]

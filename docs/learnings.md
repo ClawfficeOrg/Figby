@@ -1674,3 +1674,7 @@ Three bugs found in phase merge review:
   `impl Widget for &T` alongside an inherent `.render()` method), grep
   every call site first — `Widget::render(&x, ...)` vs `x.render(...)`
   are easy to conflate by eye but resolve to completely different impls.
+
+- F-26: negative keyframe offsets crop (not clamp) in capture_timeline_frames via `signed_src_range`; `.max(0)` on a signed offset is almost always the wrong compositing fix.
+- F-26: reorder-right moves a frame to index `to - 1` after the removal shift; pointing `current_frame` at `to` lands on the wrong logical frame.
+- F-26: centiseconds (`delay` 1/100s) is the one timing unit across GIF import/export, player, and now TimelineFrame — keep it uniform; conversions to/from fps (`100/fps`) are only for defaults.

@@ -2975,6 +2975,7 @@ fn test_space_starts_playback_even_with_layers_panel_open() {
     app.side_panel.open = true;
     app.side_panel.active_tab = TabId::Layers;
     app.animation.timeline_state.add_frame(TimelineFrame {
+        delay: 10,
         thumbnail: vec![],
         has_keyframe: true,
         label: "F0".to_string(),
@@ -2982,6 +2983,7 @@ fn test_space_starts_playback_even_with_layers_panel_open() {
         layer_keyframes: vec![],
     });
     app.animation.timeline_state.add_frame(TimelineFrame {
+        delay: 10,
         thumbnail: vec![],
         has_keyframe: true,
         label: "F1".to_string(),
@@ -3031,6 +3033,7 @@ fn test_timeline_frame_edits_persist_on_switch() {
 
     // Add two timeline frames
     app.animation.timeline_state.add_frame(TimelineFrame {
+        delay: 10,
         thumbnail: vec![],
         has_keyframe: true,
         label: "F0".to_string(),
@@ -3038,6 +3041,7 @@ fn test_timeline_frame_edits_persist_on_switch() {
         layer_keyframes: vec![],
     });
     app.animation.timeline_state.add_frame(TimelineFrame {
+        delay: 10,
         thumbnail: vec![],
         has_keyframe: true,
         label: "F1".to_string(),

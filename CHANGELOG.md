@@ -1,5 +1,32 @@
 # Changelog
 
+## [6.0.34] - 2026-08-26
+
+Phase 3 of the GPT-review remediation (`docs/GPT-review-8-20-26.md`, tracked
+in `docs/review-remediation-checklist.md`) — animation timing and transform
+behavior (F-26).
+
+### Changed
+- **F-26** Per-frame hold time now lives inside `TimelineFrame::delay`
+  (centiseconds), so insert/delete/reorder/duplicate carry timing with the
+  content instead of detaching it from a side-channel delays vector; export
+  timing and inline/standalone playback all derive from the frames.
+
+### Fixed
+- **F-26** Signed keyframe offsets: the shared timeline compositor now crops
+  negative-position layers against the canvas instead of clamping the offset
+  to zero, so left/up keyframe motion renders correctly.
+- **F-26** Frame reorder no longer leaves `current_frame` pointing at the
+  wrong logical frame when the current frame is moved right.
+- **F-26** Production ANSI animation export now receives all timeline frames
+  (via the same shared compositor as GIF/APNG) instead of just the current
+  frame.
+- **F-26** `--play`, in-canvas playback, and the fullscreen preview honor
+  per-frame GIF timing instead of flattening it to a uniform FPS.
+- **F-26** The export dialog's animation preview is scheduler-driven (elapsed
+  time in the event loop, per-frame delays) and can no longer stall when
+  redraws are suppressed.
+
 ## [6.0.33] - 2026-08-25
 
 Phase 1 of the GPT-review remediation (`docs/GPT-review-8-20-26.md`,
