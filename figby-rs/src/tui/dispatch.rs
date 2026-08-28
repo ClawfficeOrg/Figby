@@ -1692,8 +1692,13 @@ impl TuiApp {
                 return None;
             }
         }
-        // Settings toggle
-        if code == KeyCode::Char('S') && !modifiers.contains(KeyModifiers::CONTROL) {
+        // Settings toggle — skip when FontEditor Overview is active so S
+        // reaches the smushing-rule editor (GPT review keybind collision).
+        if code == KeyCode::Char('S')
+            && !modifiers.contains(KeyModifiers::CONTROL)
+            && !(self.ui.mode == AppMode::FontEditor
+                && self.editor.font_editor.view == font_editor::FontEditorView::Overview)
+        {
             self.dialogs.settings.canvas_width = self.editor.canvas.buffer.width() as u16;
             self.dialogs.settings.canvas_height = self.editor.canvas.buffer.height() as u16;
             self.dialogs.settings.show_grid = self.editor.canvas.show_grid();
@@ -1771,7 +1776,8 @@ impl TuiApp {
                     }
                     Some(AppEvent::Toolbox(ToolboxEvent::BrushChanged))
                 }
-                KeyCode::Char(c) if !modifiers.contains(KeyModifiers::CONTROL) && c != 'T' => {
+                KeyCode::Char(c)
+                    if !modifiers.contains(KeyModifiers::CONTROL) && c != 'T' && c != 'S' => {
                     let lower = c.to_ascii_lowercase();
                     let mut found = None;
                     for tool in Tool::all() {
@@ -2233,27 +2239,6 @@ impl TuiApp {
     /// Request opening a font. If the document has unsaved changes, the
     /// open waits behind the unsaved-changes dialog instead of silently
     /// replacing work (GPT review F-08).
-    pub(crate) fn request_open(&mut self, target: Option<file_ops::OpenTarget>) {
-        if self.editor.unsaved && self.dialogs.pending_transition.is_none() {
-            self.dialogs.pending_transition = Some(PendingDocAction::OpenFont);
-            // Keep the resolved target for when the transition runs.
-            if let Some(t) = target {
-                self.dialogs.pending_open_path = Some(match t {
-                    file_ops::OpenTarget::File(p) => p,
-                    file_ops::OpenTarget::ZipEntry { zip_path, .. } => zip_path,
-                });
-            }
-            self.dialogs.quit_confirm_dialog = true;
-            self.frame.dirty = true;
-            return;
-        }
-        if let Some(path) = self.dialogs.pending_open_path.take() {
-            self.perform_open_at(path);
-            return;
-        }
-        self.perform_open();
-    }
-
     pub(crate) fn perform_open_at(&mut self, path: std::path::PathBuf) {
         if self.ctx.throbber.is_active() {
             return;
@@ -2281,7 +2266,16 @@ impl TuiApp {
         }
         let target = self.dialogs.file_ops.resolve_open_target();
         match target {
-            file_ops::OpenTarget::File(_) => self.request_open(Some(target)),
+            file_ops::OpenTarget::File(path) => {
+                if self.editor.unsaved && self.dialogs.pending_transition.is_none() {
+                    self.dialogs.pending_transition = Some(PendingDocAction::OpenFont);
+                    self.dialogs.pending_open_path = Some(path);
+                    self.dialogs.quit_confirm_dialog = true;
+                    self.frame.dirty = true;
+                    return;
+                }
+                self.perform_open_at(path);
+            }
             file_ops::OpenTarget::ZipEntry {
                 zip_path,
                 entry_name,
@@ -3361,6 +3355,163 @@ mod sidebar_keybindings_tests {
         assert_eq!(
             app.editor.layer_stack.layers[layer_idx].casts_shadow, !has_shadow_before,
             "Alt+S must toggle layer cast shadow"
+        );
+    }
+}
+
+#[cfg(test)]
+mod keybind_collision_tests {
+    use super::*;
+    use crate::tui::font_editor::FontEditorView;
+    use crate::font::{FIGcharacter, FIGfont};
+    use crossterm::event::KeyEvent;
+    use std::collections::HashMap;
+
+    fn test_font() -> FIGfont {
+        FIGfont {
+            charheight: 3,
+            maxlength: 5,
+            chars: HashMap::from([
+                (
+                    0,
+                    FIGcharacter::from(vec![
+                        "     ".to_string(),
+                        "     ".to_string(),
+                        "     ".to_string(),
+                    ]),
+                ),
+                (
+                    65,
+                    FIGcharacter::from(vec![
+                        " AA  ".to_string(),
+                        "A  A ".to_string(),
+                        "AAAA ".to_string(),
+                    ]),
+                ),
+                (
+                    66,
+                    FIGcharacter::from(vec![
+                        "BBB  ".to_string(),
+                        "B  B ".to_string(),
+                        "BBB  ".to_string(),
+                    ]),
+                ),
+            ]),
+            ..Default::default()
+        }
+    }
+
+    fn app_font_editor_overview() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.editor.font_editor.load_font(test_font());
+        assert_eq!(app.ui.mode, AppMode::FontEditor);
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::Overview,
+            "TuiApp::new() should default to FontEditor Overview"
+        );
+        app
+    }
+
+    fn app_not_font_editor() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::ImageEditor;
+        app
+    }
+
+    // --- T key: Transform editor vs ToggleTimeline ---
+
+    #[test]
+    fn test_t_opens_transform_editor_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::TransformEditor,
+            "T in FontEditor Overview must open Transform editor"
+        );
+    }
+
+    #[test]
+    fn test_t_does_not_toggle_timeline_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let was_visible = app.animation.timeline_visible;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        assert_eq!(
+            app.animation.timeline_visible, was_visible,
+            "T in FontEditor Overview must NOT toggle timeline"
+        );
+    }
+
+    #[test]
+    fn test_t_toggles_timeline_outside_font_editor() {
+        let mut app = app_not_font_editor();
+        let was_visible = app.animation.timeline_visible;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        assert_ne!(
+            app.animation.timeline_visible, was_visible,
+            "T outside FontEditor must toggle timeline"
+        );
+    }
+
+    // --- S key: Smushing editor vs Settings ---
+
+    #[test]
+    fn test_s_opens_smushing_editor_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::SmushRuleEditor,
+            "S in FontEditor Overview must open Smushing rule editor"
+        );
+    }
+
+    #[test]
+    fn test_s_does_not_open_settings_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        assert!(
+            !app.dialogs.settings.settings_open,
+            "S in FontEditor Overview must NOT open settings"
+        );
+    }
+
+    #[test]
+    fn test_s_opens_settings_outside_font_editor() {
+        let mut app = app_not_font_editor();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        assert!(
+            app.dialogs.settings.settings_open,
+            "S outside FontEditor must open settings"
+        );
+    }
+
+    // --- Toolbox catch-all exclusion ---
+
+    #[test]
+    fn test_t_not_consumed_by_toolbox_in_image_editor() {
+        let mut app = app_not_font_editor();
+        app.editor.toolbox.selected = crate::tui::toolbox::Tool::Brush;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        // T should toggle timeline, not select a tool
+        assert_ne!(
+            app.editor.toolbox.selected,
+            crate::tui::toolbox::Tool::Text,
+            "T must not be consumed by toolbox catch-all"
+        );
+    }
+
+    #[test]
+    fn test_s_not_consumed_by_toolbox_in_image_editor() {
+        let mut app = app_not_font_editor();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        // S should open settings, not be consumed by toolbox
+        assert!(
+            app.dialogs.settings.settings_open,
+            "S must not be consumed by toolbox catch-all"
         );
     }
 }

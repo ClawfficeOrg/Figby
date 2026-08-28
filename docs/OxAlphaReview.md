@@ -55,6 +55,15 @@ All flags tested with `figby-rs/target/release/figby`:
 - **Binary** only has `-v` (lowercase) — `-V` returns `error: unexpected argument '-V'`
 - C FIGlet uses lowercase `-v`. The README should say `-v` not `-V`.
 
+### Fixed: T and S key collisions (FontOverview vs Global)
+
+- **T**: Was intercepted by global ToggleTimeline before FontEditor. Fixed by
+  excluding `T` from toolbox catch-all and ensuring FontEditor dispatch fires
+  before global dispatch. `T` now opens Transform editor in FontOverview mode.
+- **S**: Was intercepted by hardcoded Settings toggle before FontEditor. Fixed by
+  making Settings intercept conditional on `!(FontEditor && Overview)`. `S` now
+  opens Smushing rule editor in FontOverview mode.
+
 ### Note: stdin pipe test
 
 `echo "Hello" | figby` works correctly via POSIX pipe. The `-A` flag also works
@@ -293,8 +302,8 @@ for reading from stdin.
 
 | Key | Scope 1 | Scope 2 | Severity | Notes |
 |-----|---------|---------|----------|-------|
-| **T** | Global: Toggle timeline | FontOverview: Transform editor | ⚠️ **Medium** | Global dispatch fires first in handle_key_event, so T in FontEditor mode toggles timeline, not the transform editor. The FontOverview T is effectively dead when in FontEditor mode unless the dispatch order is reordered. |
-| **S** | Global: Open settings | FontOverview: Smushing rule editor | ⚠️ **Medium** | Same issue — Global S fires before FontEditor-specific S. Settings dialog opens instead of smushing editor. |
+| **T** | Global: Toggle timeline | FontOverview: Transform editor | ✅ **Fixed** | FontEditor dispatch fires before global. T opens Transform editor in FontOverview. |
+| **S** | Global: Open settings | FontOverview: Smushing rule editor | ✅ **Fixed** | Settings intercept conditional on !(FontEditor && Overview). S opens Smushing editor. |
 | **A** | LayerPanel: New layer | Timeline: Add frame | ✅ **OK** | Different active scopes — LayerPanel is only active when side panel is open on Layers tab; Timeline A fires when timeline panel is open. |
 | **D** | LayerPanel: Duplicate | Lighting: Add directional | ✅ **OK** | Different modes (LayerPanel vs Lighting). |
 | **G** | Canvas: Fill (lowercase) | Lighting: Enter mode (uppercase) | ✅ **OK** | Case-sensitive — different keys. |
@@ -476,9 +485,7 @@ rendering already had its own guard.
 ### Quick Wins
 
 1. **Fix README `-V` → `-v`** (5 min)
-2. **Re-key FontOverview T and S** to avoid Global scope collision (30 min)
-   - T → Ctrl+T or X for Transform editor
-   - S → Ctrl+Shift+S or similar for Smushing rule editor
+2. ~~Re-key FontOverview T and S~~ **Fixed** — T and S now work correctly in FontEditor mode.
 
 ### Documentation
 

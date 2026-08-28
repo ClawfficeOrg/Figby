@@ -2226,6 +2226,24 @@ mod tests {
     }
 
     #[test]
+    fn test_smush_editor_s_key_opens() {
+        use crossterm::event::KeyCode;
+        let mut editor = make_editor();
+        assert!(editor.handle_key(KeyCode::Char('S'), KeyModifiers::NONE, 120));
+        assert_eq!(editor.view, FontEditorView::SmushRuleEditor);
+    }
+
+    #[test]
+    fn test_smush_editor_esc_returns_to_overview() {
+        use crossterm::event::KeyCode;
+        let mut editor = make_editor();
+        editor.enter_smush_editor();
+        assert_eq!(editor.view, FontEditorView::SmushRuleEditor);
+        editor.handle_key(KeyCode::Esc, KeyModifiers::NONE, 120);
+        assert_eq!(editor.view, FontEditorView::Overview);
+    }
+
+    #[test]
     fn test_transform_editor_resize_flow() {
         use crossterm::event::KeyCode;
         let mut editor = make_editor();

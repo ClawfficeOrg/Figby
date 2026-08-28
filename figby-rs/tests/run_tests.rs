@@ -292,7 +292,6 @@ fn test_20_specify_font_directory() {
 }
 
 #[test]
-#[ignore = "TODO 2.10.1: paragraph mode (-p) output divergence from C FIGlet"]
 fn test_21_paragraph_mode() {
     let input = input_text();
     let output = run_figby(&["-p", "-w250"], Some(&input));
@@ -307,7 +306,6 @@ fn test_22_short_line() {
 }
 
 #[test]
-#[ignore = "TODO 2.10.1: combined -kpc flags output divergence from C FIGlet"]
 fn test_23_kerning_paragraph_center_small() {
     let input = input_text();
     let output = run_figby(&["-kpc", "-f", "small"], Some(&input));
@@ -327,7 +325,6 @@ fn test_25_uskata_control() {
 }
 
 #[test]
-#[ignore = "TODO 2.10.1: JIS0201 control file output divergence from C FIGlet"]
 fn test_26_jis0201_control() {
     let output = run_figby(
         &["-f", "banner", "-C", "fonts/jis0201.flc"],
@@ -391,7 +388,6 @@ fn test_34_multibyte_disable() {
 }
 
 #[test]
-#[ignore = "TODO 2.10.1: control character skipping output divergence from C FIGlet"]
 fn test_35_control_chars() {
     // Ctrl chars 1-31 (except \n) and DEL (127) are silently skipped
     let input = b"a\x01b\x02c\n";
@@ -411,9 +407,8 @@ fn test_36_various_widths() {
 }
 
 #[test]
-#[ignore = "TODO 2.10.1: smush all rules (-m191) output divergence from C FIGlet"]
 fn test_37_smush_all_rules() {
-    let output = run_figby(&["-f", "standard", "-m191"], Some(b"/\\\\"));
+    let output = run_figby(&["-f", "standard", "-m191"], Some(b"/\\"));
     assert_eq!(output, expected_output(37));
 }
 
