@@ -1777,7 +1777,8 @@ impl TuiApp {
                     Some(AppEvent::Toolbox(ToolboxEvent::BrushChanged))
                 }
                 KeyCode::Char(c)
-                    if !modifiers.contains(KeyModifiers::CONTROL) && c != 'T' && c != 'S' => {
+                    if !modifiers.contains(KeyModifiers::CONTROL) && c != 'T' && c != 'S' =>
+                {
                     let lower = c.to_ascii_lowercase();
                     let mut found = None;
                     for tool in Tool::all() {
@@ -2569,7 +2570,7 @@ impl TuiApp {
             && !self.animation.timeline_state.frames.is_empty()
         {
             let ts = &self.animation.timeline_state;
-            export::capture_timeline_frames(ts, &self.editor.layer_stack, w, h)
+            export::capture_timeline_frames(ts, &self.editor.layer_stack, w, h, None)
         } else {
             vec![cells.clone()]
         };
@@ -2666,6 +2667,7 @@ impl TuiApp {
             &self.editor.layer_stack,
             w,
             h,
+            None,
         );
         if frames.is_empty() {
             return;
@@ -2740,6 +2742,7 @@ impl TuiApp {
             &self.editor.layer_stack,
             w,
             h,
+            None,
         );
         if frames.is_empty() {
             return;
@@ -3362,8 +3365,8 @@ mod sidebar_keybindings_tests {
 #[cfg(test)]
 mod keybind_collision_tests {
     use super::*;
-    use crate::tui::font_editor::FontEditorView;
     use crate::font::{FIGcharacter, FIGfont};
+    use crate::tui::font_editor::FontEditorView;
     use crossterm::event::KeyEvent;
     use std::collections::HashMap;
 

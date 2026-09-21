@@ -13,9 +13,15 @@ use crate::output::{
 };
 
 use super::canvas::{CanvasBuffer, CanvasCell};
+use super::components;
 use super::layers::{blend_colors, blend_mode_color, LayerStack};
+use super::lighting::{
+    interpolate_scene, sort_light_keyframes, LightKeyframe, LightingLut, Scene, SwatchLightingData,
+};
 use super::theme::Theme;
 use super::timeline::TimelineState;
+
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExportMode {
@@ -192,7 +198,7 @@ impl ExportDialog {
         width: usize,
         height: usize,
     ) {
-        let frames = capture_timeline_frames(timeline, layer_stack, width, height);
+        let frames = capture_timeline_frames(timeline, layer_stack, width, height, None);
         if frames.is_empty() {
             self.clear_timeline();
             return;
@@ -727,11 +733,25 @@ fn signed_src_range(offset: i16, src_len: usize, canvas_len: usize) -> std::ops:
     start..end
 }
 
+/// Optional lighting context for applying per-frame light keyframing during
+/// timeline capture. Pass `None` to skip lighting (current behavior).
+pub struct LightingContext<'a> {
+    pub base_scene: &'a Scene,
+    pub light_keyframes: &'a [LightKeyframe],
+    pub lut: &'a LightingLut,
+    pub layer_stack: &'a LayerStack,
+    pub max_shadow_distance: u16,
+    pub height_scale: f32,
+    pub palette_rgb_to_swatch: &'a HashMap<(u8, u8, u8), usize>,
+    pub swatch_data: &'a [SwatchLightingData],
+}
+
 pub fn capture_timeline_frames(
     timeline: &TimelineState,
     layer_stack: &LayerStack,
     width: usize,
     height: usize,
+    lighting: Option<&LightingContext<'_>>,
 ) -> Vec<Vec<Vec<CanvasCell>>> {
     if timeline.frames.is_empty() {
         return Vec::new();
@@ -792,6 +812,24 @@ pub fn capture_timeline_frames(
                         }
                     }
                 }
+                // Apply lighting to the composited result if a context was provided
+                if let Some(lc) = lighting {
+                    let mut sorted_kfs = lc.light_keyframes.to_vec();
+                    sort_light_keyframes(&mut sorted_kfs);
+                    let total = timeline.frames.len().max(1) as f32;
+                    let t = frame_idx as f32 / total;
+                    let interpolated = interpolate_scene(lc.base_scene, &sorted_kfs, t);
+                    result_buf = components::canvas::shade_composited(
+                        &result_buf,
+                        lc.layer_stack,
+                        &interpolated,
+                        lc.lut,
+                        lc.max_shadow_distance,
+                        lc.height_scale,
+                        lc.palette_rgb_to_swatch,
+                        lc.swatch_data,
+                    );
+                }
                 return (0..height)
                     .map(|y| {
                         (0..width)
@@ -842,6 +880,24 @@ pub fn capture_timeline_frames(
                         }
                     }
                 }
+            }
+            // Apply lighting to the composited result if a context was provided
+            if let Some(lc) = lighting {
+                let mut sorted_kfs = lc.light_keyframes.to_vec();
+                sort_light_keyframes(&mut sorted_kfs);
+                let total = timeline.frames.len().max(1) as f32;
+                let t = frame_idx as f32 / total;
+                let interpolated = interpolate_scene(lc.base_scene, &sorted_kfs, t);
+                result_buf = components::canvas::shade_composited(
+                    &result_buf,
+                    lc.layer_stack,
+                    &interpolated,
+                    lc.lut,
+                    lc.max_shadow_distance,
+                    lc.height_scale,
+                    lc.palette_rgb_to_swatch,
+                    lc.swatch_data,
+                );
             }
             (0..result_buf.height())
                 .map(|y| {
@@ -1188,7 +1244,7 @@ mod tests {
     fn test_capture_empty_timeline() {
         let timeline = TimelineState::default();
         let stack = LayerStack::new(5, 5);
-        let frames = capture_timeline_frames(&timeline, &stack, 5, 5);
+        let frames = capture_timeline_frames(&timeline, &stack, 5, 5, None);
         assert!(frames.is_empty());
     }
 
@@ -1244,7 +1300,7 @@ mod tests {
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
 
-        let frames = capture_timeline_frames(&timeline, &stack, 2, 2);
+        let frames = capture_timeline_frames(&timeline, &stack, 2, 2, None);
         assert_eq!(frames.len(), 2);
         assert_eq!(frames[0][0][0].ch, '0');
         assert_eq!(frames[0][0][0].fg, Some(Color::Red));
@@ -1278,7 +1334,7 @@ mod tests {
             document_state: Vec::new(),
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 3, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 3, 3, None);
         assert_eq!(frames.len(), 1);
         assert_eq!(frames[0][0][0].ch, 'A');
         assert_eq!(frames[0][0][0].fg, Some(Color::Red));
@@ -1320,7 +1376,7 @@ mod tests {
                 Some(LayerKeyframe::default()),
             ],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 3, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 3, 3, None);
         assert_eq!(frames.len(), 1);
         assert_eq!(frames[0][0][0].ch, 'A');
         assert_eq!(frames[0][0][1].ch, 'B');
@@ -1359,7 +1415,7 @@ mod tests {
                 ..Default::default()
             })],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 5, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 5, 3, None);
         assert_eq!(frames.len(), 2);
         assert_eq!(frames[0][0][0].ch, 'X');
         assert_eq!(frames[1][0][0].ch, ' ');
@@ -1395,7 +1451,7 @@ mod tests {
                 ..Default::default()
             })],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 4, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 4, 3, None);
         assert_eq!(frames.len(), 1);
         // 'a' and 'b' crop off-canvas; 'c' and 'd' land at x=0,1.
         let row = &frames[0][0];
@@ -1438,7 +1494,7 @@ mod tests {
                 ..Default::default()
             })],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 2, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 2, 3, None);
         // y=0 (top row) crops off-canvas; y=2 content lands at row 0.
         assert_eq!(frames[0][0][0].ch, 'B');
         assert_eq!(frames[0][1][0].ch, ' ');
@@ -1478,7 +1534,7 @@ mod tests {
                 ..Default::default()
             })],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 3, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 3, 3, None);
         assert_eq!(frames.len(), 2);
         let cell = &frames[1][0][0];
         assert_eq!(cell.ch, ' ');
@@ -1524,7 +1580,7 @@ mod tests {
                 }),
             ],
         });
-        let frames = capture_timeline_frames(&timeline, &stack, 1, 1);
+        let frames = capture_timeline_frames(&timeline, &stack, 1, 1, None);
         // Multiply(100,200,50) × (200,100,50) = (78,78,9)
         let blended = frames[0][0][0].fg;
         assert_eq!(blended, Some(Color::Rgb(78, 78, 9)));
@@ -1832,7 +1888,7 @@ mod tests {
             })],
         });
 
-        let frames = capture_timeline_frames(&timeline, &stack, 3, 3);
+        let frames = capture_timeline_frames(&timeline, &stack, 3, 3, None);
         assert_eq!(frames.len(), 1);
         assert_eq!(
             frames[0][1][1].ch, 'A',
@@ -1892,7 +1948,7 @@ mod tests {
             layer_keyframes: vec![Some(LayerKeyframe::default())],
         });
 
-        let frames = capture_timeline_frames(&timeline, &stack, 2, 2);
+        let frames = capture_timeline_frames(&timeline, &stack, 2, 2, None);
         assert_eq!(frames.len(), 2);
         assert_ne!(
             frames[0], frames[1],
