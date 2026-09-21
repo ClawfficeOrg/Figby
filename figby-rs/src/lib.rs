@@ -2,7 +2,8 @@
 
 mod canvas_inner {
     use ratatui::style::Color;
-    #[derive(Debug, Clone, Copy, PartialEq)]
+    use serde::{Deserialize, Serialize};
+    #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
     pub struct CanvasCell {
         pub ch: char,
         pub fg: Option<Color>,
@@ -26,6 +27,8 @@ pub mod atomic_io;
 pub mod bounded_io;
 pub mod config;
 pub mod control;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod figmap;
 pub mod font;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod font_gen;

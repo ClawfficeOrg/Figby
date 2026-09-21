@@ -6,11 +6,12 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders};
 use ratatui::Frame;
+use serde::{Deserialize, Serialize};
 
 use super::canvas::{CanvasBuffer, CanvasCell};
 use super::theme::Theme;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum BlendMode {
     #[default]
     Normal,
@@ -82,7 +83,7 @@ impl FromStr for BlendMode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayerMask {
     pub buffer: CanvasBuffer,
     pub enabled: bool,
@@ -105,7 +106,7 @@ impl LayerMask {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayerGroup {
     pub name: String,
     pub collapsed: bool,
@@ -122,12 +123,12 @@ impl LayerGroup {
 
 /// A set of layers whose visibility and lock state stay in sync with each
 /// other — toggling either on one member propagates to the rest.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayerLink {
     pub layer_indices: Vec<usize>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Layer {
     pub buffer: CanvasBuffer,
     pub name: String,
@@ -168,7 +169,7 @@ impl Layer {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayerStack {
     pub layers: Vec<Layer>,
     pub active: usize,

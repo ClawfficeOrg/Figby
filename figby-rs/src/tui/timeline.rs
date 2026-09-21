@@ -5,12 +5,13 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, StatefulWidget, Widget};
 use ratatui::Frame;
+use serde::{Deserialize, Serialize};
 
 use super::canvas::CanvasBuffer;
 use super::layers::{BlendMode, LayerStack};
 use super::theme::Theme;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct LayerKeyframe {
     pub position_offset: (i16, i16),
     pub opacity: u8,
@@ -27,7 +28,7 @@ impl Default for LayerKeyframe {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineFrame {
     pub thumbnail: Vec<Vec<char>>,
     pub has_keyframe: bool,
@@ -81,7 +82,7 @@ pub struct KeyframeEditState {
     pub edit_buffer: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum EasingFunction {
     Linear,
     EaseIn,

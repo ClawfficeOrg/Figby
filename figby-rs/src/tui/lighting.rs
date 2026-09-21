@@ -1,4 +1,8 @@
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+use super::timeline::EasingFunction;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Normal3(pub i8, pub i8, pub i8);
 
 impl Normal3 {
@@ -73,10 +77,10 @@ impl NormalMap {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Rgb(pub u8, pub u8, pub u8);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Attenuation {
     pub constant: f32,
     pub linear: f32,
@@ -93,7 +97,7 @@ impl Default for Attenuation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Light {
     Ambient {
         intensity: f32,
@@ -112,7 +116,7 @@ pub enum Light {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Scene {
     pub lights: Vec<Light>,
 }
@@ -143,6 +147,237 @@ impl Default for Scene {
     }
 }
 
+// ─── Light Keyframing ────────────────────────────────────────────────
+
+/// Optional overrides for a light's properties at a keyframe.
+/// `None` fields use the base light's value.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct LightProperties {
+    pub position: Option<(f32, f32, f32)>,
+    pub direction: Option<(f32, f32, f32)>,
+    pub intensity: Option<f32>,
+    pub color: Option<Rgb>,
+    pub attenuation: Option<Attenuation>,
+}
+
+/// A single light keyframe: at `time` (0.0–1.0), override properties of `light_index`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LightKeyframe {
+    /// Normalized time position within the animation (0.0 = start, 1.0 = end).
+    pub time: f32,
+    /// Index into `Scene.lights`.
+    pub light_index: usize,
+    /// Property overrides (None = inherit from base light).
+    pub properties: LightProperties,
+    /// Easing applied when interpolating from the previous keyframe to this one.
+    pub easing: EasingFunction,
+}
+
+impl LightKeyframe {
+    pub fn new(time: f32, light_index: usize, properties: LightProperties) -> Self {
+        Self {
+            time: time.clamp(0.0, 1.0),
+            light_index,
+            properties,
+            easing: EasingFunction::Linear,
+        }
+    }
+}
+
+fn lerp_f32(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
+
+fn lerp_rgb(a: Rgb, b: Rgb, t: f32) -> Rgb {
+    Rgb(
+        (a.0 as f32 + (b.0 as f32 - a.0 as f32) * t).round() as u8,
+        (a.1 as f32 + (b.1 as f32 - a.1 as f32) * t).round() as u8,
+        (a.2 as f32 + (b.2 as f32 - a.2 as f32) * t).round() as u8,
+    )
+}
+
+fn lerp_tuple3(a: (f32, f32, f32), b: (f32, f32, f32), t: f32) -> (f32, f32, f32) {
+    (
+        lerp_f32(a.0, b.0, t),
+        lerp_f32(a.1, b.1, t),
+        lerp_f32(a.2, b.2, t),
+    )
+}
+
+fn lerp_attenuation(a: &Attenuation, b: &Attenuation, t: f32) -> Attenuation {
+    Attenuation {
+        constant: lerp_f32(a.constant, b.constant, t),
+        linear: lerp_f32(a.linear, b.linear, t),
+        quadratic: lerp_f32(a.quadratic, b.quadratic, t),
+    }
+}
+
+/// Apply property overrides from a keyframe to a base light, returning a new Light.
+fn apply_overrides(base: &Light, props: &LightProperties) -> Light {
+    match base {
+        Light::Ambient { intensity, color } => Light::Ambient {
+            intensity: props.intensity.unwrap_or(*intensity),
+            color: props.color.unwrap_or(*color),
+        },
+        Light::Directional {
+            direction,
+            intensity,
+            color,
+        } => Light::Directional {
+            direction: props.direction.unwrap_or(*direction),
+            intensity: props.intensity.unwrap_or(*intensity),
+            color: props.color.unwrap_or(*color),
+        },
+        Light::Point {
+            position,
+            intensity,
+            color,
+            attenuation,
+        } => Light::Point {
+            position: props.position.unwrap_or(*position),
+            intensity: props.intensity.unwrap_or(*intensity),
+            color: props.color.unwrap_or(*color),
+            attenuation: props.attenuation.as_ref().unwrap_or(attenuation).clone(),
+        },
+    }
+}
+
+/// Interpolate between two lights using properties from `from_props` and `to_props`.
+fn interpolate_lights(base: &Light, from: &Light, to: &Light, t: f32) -> Light {
+    match (from, to) {
+        (
+            Light::Ambient {
+                intensity: i1,
+                color: c1,
+            },
+            Light::Ambient {
+                intensity: i2,
+                color: c2,
+            },
+        ) => Light::Ambient {
+            intensity: lerp_f32(*i1, *i2, t),
+            color: lerp_rgb(*c1, *c2, t),
+        },
+        (
+            Light::Directional {
+                direction: d1,
+                intensity: i1,
+                color: c1,
+            },
+            Light::Directional {
+                direction: d2,
+                intensity: i2,
+                color: c2,
+            },
+        ) => Light::Directional {
+            direction: lerp_tuple3(*d1, *d2, t),
+            intensity: lerp_f32(*i1, *i2, t),
+            color: lerp_rgb(*c1, *c2, t),
+        },
+        (
+            Light::Point {
+                position: p1,
+                intensity: i1,
+                color: c1,
+                attenuation: a1,
+            },
+            Light::Point {
+                position: p2,
+                intensity: i2,
+                color: c2,
+                attenuation: a2,
+            },
+        ) => Light::Point {
+            position: lerp_tuple3(*p1, *p2, t),
+            intensity: lerp_f32(*i1, *i2, t),
+            color: lerp_rgb(*c1, *c2, t),
+            attenuation: lerp_attenuation(a1, a2, t),
+        },
+        // Type mismatch: return `to` unchanged
+        _ => base.clone(),
+    }
+}
+
+/// Given sorted keyframes for a single light and a time `t`, compute the interpolated Light.
+/// Falls back to the base light when no keyframes exist for this light.
+fn interpolate_single_light(base: &Light, keyframes: &[LightKeyframe], t: f32) -> Light {
+    if keyframes.is_empty() {
+        return base.clone();
+    }
+
+    // If before first keyframe, apply first keyframe's overrides to base
+    if t <= keyframes[0].time {
+        return apply_overrides(base, &keyframes[0].properties);
+    }
+
+    // If after last keyframe, apply last keyframe's overrides to base
+    if t >= keyframes.last().unwrap().time {
+        return apply_overrides(base, &keyframes.last().unwrap().properties);
+    }
+
+    // Find the two surrounding keyframes
+    let mut prev = &keyframes[0];
+    let mut next = &keyframes[0];
+    for kf in keyframes {
+        if kf.time <= t {
+            prev = kf;
+        }
+        if kf.time >= t && next.time < kf.time {
+            next = kf;
+        }
+    }
+
+    if prev.time == next.time {
+        return apply_overrides(base, &prev.properties);
+    }
+
+    // Compute raw [0,1] lerp factor between the two keyframes
+    let raw_t = (t - prev.time) / (next.time - prev.time);
+    // Apply the destination keyframe's easing
+    let eased_t = next.easing.apply(raw_t as f64) as f32;
+
+    // Build intermediate lights by applying each keyframe's overrides to the base
+    let from_light = apply_overrides(base, &prev.properties);
+    let to_light = apply_overrides(base, &next.properties);
+
+    interpolate_lights(base, &from_light, &to_light, eased_t)
+}
+
+/// Build an interpolated Scene at time `t` from base lights and light keyframes.
+///
+/// Keyframes are grouped by `light_index`. Within each group they must be
+/// sorted by `time` (the caller should ensure this — `sort_light_keyframes`
+/// does it).
+pub fn interpolate_scene(base: &Scene, keyframes: &[LightKeyframe], t: f32) -> Scene {
+    let mut result = Scene::new();
+
+    for (idx, light) in base.lights.iter().enumerate() {
+        let light_kfs: Vec<&LightKeyframe> = keyframes
+            .iter()
+            .filter(|kf| kf.light_index == idx)
+            .collect();
+
+        if light_kfs.is_empty() {
+            result.add_light(light.clone());
+        } else {
+            // Convert references to owned for the helper
+            let owned_kfs: Vec<LightKeyframe> = light_kfs.into_iter().cloned().collect();
+            result.add_light(interpolate_single_light(light, &owned_kfs, t));
+        }
+    }
+
+    result
+}
+
+/// Sort light keyframes by time for deterministic interpolation.
+pub fn sort_light_keyframes(keyframes: &mut [LightKeyframe]) {
+    keyframes.sort_by(|a, b| {
+        a.time
+            .partial_cmp(&b.time)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+}
+
 #[derive(Clone, Debug)]
 pub struct LutEntry {
     pub fg_color: (u8, u8, u8),
@@ -151,7 +386,7 @@ pub struct LutEntry {
 }
 
 /// Per-swatch lighting data for LUT generation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SwatchLightingData {
     pub lit: (u8, u8, u8),
     pub shadow: (u8, u8, u8),
@@ -814,5 +1049,246 @@ mod tests {
         assert_eq!(e2.fg_color, (255, 255, 255));
         let e3 = lut.get_swatched(-0.5, 0);
         assert_eq!(e3.fg_color, (0, 0, 0));
+    }
+
+    // ─── Light keyframing tests ──────────────────────────────────
+
+    #[test]
+    fn lerp_f32_basic() {
+        assert!((lerp_f32(0.0, 10.0, 0.5) - 5.0).abs() < 1e-6);
+        assert!((lerp_f32(0.0, 10.0, 0.0) - 0.0).abs() < 1e-6);
+        assert!((lerp_f32(0.0, 10.0, 1.0) - 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn lerp_rgb_basic() {
+        let a = Rgb(0, 0, 0);
+        let b = Rgb(255, 128, 64);
+        let mid = lerp_rgb(a, b, 0.5);
+        assert_eq!(mid.0, 128);
+        assert_eq!(mid.1, 64);
+        assert_eq!(mid.2, 32);
+    }
+
+    #[test]
+    fn lerp_attenuation_basic() {
+        let a = Attenuation {
+            constant: 1.0,
+            linear: 0.1,
+            quadratic: 0.01,
+        };
+        let b = Attenuation {
+            constant: 2.0,
+            linear: 0.2,
+            quadratic: 0.02,
+        };
+        let mid = lerp_attenuation(&a, &b, 0.5);
+        assert!((mid.constant - 1.5).abs() < 1e-6);
+        assert!((mid.linear - 0.15).abs() < 1e-6);
+        assert!((mid.quadratic - 0.015).abs() < 1e-6);
+    }
+
+    #[test]
+    fn apply_overrides_ambient() {
+        let base = Light::Ambient {
+            intensity: 0.5,
+            color: Rgb(255, 255, 255),
+        };
+        let props = LightProperties {
+            intensity: Some(0.8),
+            ..Default::default()
+        };
+        let result = apply_overrides(&base, &props);
+        match result {
+            Light::Ambient { intensity, color } => {
+                assert!((intensity - 0.8).abs() < 1e-6);
+                assert_eq!(color, Rgb(255, 255, 255));
+            }
+            _ => panic!("expected Ambient"),
+        }
+    }
+
+    #[test]
+    fn apply_overrides_point_color() {
+        let base = Light::Point {
+            position: (1.0, 2.0, 3.0),
+            intensity: 1.0,
+            color: Rgb(100, 100, 100),
+            attenuation: Attenuation::default(),
+        };
+        let props = LightProperties {
+            color: Some(Rgb(255, 0, 0)),
+            ..Default::default()
+        };
+        let result = apply_overrides(&base, &props);
+        match result {
+            Light::Point {
+                color, position, ..
+            } => {
+                assert_eq!(color, Rgb(255, 0, 0));
+                assert_eq!(position, (1.0, 2.0, 3.0));
+            }
+            _ => panic!("expected Point"),
+        }
+    }
+
+    #[test]
+    fn interpolate_scene_no_keyframes() {
+        let base = Scene {
+            lights: vec![Light::Ambient {
+                intensity: 0.5,
+                color: Rgb(255, 255, 255),
+            }],
+        };
+        let result = interpolate_scene(&base, &[], 0.5);
+        assert_eq!(result.lights.len(), 1);
+        match &result.lights[0] {
+            Light::Ambient { intensity, .. } => assert!((intensity - 0.5).abs() < 1e-6),
+            _ => panic!("expected Ambient"),
+        }
+    }
+
+    #[test]
+    fn interpolate_scene_two_keyframes() {
+        let base = Scene {
+            lights: vec![Light::Ambient {
+                intensity: 0.0,
+                color: Rgb(0, 0, 0),
+            }],
+        };
+        let kfs = vec![
+            LightKeyframe::new(
+                0.0,
+                0,
+                LightProperties {
+                    intensity: Some(0.0),
+                    ..Default::default()
+                },
+            ),
+            LightKeyframe::new(
+                1.0,
+                0,
+                LightProperties {
+                    intensity: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+        ];
+        let result = interpolate_scene(&base, &kfs, 0.5);
+        match &result.lights[0] {
+            Light::Ambient { intensity, .. } => assert!((intensity - 0.5).abs() < 1e-6),
+            _ => panic!("expected Ambient"),
+        }
+    }
+
+    #[test]
+    fn interpolate_scene_easing() {
+        let base = Scene {
+            lights: vec![Light::Ambient {
+                intensity: 0.0,
+                color: Rgb(0, 0, 0),
+            }],
+        };
+        let kfs = vec![
+            LightKeyframe::new(
+                0.0,
+                0,
+                LightProperties {
+                    intensity: Some(0.0),
+                    ..Default::default()
+                },
+            ),
+            LightKeyframe {
+                time: 1.0,
+                light_index: 0,
+                properties: LightProperties {
+                    intensity: Some(1.0),
+                    ..Default::default()
+                },
+                easing: EasingFunction::EaseIn,
+            },
+        ];
+        let result = interpolate_scene(&base, &kfs, 0.5);
+        match &result.lights[0] {
+            Light::Ambient { intensity, .. } => {
+                assert!((intensity - 0.125).abs() < 0.01);
+            }
+            _ => panic!("expected Ambient"),
+        }
+    }
+
+    #[test]
+    fn sort_light_keyframes_orders_by_time() {
+        let mut kfs = vec![
+            LightKeyframe::new(0.8, 0, LightProperties::default()),
+            LightKeyframe::new(0.2, 0, LightProperties::default()),
+            LightKeyframe::new(0.5, 0, LightProperties::default()),
+        ];
+        sort_light_keyframes(&mut kfs);
+        assert!((kfs[0].time - 0.2).abs() < 1e-6);
+        assert!((kfs[1].time - 0.5).abs() < 1e-6);
+        assert!((kfs[2].time - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn interpolate_scene_multi_light() {
+        let base = Scene {
+            lights: vec![
+                Light::Ambient {
+                    intensity: 0.0,
+                    color: Rgb(0, 0, 0),
+                },
+                Light::Point {
+                    position: (0.0, 0.0, 0.0),
+                    intensity: 0.0,
+                    color: Rgb(0, 0, 0),
+                    attenuation: Attenuation::default(),
+                },
+            ],
+        };
+        let kfs = vec![
+            LightKeyframe::new(
+                0.0,
+                0,
+                LightProperties {
+                    intensity: Some(0.0),
+                    ..Default::default()
+                },
+            ),
+            LightKeyframe::new(
+                1.0,
+                0,
+                LightProperties {
+                    intensity: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+            LightKeyframe::new(
+                0.0,
+                1,
+                LightProperties {
+                    intensity: Some(0.0),
+                    ..Default::default()
+                },
+            ),
+            LightKeyframe::new(
+                1.0,
+                1,
+                LightProperties {
+                    intensity: Some(2.0),
+                    ..Default::default()
+                },
+            ),
+        ];
+        let result = interpolate_scene(&base, &kfs, 0.5);
+        assert_eq!(result.lights.len(), 2);
+        match &result.lights[0] {
+            Light::Ambient { intensity, .. } => assert!((intensity - 0.5).abs() < 1e-6),
+            _ => panic!("expected Ambient"),
+        }
+        match &result.lights[1] {
+            Light::Point { intensity, .. } => assert!((intensity - 1.0).abs() < 1e-6),
+            _ => panic!("expected Point"),
+        }
     }
 }

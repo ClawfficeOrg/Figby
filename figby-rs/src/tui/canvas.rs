@@ -58,6 +58,56 @@ pub struct CanvasBuffer {
     height: usize,
 }
 
+impl serde::Serialize for CanvasBuffer {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("CanvasBuffer", 3)?;
+        state.serialize_field("cells", &self.cells)?;
+        state.serialize_field("width", &self.width)?;
+        state.serialize_field("height", &self.height)?;
+        state.end()
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for CanvasBuffer {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        struct RawCanvasBuffer {
+            cells: Vec<Vec<CanvasCell>>,
+            width: usize,
+            height: usize,
+        }
+        let raw = RawCanvasBuffer::deserialize(deserializer)?;
+        if raw.width == 0 || raw.height == 0 {
+            return Err(serde::de::Error::custom(
+                "CanvasBuffer dimensions must be nonzero",
+            ));
+        }
+        if raw.cells.len() != raw.height {
+            return Err(serde::de::Error::custom(format!(
+                "CanvasBuffer cells height {} does not match declared height {}",
+                raw.cells.len(),
+                raw.height
+            )));
+        }
+        for (i, row) in raw.cells.iter().enumerate() {
+            if row.len() != raw.width {
+                return Err(serde::de::Error::custom(format!(
+                    "CanvasBuffer row {} width {} does not match declared width {}",
+                    i,
+                    row.len(),
+                    raw.width
+                )));
+            }
+        }
+        Ok(CanvasBuffer {
+            cells: raw.cells,
+            width: raw.width,
+            height: raw.height,
+        })
+    }
+}
+
 impl CanvasBuffer {
     pub fn new(width: usize, height: usize) -> Self {
         Self {
@@ -527,5 +577,58 @@ impl Widget for &CanvasWidget {
 impl Default for CanvasWidget {
     fn default() -> Self {
         Self::new(40, 20)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canvas_buffer_serde_roundtrip() {
+        let mut buf = CanvasBuffer::new(3, 2);
+        buf.set(
+            0,
+            0,
+            CanvasCell {
+                ch: 'A',
+                fg: Some(Color::Red),
+                bg: None,
+                height: None,
+            },
+        );
+        buf.set(
+            1,
+            1,
+            CanvasCell {
+                ch: '#',
+                fg: None,
+                bg: Some(Color::Blue),
+                height: Some(128),
+            },
+        );
+
+        let json = serde_json::to_string(&buf).unwrap();
+        let restored: CanvasBuffer = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.width(), 3);
+        assert_eq!(restored.height(), 2);
+        assert_eq!(restored.get(0, 0).unwrap().ch, 'A');
+        assert_eq!(restored.get(1, 1).unwrap().ch, '#');
+        assert_eq!(restored.get(1, 1).unwrap().height, Some(128));
+    }
+
+    #[test]
+    fn canvas_buffer_serde_rejects_zero_width() {
+        let json = r#"{"cells":[[]],"width":0,"height":1}"#;
+        let result = serde_json::from_str::<CanvasBuffer>(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn canvas_buffer_serde_rejects_mismatched_dimensions() {
+        let json = r#"{"cells":[[" "," "]],"width":1,"height":1}"#;
+        let result = serde_json::from_str::<CanvasBuffer>(json);
+        assert!(result.is_err());
     }
 }
