@@ -373,6 +373,11 @@ struct CliArgs {
     )]
     play_inline: bool,
     #[arg(
+        long = "play-timeline",
+        help = "With --play --play-inline: show a one-row playback timeline under the animation [default: off]"
+    )]
+    play_timeline: bool,
+    #[arg(
         long = "play-daemon",
         help = "Fork animation to background, return to shell immediately (kill PID to stop)"
     )]
@@ -1332,9 +1337,14 @@ fn main() {
                 .checked_div(delays.first().copied().unwrap_or(10).max(1))
                 .map(|f| f.clamp(1, 60) as u8)
                 .unwrap_or(10);
-            if let Err(e) =
-                figby::tui::player::play_raw_timed(frame_cells, fps, Some(delays), args.play_loop, args.play_inline)
-            {
+            if let Err(e) = figby::tui::player::play_raw_timed(
+                frame_cells,
+                fps,
+                Some(delays),
+                args.play_loop,
+                args.play_inline,
+                args.play_timeline,
+            ) {
                 eprintln!("Playback error: {e}");
                 process::exit(1);
             }
@@ -1378,6 +1388,7 @@ fn main() {
             Some(gif_result.frame_delays),
             args.play_loop,
             args.play_inline,
+            args.play_timeline,
         ) {
             eprintln!("Playback error: {e}");
             process::exit(1);

@@ -632,7 +632,11 @@ fn color_bg_ansi(c: &Color) -> String {
 }
 
 /// Render a single frame as ANSI escape sequences into a String.
-/// Uses CUP (cursor position) to place each cell, bypassing ratatui diffing.
+/// Uses absolute CUP (cursor position), bypassing ratatui diffing.
+///
+/// Fullscreen-only: coordinates are absolute from the top-left (1,1).
+/// Do NOT use for inline playback — see `render_frame_inline`, which is
+/// cursor-relative and leaves existing screen content alone.
 pub fn render_frame_raw(frame: &AnimationFrame) -> String {
     let mut out = String::new();
     for (y, row) in frame.iter().enumerate() {
@@ -657,6 +661,48 @@ pub fn render_frame_raw(frame: &AnimationFrame) -> String {
     out
 }
 
+/// Render a single frame for inline (at-cursor) playback.
+///
+/// Cursor-relative only: starts with `\x1b[u` (restore the origin saved
+/// with `\x1b[s` at playback start) and then uses sequential writes plus
+/// relative down/left moves — no absolute CUP, so the animation draws
+/// wherever the cursor was instead of at the top-left.
+///
+/// Every cell of the `max_w × max_h` bounding box is written (spaces
+/// included), so a smaller frame fully erases a larger previous one
+/// instead of leaving ghost cells behind. `frame` rows shorter than
+/// `max_w`, or fewer than `max_h`, are space-padded.
+pub fn render_frame_inline(frame: &AnimationFrame, max_w: usize, max_h: usize) -> String {
+    let mut out = String::new();
+    out.push_str("\x1b[u");
+    for y in 0..max_h {
+        for x in 0..max_w {
+            let cell = frame.get(y).and_then(|row| row.get(x));
+            match cell {
+                Some(cell) => {
+                    out.push_str("\x1b[0m");
+                    if let Some(ref fg) = cell.fg {
+                        out.push_str(&color_fg_ansi(fg));
+                    }
+                    if let Some(ref bg) = cell.bg {
+                        out.push_str(&color_bg_ansi(bg));
+                    }
+                    out.push(cell.ch);
+                }
+                None => {
+                    out.push_str("\x1b[0m ");
+                }
+            }
+        }
+        if y + 1 < max_h {
+            out.push_str("\x1b[1B");
+            out.push_str(&format!("\x1b[{max_w}D"));
+        }
+    }
+    out.push_str("\x1b[0m");
+    out
+}
+
 /// Raw mode playback engine.
 ///
 /// Enters raw mode (no echo, no line buffering), renders frames by writing
@@ -673,28 +719,62 @@ pub fn render_frame_raw(frame: &AnimationFrame) -> String {
 /// bypassed — any keypress exits immediately. This is the "banner" mode:
 /// loop until dismissed, rather than play-once-and-return.
 pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io::Result<()> {
-    play_raw_timed(frames, fps, None, loop_playback, false)
+    play_raw_timed(frames, fps, None, loop_playback, false, false)
 }
 
 /// `play_raw` with per-frame hold times (centiseconds) so GIF-imported
 /// variable timing isn't discarded (GPT review F-26). `fps` is still used
 /// as the fallback for any frame without an explicit delay.
 ///
-/// When `inline` is true, renders at current cursor position without clearing
-/// the screen — animation plays "in place" and cursor moves below on exit.
+/// When `inline` is true, renders at the current cursor position without
+/// clearing the screen: the cursor is saved (`\x1b[s`) once, every frame
+/// restores it (`\x1b[u`) and draws with relative moves only, and on exit
+/// the cursor is parked below the animation. No absolute CUP is emitted,
+/// so surrounding shell output is left alone.
+///
+/// `show_timeline` adds a one-row playback timeline under the animation
+/// when `inline` is true (off by default). Fullscreen playback always
+/// shows its progress bar regardless of this flag.
 pub fn play_raw_timed(
     frames: Vec<AnimationFrame>,
     fps: u8,
     delays: Option<Vec<u16>>,
     loop_playback: bool,
     inline: bool,
+    show_timeline: bool,
 ) -> io::Result<()> {
     if frames.is_empty() {
         return Ok(());
     }
 
     let total = frames.len();
-    let precomputed: Vec<String> = frames.iter().map(render_frame_raw).collect();
+    // Inline frames are rendered relative to the saved cursor, so they
+    // need the shared bounding box to fully erase the previous frame.
+    // Fullscreen frames use absolute CUP and skip blank cells instead.
+    let (max_w, max_h) = if inline {
+        let w = frames
+            .iter()
+            .filter_map(|f| f.iter().map(|row| row.len()).max())
+            .max()
+            .unwrap_or(0);
+        let h = frames.iter().map(|f| f.len()).max().unwrap_or(0);
+        (w.max(1), h.max(1))
+    } else {
+        (0, 0)
+    };
+    // The inline timeline (opt-in via --play-timeline) is one extra
+    // cursor-relative row under the animation; the exit parking and the
+    // guard fallback must step over it too.
+    let inline_timeline = inline && show_timeline;
+    let box_h = max_h + usize::from(inline_timeline);
+    let precomputed: Vec<String> = if inline {
+        frames
+            .iter()
+            .map(|f| render_frame_inline(f, max_w, max_h))
+            .collect()
+    } else {
+        frames.iter().map(render_frame_raw).collect()
+    };
     let mut player = AnimationPlayer::new(frames, fps);
     if let Some(d) = delays {
         player = player.with_frame_delays(d);
@@ -707,15 +787,28 @@ pub fn play_raw_timed(
     terminal::enable_raw_mode()?;
     // RAII guard (GPT review F-25): restores cursor visibility and raw
     // mode on ANY exit path, including errors mid-playback — previously
-    // cleanup ran only on the normal tail.
+    // cleanup ran only on the normal tail. `parked` is shared with the
+    // main loop: the loop sets it once it parks the cursor below the
+    // animation, so the guard's fallback move runs only on error paths
+    // that skip the normal exit positioning.
+    use std::rc::Rc;
+    let parked = Rc::new(Cell::new(false));
     struct RawModeGuard {
         inline: bool,
+        max_h: usize,
+        parked: Rc<Cell<bool>>,
     }
     impl Drop for RawModeGuard {
         fn drop(&mut self) {
             if self.inline {
-                // Inline: just show cursor, move below animation
-                let _ = write!(io::stdout(), "\x1b[?25h\x1b[0m\n");
+                // Inline: never clear — just restore visibility. Park
+                // below the box first if the main loop never got there
+                // (error path); clean exits already parked and set the
+                // flag, so this is skipped and the cursor stays put.
+                if !self.parked.get() {
+                    let _ = write!(io::stdout(), "\x1b[u\x1b[0m\x1b[{}B\r\n", self.max_h.max(1));
+                }
+                let _ = write!(io::stdout(), "\x1b[0m\x1b[?25h");
             } else {
                 // Fullscreen: restore terminal
                 let _ = write!(io::stdout(), "\x1b[?25h\x1b[0m\x1b[2J\x1b[H");
@@ -724,10 +817,15 @@ pub fn play_raw_timed(
             let _ = terminal::disable_raw_mode();
         }
     }
-    let _raw_guard = RawModeGuard { inline };
+    let _raw_guard = RawModeGuard {
+        inline,
+        max_h: box_h,
+        parked: Rc::clone(&parked),
+    };
     if inline {
-        // Inline: hide cursor, don't clear screen
-        write!(io::stdout(), "\x1b[?25l")?;
+        // Inline: save cursor as the animation origin, hide cursor,
+        // don't clear screen.
+        write!(io::stdout(), "\x1b[s\x1b[?25l")?;
     } else {
         // Fullscreen: hide cursor, clear screen
         write!(io::stdout(), "\x1b[?25l\x1b[2J")?;
@@ -740,6 +838,16 @@ pub fn play_raw_timed(
         let cur = player.current_frame();
 
         write!(io::stdout(), "{}", precomputed[cur])?;
+        if inline_timeline {
+            // Cursor-relative timeline row under the animation box: down
+            // one from the box's last row, back to the origin column, then
+            // the bar. Next frame's `\x1b[u` restores anyway.
+            write!(
+                io::stdout(),
+                "\x1b[1B\x1b[{max_w}D{}",
+                inline_progress_bar(&player, cur, total, max_w)
+            )?;
+        }
         if !inline {
             write_playback_progress_bar(&player, cur, total)?;
         }
@@ -784,6 +892,16 @@ pub fn play_raw_timed(
         }
     }
 
+    if inline {
+        // Park the cursor below the animation box (plus the timeline row
+        // when shown): back to the saved origin, down past the last row,
+        // onto a fresh line. Sets the shared flag so the guard skips its
+        // fallback move.
+        write!(io::stdout(), "\x1b[u\x1b[{box_h}B\r\n\x1b[0m")?;
+        io::stdout().flush()?;
+        parked.set(true);
+    }
+
     // Teardown happens in RawModeGuard::drop.
     Ok(())
 }
@@ -824,6 +942,47 @@ fn write_playback_progress_bar(
     }
     write!(io::stdout(), "{}", suffix)?;
     Ok(())
+}
+
+/// Build the inline timeline row: same content as the fullscreen progress
+/// bar, but as a fixed-`width` String with no absolute CUP — the caller
+/// positions the cursor relatively first. Padded with spaces so a longer
+/// previous row (e.g. after a speed change widens the suffix) is erased.
+fn inline_progress_bar(player: &AnimationPlayer, cur: usize, total: usize, width: usize) -> String {
+    let play_ch = if player.is_playing() { '⏸' } else { '▶' };
+    let total_digits = total.to_string().len();
+    let counter = format!("{:0width$}/{}", cur + 1, total, width = total_digits);
+    let speed = format!(" {:.2}x", player.speed_mult());
+    let loop_str = if player.is_looping() { " 🔁" } else { "" };
+    let prefix = format!("{play_ch} {counter} [");
+    let suffix = format!("]{speed}{loop_str}");
+
+    let bar_width = width
+        .saturating_sub(prefix.chars().count() + suffix.chars().count() + 1)
+        .clamp(1, 60);
+    let filled = if total > 1 {
+        ((cur * bar_width) as f64 / (total - 1) as f64).round() as usize
+    } else {
+        bar_width
+    };
+    let filled = filled.min(bar_width);
+
+    let mut out = String::new();
+    out.push_str("\x1b[0m");
+    out.push_str(&prefix);
+    for i in 0..bar_width {
+        out.push(if i < filled { '█' } else { '░' });
+    }
+    out.push_str(&suffix);
+    // Pad to the full box width so stale cells from a wider previous
+    // row can't linger. (Visible width tracked separately — the SGR
+    // escape above is zero-width.)
+    let visible = prefix.chars().count() + bar_width + suffix.chars().count();
+    for _ in visible..width {
+        out.push(' ');
+    }
+    out.push_str("\x1b[0m");
+    out
 }
 
 #[cfg(test)]
@@ -1410,6 +1569,94 @@ mod tests {
     fn test_render_frame_raw_empty() {
         let out = render_frame_raw(&vec![]);
         assert_eq!(out, "");
+    }
+
+    #[test]
+    fn test_render_frame_inline_no_absolute_cup() {
+        // Regression test: inline rendering must be cursor-relative.
+        // The old code reused render_frame_raw's absolute `\x1b[y;xH`,
+        // which yanked playback to the top-left instead of the cursor.
+        let frames = make_test_frames(2, 3, 2);
+        for f in &frames {
+            let out = render_frame_inline(f, 3, 2);
+            assert!(
+                out.starts_with("\x1b[u"),
+                "must restore the saved cursor origin, got {out:?}"
+            );
+            // No absolute CUP (`ESC[{row};{col}H`) anywhere.
+            let mut idx = 0;
+            while let Some(pos) = out[idx..].find("\x1b[") {
+                let seq = &out[idx + pos..];
+                let end = seq.find(|c: char| c.is_ascii_alphabetic()).unwrap();
+                let code = &seq[..=end];
+                assert!(
+                    !(code.contains(';') && code.ends_with('H')),
+                    "absolute CUP leaked into inline output: {code:?} in {out:?}"
+                );
+                idx += pos + end + 1;
+            }
+        }
+    }
+
+    #[test]
+    fn test_render_frame_inline_draws_content_and_erases() {
+        // Content cells are drawn; a smaller frame padded to the shared
+        // box emits spaces so the previous (larger) frame is erased.
+        let frame = vec![vec![CanvasCell {
+            ch: 'Q',
+            fg: None,
+            bg: None,
+            height: None,
+        }]];
+        let out = render_frame_inline(&frame, 3, 2);
+        assert!(out.contains('Q'));
+        // 1 content cell + 5 padding cells = full 3x2 box written.
+        assert_eq!(out.matches("\x1b[0m ").count(), 5);
+        // Row advance uses relative moves only.
+        assert!(out.contains("\x1b[1B\x1b[3D"));
+    }
+
+    #[test]
+    fn test_render_frame_inline_colors() {
+        let frame = vec![vec![CanvasCell {
+            ch: 'A',
+            fg: Some(Color::Red),
+            bg: None,
+            height: None,
+        }]];
+        let out = render_frame_inline(&frame, 1, 1);
+        assert!(out.contains("\x1b[31m"));
+        assert!(out.contains("A"));
+    }
+
+    #[test]
+    fn test_inline_progress_bar_fixed_width_no_absolute_cup() {
+        let frames = make_test_frames(10, 3, 2);
+        let player = AnimationPlayer::new(frames, 10);
+        player.play();
+        let out = inline_progress_bar(&player, 0, 10, 20);
+        // Exactly the box width in visible cells (SGR escapes excluded).
+        let stripped: String = out
+            .replace("\x1b[0m", "")
+            .chars()
+            .filter(|&c| c != '\x1b')
+            .collect();
+        assert_eq!(stripped.chars().count(), 20, "bar must pad to {out:?}");
+        assert!(out.contains("01/10"), "counter visible, got {out:?}");
+        // No absolute CUP: no `ESC[` sequence with `;` in it.
+        assert!(
+            !out.split("\x1b").skip(1).any(|seq| seq.contains(';')),
+            "absolute CUP leaked: {out:?}"
+        );
+    }
+
+    #[test]
+    fn test_inline_progress_bar_narrow_width_no_panic() {
+        let frames = make_test_frames(3, 3, 2);
+        let player = AnimationPlayer::new(frames, 10);
+        // Width smaller than prefix+suffix: must not panic, still a String.
+        let out = inline_progress_bar(&player, 2, 3, 2);
+        assert!(out.contains("3/3"));
     }
 
     #[test]
