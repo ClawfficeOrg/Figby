@@ -1315,6 +1315,10 @@ pub struct UiState {
     pub keybindings_scroll: usize,
     pub menu_bar: MenuBar,
     pub menu_bar_state: MenuBarState,
+    /// Per-tab hit rects for the document strip, recomputed every render
+    /// (titles vary in width, so unlike `SidePanel::tab_rects` these can't
+    /// be derived from the area alone) and consumed by the mouse handler.
+    pub tab_rects: Vec<Rect>,
     pub should_quit: bool,
 }
 
@@ -1559,6 +1563,7 @@ impl TuiApp {
                 keybindings_scroll: 0,
                 menu_bar: MenuBar::new(),
                 menu_bar_state: MenuBarState::new(),
+                tab_rects: Vec::new(),
                 should_quit: false,
             },
             ctx: AppContext {

@@ -50,6 +50,14 @@ impl DocumentKind {
             DocumentKind::Image => SessionType::Image,
         }
     }
+
+    /// Icon key into the shared icon map for the tab strip.
+    pub fn icon_key(self) -> &'static str {
+        match self {
+            DocumentKind::Font => "mode_font_editor",
+            DocumentKind::Image => "mode_image_editor",
+        }
+    }
 }
 
 /// One open file: parked per-document state plus the metadata the tab
@@ -196,6 +204,19 @@ impl TuiApp {
 
     pub fn document_count(&self) -> usize {
         self.documents.len()
+    }
+
+    /// Unsaved dot for a tab: live editor state for the active document,
+    /// parked state otherwise.
+    pub fn doc_unsaved(&self, idx: usize) -> bool {
+        if idx >= self.documents.len() {
+            return false;
+        }
+        if idx == self.active_doc {
+            self.editor.unsaved
+        } else {
+            self.documents[idx].editor.unsaved
+        }
     }
 
     /// Park the active document: sync UI metadata into its slot, then swap

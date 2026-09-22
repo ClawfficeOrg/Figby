@@ -438,6 +438,19 @@ impl TuiApp {
             return;
         }
 
+        // Document tab strip: left-click switches tabs (8.5.2). Rects are
+        // stored every render next to what's drawn, same pattern as the
+        // transport bar and quit-confirm buttons.
+        if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
+            let pos = (mouse.column, mouse.row).into();
+            for (i, r) in self.ui.tab_rects.iter().enumerate() {
+                if r.contains(pos) {
+                    self.switch_document(i);
+                    return;
+                }
+            }
+        }
+
         // Welcome screen captures all mouse events while visible
         if self.welcome.screen.show {
             let recent_count = self.dialogs.recent_files.len();
@@ -3675,5 +3688,35 @@ mod keybind_collision_tests {
             crate::tui::file_ops::FileOpsMode::SaveAs
         );
         assert_eq!(app.dialogs.file_ops.filename_buffer, "untitled.figmap");
+    }
+
+    #[test]
+    fn test_doc_tab_click_switches_document() {
+        use crossterm::event::KeyModifiers;
+        use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+        use ratatui::layout::Rect;
+
+        let mut app = app_not_font_editor();
+        app.new_document(crate::tui::documents::DocumentKind::Font);
+        assert_eq!(app.active_doc, 1);
+        // Seed the hit rects the render pass would have stored.
+        app.ui.tab_rects = vec![Rect::new(0, 1, 12, 1), Rect::new(13, 1, 12, 1)];
+        let click = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 3,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(click);
+        assert_eq!(app.active_doc, 0, "click on first tab must switch");
+        // Clicking empty chrome (no rect) changes nothing.
+        let miss = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 100,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(miss);
+        assert_eq!(app.active_doc, 0);
     }
 }

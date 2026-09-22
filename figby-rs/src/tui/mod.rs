@@ -8,7 +8,8 @@
 
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Tabs};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use ratatui::Frame;
 use std::time::Instant;
 
@@ -54,6 +55,7 @@ mod event_loop;
 pub use app_state::*;
 pub use brush::BrushState;
 pub use dialogs::RasciiImportDialog;
+pub use documents::{CloseResult, Document, DocumentKind};
 pub use events::AppEvent;
 pub use export::ExportMode;
 pub use light_panel::LightPanel;
@@ -211,35 +213,60 @@ impl TuiApp {
 
         // --- Normal mode ---
 
-        // Mode tabs
-        let mode_labels = [
-            ("mode_font_editor", "Font Editor"),
-            ("mode_image_editor", "Image Editor"),
-            ("mode_ascii_preview", "ASCII Preview"),
-        ];
-        let titles: Vec<String> = mode_labels
-            .iter()
-            .map(|(key, name)| {
-                let icon = self.ctx.icons.get(*key).map(|s| s.as_str()).unwrap_or("");
-                format!("{icon}  {name}")
-            })
-            .collect();
-        let selected = match self.ui.mode {
-            AppMode::FontEditor => 0,
-            AppMode::ImageEditor => 1,
-            AppMode::AsciiPreview => 2,
-            AppMode::Lighting => 0,
-        };
-        let titles_refs: Vec<&str> = titles.iter().map(|s| s.as_str()).collect();
-        let tabs = Tabs::new(titles_refs)
-            .style(Style::default().fg(self.ctx.theme.general.secondary))
-            .highlight_style(
-                Style::default()
-                    .fg(self.ctx.theme.general.primary)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .select(selected);
-        frame.render_widget(tabs, fl.tabs);
+        // Document tab strip (8.5.2): one tab per open document with a
+        // kind icon and an unsaved dot. Rendered as manual spans (not the
+        // `Tabs` widget) so the stored hit rects match what's drawn
+        // exactly, even with variable-width titles.
+        {
+            let area = fl.tabs;
+            let secondary = Style::default().fg(self.ctx.theme.general.secondary);
+            let mut spans: Vec<Span> = Vec::new();
+            let mut rects: Vec<Rect> = Vec::with_capacity(self.document_count());
+            let mut x = area.x;
+            let n = self.document_count();
+            for i in 0..n {
+                if i > 0 {
+                    if x >= area.x.saturating_add(area.width) {
+                        break;
+                    }
+                    spans.push(Span::styled("│", secondary.add_modifier(Modifier::DIM)));
+                    x = x.saturating_add(1);
+                }
+                let kind = self.documents[i].kind;
+                let icon = self
+                    .ctx
+                    .icons
+                    .get(kind.icon_key())
+                    .map(|s| s.as_str())
+                    .unwrap_or("");
+                let dot = if self.doc_unsaved(i) { "•" } else { "" };
+                let full = format!(" {icon} {}{dot} ", self.doc_title(i));
+                let remaining = area.x.saturating_add(area.width).saturating_sub(x) as usize;
+                if remaining == 0 {
+                    break;
+                }
+                // Char-boundary-safe truncation to the remaining width.
+                let label: String = full.chars().take(remaining).collect();
+                let w = label.chars().count() as u16;
+                let style = if i == self.active_doc {
+                    Style::default()
+                        .fg(self.ctx.theme.general.primary)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    secondary
+                };
+                spans.push(Span::styled(label, style));
+                rects.push(Rect {
+                    x,
+                    y: area.y,
+                    width: w,
+                    height: 1,
+                });
+                x = x.saturating_add(w);
+            }
+            self.ui.tab_rects = rects;
+            frame.render_widget(Paragraph::new(Line::from(spans)), area);
+        }
 
         // Toolbox + brush/text options (left panel)
         if let Some(tb_list) = fl.toolbox_list {

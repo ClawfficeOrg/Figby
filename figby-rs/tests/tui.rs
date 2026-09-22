@@ -36,16 +36,12 @@ fn test_tui_smoke_all_panels_render() {
     let buffer = terminal.backend().buffer();
     let output: String = buffer.content().iter().map(|c| c.symbol()).collect();
     assert!(
-        output.contains("Font Editor"),
-        "toolbar missing Font Editor tab"
+        output.contains("Untitled"),
+        "document tab strip missing initial tab"
     );
     assert!(
-        output.contains("Image Editor"),
-        "toolbar missing Image Editor tab"
-    );
-    assert!(
-        output.contains("ASCII Preview"),
-        "toolbar missing ASCII Preview tab"
+        !output.contains("ASCII Preview"),
+        "static mode strip should be replaced by document tabs"
     );
     assert!(output.contains("Palette"), "palette sidebar missing");
     assert!(output.contains("FPS:"), "status bar missing");
@@ -3410,4 +3406,36 @@ fn test_locked_layer_blocks_keyboard_paint() {
         app.editor.revision, rev0,
         "blocked paint must not count as a document mutation"
     );
+}
+
+#[test]
+fn test_document_tab_strip_shows_all_tabs_with_rects() {
+    use figby::tui::{DocumentKind, TuiApp};
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.editor.font_editor.font_storage_name = String::from("banner");
+    app.new_document(DocumentKind::Image);
+    assert_eq!(app.document_count(), 2);
+
+    let backend = TestBackend::new(120, 40);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal.draw(|f| app.render(f)).unwrap();
+
+    // Both tabs visible: parked font tab keeps its frozen title.
+    let buffer = terminal.backend().buffer();
+    let output: String = buffer.content().iter().map(|c| c.symbol()).collect();
+    assert!(output.contains("banner"), "parked tab title missing");
+    assert!(output.contains("Untitled"), "active tab title missing");
+    // One hit rect per tab, in tab order, non-overlapping.
+    assert_eq!(app.ui.tab_rects.len(), 2);
+    let (a, b) = (app.ui.tab_rects[0], app.ui.tab_rects[1]);
+    assert!(a.x + a.width <= b.x, "tab rects must not overlap");
+    // Rects actually cover the drawn labels: first rect starts the strip.
+    let row: String = (a.x..a.x + a.width)
+        .map(|x| buffer.cell((x, a.y)).map(|c| c.symbol()).unwrap_or(" "))
+        .collect();
+    assert!(row.contains("banner"), "first tab rect misaligned: {row:?}");
 }

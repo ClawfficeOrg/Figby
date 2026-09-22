@@ -174,9 +174,8 @@ fn regression_tui_full_app_render() {
 
     let buf = terminal.backend().buffer();
     let output: String = buf.content().iter().map(|c| c.symbol()).collect();
-    assert!(output.contains("Font Editor"));
-    assert!(output.contains("Image Editor"));
-    assert!(output.contains("ASCII Preview"));
+    assert!(output.contains("Untitled"));
+    assert!(!output.contains("ASCII Preview"));
     assert!(output.contains("FPS:"));
 }
 
