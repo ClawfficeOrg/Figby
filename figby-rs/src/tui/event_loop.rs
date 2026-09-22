@@ -169,6 +169,10 @@ impl TuiApp {
             Some(PendingDocAction::FontNewBlankSession) => {
                 self.do_new_file_session(SessionType::Font);
             }
+            Some(PendingDocAction::CloseDocument(idx)) => {
+                // Discard path, or save path once the save lands.
+                let _ = self.finish_close_document(idx);
+            }
             None => {}
         }
     }

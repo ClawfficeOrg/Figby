@@ -19,6 +19,9 @@ pub enum GlobalAction {
     OpenTweenPanel,
     CycleTabPrev,
     CycleTabNext,
+    DocNext,
+    DocPrev,
+    DocClose,
     NextMode,
     PrevMode,
     Quit,
@@ -127,6 +130,23 @@ pub static GLOBAL_DISPATCH: &[KeyDispatch] = &[
         modifiers: KeyModifiers::ALT,
         key_code: KeyCode::Right,
         action: GlobalAction::CycleTabNext,
+    },
+    // Document tabs (8.5.3) — Ctrl+PageUp/PageDown, more portable than
+    // Ctrl+Tab (which many terminals swallow for focus switching).
+    KeyDispatch {
+        modifiers: KeyModifiers::CONTROL,
+        key_code: KeyCode::PageDown,
+        action: GlobalAction::DocNext,
+    },
+    KeyDispatch {
+        modifiers: KeyModifiers::CONTROL,
+        key_code: KeyCode::PageUp,
+        action: GlobalAction::DocPrev,
+    },
+    KeyDispatch {
+        modifiers: KeyModifiers::CONTROL,
+        key_code: KeyCode::Char('w'),
+        action: GlobalAction::DocClose,
     },
     // Mode cycling
     KeyDispatch {
@@ -280,6 +300,16 @@ pub const KEYMAP: &[KeyBinding] = &[
         keys: "Tab",
         scope: Scope::Global,
         description: "Next mode",
+    },
+    KeyBinding {
+        keys: "Ctrl+PageDown / Ctrl+PageUp",
+        scope: Scope::Global,
+        description: "Next / previous document tab",
+    },
+    KeyBinding {
+        keys: "Ctrl+W",
+        scope: Scope::Global,
+        description: "Close document tab",
     },
     KeyBinding {
         keys: "Shift+Tab",

@@ -366,6 +366,26 @@ impl TuiApp {
         self.frame.dirty = true;
     }
 
+    /// Close a document tab, prompting through the unsaved-changes dialog
+    /// when that tab has unsaved work (8.5.3). Clean tabs close at once.
+    pub fn request_close_document(&mut self, idx: usize) {
+        if idx >= self.document_count() {
+            return;
+        }
+        let unsaved = if idx == self.active_doc {
+            self.editor.unsaved
+        } else {
+            self.documents[idx].editor.unsaved
+        };
+        if !unsaved {
+            let _ = self.close_document(idx);
+            return;
+        }
+        self.dialogs.pending_transition = Some(PendingDocAction::CloseDocument(idx));
+        self.dialogs.quit_confirm_dialog = true;
+        self.frame.dirty = true;
+    }
+
     /// Immediately perform a transition (no confirmation). For OpenFont
     /// this means the file picker, or the stashed path if one was already
     /// resolved.
@@ -381,6 +401,9 @@ impl TuiApp {
             }
             PendingDocAction::NewFileSession => self.do_new_file_session(self.ui.session_type),
             PendingDocAction::FontNewBlankSession => self.do_new_file_session(SessionType::Font),
+            PendingDocAction::CloseDocument(idx) => {
+                let _ = self.finish_close_document(idx);
+            }
         }
     }
 
@@ -2031,6 +2054,24 @@ impl TuiApp {
                 self.frame.dirty = true;
                 None
             }
+            GA::DocNext => {
+                let n = self.document_count();
+                if n > 1 {
+                    self.switch_document((self.active_doc + 1) % n);
+                }
+                None
+            }
+            GA::DocPrev => {
+                let n = self.document_count();
+                if n > 1 {
+                    self.switch_document((self.active_doc + n - 1) % n);
+                }
+                None
+            }
+            GA::DocClose => {
+                self.request_close_document(self.active_doc);
+                None
+            }
             GA::NextMode => {
                 self.ui.mode = self.ui.mode.next_for(self.ui.session_type);
                 self.editor.undo.clear();
@@ -3003,6 +3044,18 @@ impl TuiApp {
                 self.start_save_as_figmap();
                 self.ui.menu_bar_state.reset();
             }
+            menu::MenuAction::FileNewTabFont => {
+                self.new_document(crate::tui::documents::DocumentKind::Font);
+                self.ui.menu_bar_state.reset();
+            }
+            menu::MenuAction::FileNewTabImage => {
+                self.new_document(crate::tui::documents::DocumentKind::Image);
+                self.ui.menu_bar_state.reset();
+            }
+            menu::MenuAction::FileCloseTab => {
+                self.request_close_document(self.active_doc);
+                self.ui.menu_bar_state.reset();
+            }
             menu::MenuAction::FileExport => {
                 let mode = match self.ui.mode {
                     AppMode::FontEditor => export::ExportMode::Txt,
@@ -3718,5 +3771,56 @@ mod keybind_collision_tests {
         };
         app.handle_mouse_event(miss);
         assert_eq!(app.active_doc, 0);
+    }
+
+    #[test]
+    fn test_doc_tab_keys_cycle_and_close() {
+        let mut app = app_not_font_editor();
+        app.new_document(crate::tui::documents::DocumentKind::Font);
+        assert_eq!(app.document_count(), 2);
+        // Ctrl+PageDown wraps around the tab list.
+        let pgdn = KeyEvent::new(KeyCode::PageDown, KeyModifiers::CONTROL);
+        let _ = app.handle_key_event(pgdn);
+        assert_eq!(app.active_doc, 0);
+        let pgup = KeyEvent::new(KeyCode::PageUp, KeyModifiers::CONTROL);
+        let _ = app.handle_key_event(pgup);
+        assert_eq!(app.active_doc, 1);
+        // Ctrl+W closes the clean tab at once.
+        let ctrl_w = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL);
+        let _ = app.handle_key_event(ctrl_w);
+        assert_eq!(app.document_count(), 1);
+    }
+
+    #[test]
+    fn test_doc_close_unsaved_prompts_first() {
+        use crate::tui::app_state::PendingDocAction;
+
+        let mut app = app_not_font_editor();
+        app.new_document(crate::tui::documents::DocumentKind::Font);
+        app.editor.unsaved = true;
+        app.request_close_document(app.active_doc);
+        assert!(app.dialogs.quit_confirm_dialog);
+        assert_eq!(
+            app.dialogs.pending_transition,
+            Some(PendingDocAction::CloseDocument(1))
+        );
+        assert_eq!(app.document_count(), 2, "prompt must precede close");
+        // Discard proceeds.
+        app.execute_pending_transition();
+        assert_eq!(app.document_count(), 1);
+    }
+
+    #[test]
+    fn test_menu_new_tab_and_close_tab() {
+        use crate::tui::menu::MenuAction;
+
+        let mut app = app_not_font_editor();
+        app.handle_menu_action(MenuAction::FileNewTabImage);
+        assert_eq!(app.document_count(), 2);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        app.handle_menu_action(MenuAction::FileNewTabFont);
+        assert_eq!(app.document_count(), 3);
+        app.handle_menu_action(MenuAction::FileCloseTab);
+        assert_eq!(app.document_count(), 2);
     }
 }

@@ -1258,6 +1258,9 @@ pub enum PendingDocAction {
     OpenFont,
     NewFileSession,
     FontNewBlankSession,
+    /// Close a document tab (8.5.3): armed when the tab has unsaved
+    /// changes, executed after Save/Discard from the confirm dialog.
+    CloseDocument(usize),
 }
 
 /// Dialog/overlay state — file ops, export, undo panel, settings panel, rascii import.

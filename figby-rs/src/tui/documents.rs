@@ -305,6 +305,21 @@ impl TuiApp {
         self.frame.force_full_redraw = true;
         CloseResult::Closed
     }
+
+    /// Confirmed close after Save/Discard in the unsaved-changes dialog:
+    /// drops the unsaved flag (the user just approved losing or saving
+    /// the changes) so [`TuiApp::close_document`]'s guard doesn't block
+    /// the very close that was confirmed.
+    pub fn finish_close_document(&mut self, idx: usize) -> CloseResult {
+        if idx < self.documents.len() {
+            if idx == self.active_doc {
+                self.editor.unsaved = false;
+            } else {
+                self.documents[idx].editor.unsaved = false;
+            }
+        }
+        self.close_document(idx)
+    }
 }
 
 #[cfg(test)]

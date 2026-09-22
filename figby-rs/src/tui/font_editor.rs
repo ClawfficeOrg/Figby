@@ -817,7 +817,16 @@ impl FontEditor {
 
     pub fn handle_key(&mut self, code: KeyCode, modifiers: KeyModifiers, area_width: u16) -> bool {
         match self.view {
-            FontEditorView::Overview => self.handle_key_overview(code, area_width),
+            FontEditorView::Overview => {
+                // Ctrl/Alt combos are global (document tabs, menus) — never
+                // search input. Without this, e.g. Ctrl+W starts a "w"
+                // search instead of reaching the global close-tab binding.
+                if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) {
+                    false
+                } else {
+                    self.handle_key_overview(code, area_width)
+                }
+            }
             FontEditorView::CharEditor(_) => self.handle_key_char_editor(code, modifiers),
             FontEditorView::HeaderEditor => self.handle_key_header_editor(code),
             FontEditorView::SmushRuleEditor => self.handle_key_smush_editor(code),
