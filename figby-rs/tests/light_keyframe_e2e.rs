@@ -509,3 +509,30 @@ fn multi_light_independent_keyframes() {
         assert!(pt_color.2 > 50, "blue should increase");
     }
 }
+
+/// Test 5: Hex color serde roundtrip for lighting::Rgb.
+#[test]
+fn rgb_hex_serde_roundtrip() {
+    use figby::tui::lighting::Rgb;
+
+    // Hex string format
+    let hex_json = "\"#FF8040\"";
+    let rgb: Rgb = serde_json::from_str(hex_json).unwrap();
+    assert_eq!(rgb, Rgb(0xFF, 0x80, 0x40));
+
+    // Array format (legacy)
+    let arr_json = "[255, 128, 64]";
+    let rgb2: Rgb = serde_json::from_str(arr_json).unwrap();
+    assert_eq!(rgb2, Rgb(255, 128, 64));
+
+    // Both formats produce same result
+    assert_eq!(rgb, rgb2);
+
+    // Serialize always produces hex
+    let serialized = serde_json::to_string(&rgb).unwrap();
+    assert_eq!(serialized, "\"#FF8040\"");
+
+    // Roundtrip
+    let roundtripped: Rgb = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(roundtripped, rgb);
+}

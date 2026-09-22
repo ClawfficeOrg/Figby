@@ -378,6 +378,11 @@ struct CliArgs {
     )]
     play_tmux: Option<String>,
     #[arg(
+        long = "play-tmux-size",
+        help = "With --play-tmux: pane width as percentage of terminal (default: 50)"
+    )]
+    play_tmux_size: Option<u8>,
+    #[arg(
         long = "play-detach",
         help = "Run animation synchronously in child process, return to shell when done"
     )]
@@ -1395,8 +1400,10 @@ fn main() {
             if args.play_loop {
                 play_cmd.push_str(" --loop");
             }
+            let size_pct = args.play_tmux_size.unwrap_or(50).clamp(10, 90);
+            let size_arg = format!("-p{size_pct}");
             let status = std::process::Command::new("tmux")
-                .args(["split-window", "-h", &play_cmd])
+                .args(["split-window", "-h", &size_arg, &play_cmd])
                 .status();
             match status {
                 Ok(s) if s.success() => return,

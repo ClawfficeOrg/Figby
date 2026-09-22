@@ -77,8 +77,56 @@ impl NormalMap {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rgb(pub u8, pub u8, pub u8);
+
+impl Serialize for Rgb {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&format!("#{:02X}{:02X}{:02X}", self.0, self.1, self.2))
+    }
+}
+
+impl<'de> Deserialize<'de> for Rgb {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        match &value {
+            serde_json::Value::String(s) => {
+                if let Some(hex) = s.strip_prefix('#') {
+                    if hex.len() == 6 {
+                        let r =
+                            u8::from_str_radix(&hex[0..2], 16).map_err(serde::de::Error::custom)?;
+                        let g =
+                            u8::from_str_radix(&hex[2..4], 16).map_err(serde::de::Error::custom)?;
+                        let b =
+                            u8::from_str_radix(&hex[4..6], 16).map_err(serde::de::Error::custom)?;
+                        return Ok(Rgb(r, g, b));
+                    }
+                }
+                Err(serde::de::Error::custom(format!(
+                    "expected '#RRGGBB' hex string, got: {s}"
+                )))
+            }
+            serde_json::Value::Array(arr) if arr.len() == 3 => {
+                let r = arr[0]
+                    .as_u64()
+                    .ok_or_else(|| serde::de::Error::custom("array element 0 is not a u8"))?
+                    as u8;
+                let g = arr[1]
+                    .as_u64()
+                    .ok_or_else(|| serde::de::Error::custom("array element 1 is not a u8"))?
+                    as u8;
+                let b = arr[2]
+                    .as_u64()
+                    .ok_or_else(|| serde::de::Error::custom("array element 2 is not a u8"))?
+                    as u8;
+                Ok(Rgb(r, g, b))
+            }
+            _ => Err(serde::de::Error::custom(format!(
+                "expected '#RRGGBB' hex string or [r,g,b] array, got: {value}"
+            ))),
+        }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Attenuation {
