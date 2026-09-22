@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.0.40] - 2026-09-22
+
+### Added (todo-v8 8.5 — document tabs, 8.6.3 gap)
+- Multi-document tabs: the static mode strip is now one tab per open
+  document (kind icon + title + unsaved dot). Backed by a hot-swapped
+  `Document` model — each tab keeps independent undo, brush, layers,
+  timeline, and lighting state.
+- `Ctrl+PageUp`/`Ctrl+PageDown` cycle tabs, `Ctrl+W` closes (unsaved tabs
+  prompt through the existing Save/Discard/Cancel dialog). File menu
+  gains New Tab (Font), New Tab (Image), Close Tab, and Save as Figmap
+  (previously unreachable outside font mode).
+
+### Fixed
+- Font overview search no longer swallows Ctrl/Alt combos (`Ctrl+W` typed
+  `w` into search instead of closing the tab).
+
 ## [6.0.39] - 2026-09-22
 
 ### Fixed

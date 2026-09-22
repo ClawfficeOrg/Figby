@@ -204,7 +204,7 @@ checklist) — don't batch multiple tasks into one unverified pass.
 > index-everywhere refactor would touch all of them. Use a hot-swap shim
 > instead of an index-everywhere rewrite.
 
-- [ ] `8.5.1` Introduce `Document`/`DocumentKind` + hot-swap on `TuiApp`
+- [x] `8.5.1` Introduce `Document`/`DocumentKind` + hot-swap on `TuiApp` — SHIPPED
   - **Goal:** Keep `editor`/`animation`/`lighting` as real fields on
     `TuiApp` (so existing call sites compile unchanged); add
     `documents: Vec<Document>` + `active_doc: usize`. Tab switch =
@@ -237,7 +237,7 @@ checklist) — don't batch multiple tasks into one unverified pass.
     cheaper than moving editor/animation/lighting themselves).
   - **Difficulty:** High
 
-- [ ] `8.5.2` Replace the static mode strip with a clickable document tab strip
+- [x] `8.5.2` Replace the static mode strip with a clickable document tab strip — SHIPPED
   - **Goal:** `tui/mod.rs:210-241` currently builds a hardcoded, 3-entry,
     non-interactive `Tabs` widget (no click handling exists today).
   - **Touches:** `figby-rs/src/tui/mod.rs` — new tab strip (title, kind
@@ -247,14 +247,16 @@ checklist) — don't batch multiple tasks into one unverified pass.
     `handle_mouse_event`, same early-return pattern as the menu-bar check.
   - **Difficulty:** Medium
 
-- [ ] `8.5.3` Keybindings + menu entries for document tabs
+- [x] `8.5.3` Keybindings + menu entries for document tabs — SHIPPED
   - **Touches:** `figby-rs/src/tui/keymap.rs` — next/prev document
     (`Ctrl+PageUp`/`Ctrl+PageDown`, more portable than `Ctrl+Tab`), close
     document (`Ctrl+W`). Menu: File > New Tab (Font) / New Tab (Image) /
     Close Tab.
   - **Difficulty:** Low
 
-- [ ] `8.5.4` Test fallout
+- [x] `8.5.4` Test fallout — NO CHANGES NEEDED: no `TuiApp {}` struct
+  literals exist (all construction via `TuiApp::new()`); full suite green
+  across all 12 test targets, 0 failures.
   - **Touches:** ~5 call sites construct `TuiApp` directly; each needs
     `documents: vec![initial_doc], active_doc: 0` added.
   - **Difficulty:** Low
