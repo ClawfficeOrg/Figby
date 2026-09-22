@@ -1,5 +1,20 @@
 # Changelog
 
+## [6.0.39] - 2026-09-22
+
+### Fixed
+- `--play-inline` now renders at the cursor position instead of the
+  top-left: the old code reused the fullscreen renderer's absolute CUP
+  sequences, and smaller frames ghosted over larger ones. New
+  `render_frame_inline` uses DECSC save/restore plus cursor-relative moves
+  only, and writes the full animation bounding box (spaces included) so
+  frames fully erase each other. Cursor parks below the animation on exit.
+
+### Added
+- `--play-timeline` flag (default off): shows a one-row cursor-relative
+  playback timeline under `--play --play-inline` animations. Fullscreen
+  playback keeps its always-on progress bar.
+
 ## [6.0.38] - 2026-08-26
 
 Remaining verified GPT-review bugs closed: F-12, F-15, F-17.
