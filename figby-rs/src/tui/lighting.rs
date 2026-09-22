@@ -660,36 +660,30 @@ pub fn shade_canvas(
     normal_map: &NormalMap,
     cell_has_content: impl Fn(u16, u16) -> bool,
     max_shadow_distance: u16,
-) -> Vec<Vec<f32>> {
+) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
     let height = normal_map.height() as usize;
     let width = normal_map.width() as usize;
-    let mut luminance = vec![vec![0.0f32; width]; height];
+    let mut fg_lum = vec![vec![0.0f32; width]; height];
+    let mut bg_lum = vec![vec![0.0f32; width]; height];
 
-    for (y, row) in luminance.iter_mut().enumerate().take(height) {
-        for (x, cell) in row.iter_mut().enumerate().take(width) {
-            let mut total = 0.0f32;
+    for y in 0..height {
+        for x in 0..width {
             let normal = normal_map.cells[y][x];
 
             for light in &scene.lights {
-                match light {
-                    Light::Ambient {
-                        intensity,
-                        color: _,
-                        target: _,
-                    } => {
-                        total += intensity;
-                    }
+                let target = light.target();
+                let c = match light {
+                    Light::Ambient { intensity, .. } => *intensity,
                     Light::Directional {
                         direction,
                         intensity,
-                        color: _,
-                        target: _,
+                        ..
                     } => {
                         let (nx, ny, nz) = normal.to_f32();
                         let ndotl =
                             (nx * direction.0 + ny * direction.1 + nz * direction.2).max(0.0);
-                        if ndotl > 0.0 {
-                            let shadowed = cast_shadow(
+                        if ndotl > 0.0
+                            && !cast_shadow(
                                 x as u16,
                                 y as u16,
                                 (direction.0, direction.1),
@@ -697,18 +691,18 @@ pub fn shade_canvas(
                                 width as u16,
                                 height as u16,
                                 max_shadow_distance,
-                            );
-                            if !shadowed {
-                                total += ndotl * intensity;
-                            }
+                            )
+                        {
+                            ndotl * intensity
+                        } else {
+                            0.0
                         }
                     }
                     Light::Point {
                         position,
                         intensity,
-                        color: _,
                         attenuation,
-                        target: _,
+                        ..
                     } => {
                         let lx = position.0 - x as f32;
                         let ly = position.1 - y as f32;
@@ -731,7 +725,7 @@ pub fn shade_canvas(
                             } else {
                                 (0.0, 0.0)
                             };
-                            let shadowed = cast_shadow(
+                            if !cast_shadow(
                                 x as u16,
                                 y as u16,
                                 shadow_dir,
@@ -739,20 +733,29 @@ pub fn shade_canvas(
                                 width as u16,
                                 height as u16,
                                 max_shadow_distance,
-                            );
-                            if !shadowed && dist > 1e-10 {
-                                total += ndotl * intensity * atten;
+                            ) && dist > 1e-10
+                            {
+                                ndotl * intensity * atten
+                            } else {
+                                0.0
                             }
+                        } else {
+                            0.0
                         }
                     }
+                };
+                if target.applies_fg() {
+                    fg_lum[y][x] += c;
+                }
+                if target.applies_bg() {
+                    bg_lum[y][x] += c;
                 }
             }
-
-            *cell = total.clamp(0.0, 1.0);
+            fg_lum[y][x] = fg_lum[y][x].clamp(0.0, 1.0);
+            bg_lum[y][x] = bg_lum[y][x].clamp(0.0, 1.0);
         }
     }
-
-    luminance
+    (fg_lum, bg_lum)
 }
 
 pub fn cast_shadow(
@@ -1236,6 +1239,7 @@ mod tests {
         let base = Light::Ambient {
             intensity: 0.5,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         };
         let props = LightProperties {
             intensity: Some(0.8),
@@ -1243,7 +1247,9 @@ mod tests {
         };
         let result = apply_overrides(&base, &props);
         match result {
-            Light::Ambient { intensity, color } => {
+            Light::Ambient {
+                intensity, color, ..
+            } => {
                 assert!((intensity - 0.8).abs() < 1e-6);
                 assert_eq!(color, Rgb(255, 255, 255));
             }
@@ -1258,6 +1264,7 @@ mod tests {
             intensity: 1.0,
             color: Rgb(100, 100, 100),
             attenuation: Attenuation::default(),
+            target: LightTarget::default(),
         };
         let props = LightProperties {
             color: Some(Rgb(255, 0, 0)),
@@ -1281,6 +1288,7 @@ mod tests {
             lights: vec![Light::Ambient {
                 intensity: 0.5,
                 color: Rgb(255, 255, 255),
+                target: LightTarget::default(),
             }],
         };
         let result = interpolate_scene(&base, &[], 0.5);
@@ -1297,6 +1305,7 @@ mod tests {
             lights: vec![Light::Ambient {
                 intensity: 0.0,
                 color: Rgb(0, 0, 0),
+                target: LightTarget::default(),
             }],
         };
         let kfs = vec![
@@ -1330,6 +1339,7 @@ mod tests {
             lights: vec![Light::Ambient {
                 intensity: 0.0,
                 color: Rgb(0, 0, 0),
+                target: LightTarget::default(),
             }],
         };
         let kfs = vec![
@@ -1380,12 +1390,14 @@ mod tests {
                 Light::Ambient {
                     intensity: 0.0,
                     color: Rgb(0, 0, 0),
+                    target: LightTarget::default(),
                 },
                 Light::Point {
                     position: (0.0, 0.0, 0.0),
                     intensity: 0.0,
                     color: Rgb(0, 0, 0),
                     attenuation: Attenuation::default(),
+                    target: LightTarget::default(),
                 },
             ],
         };

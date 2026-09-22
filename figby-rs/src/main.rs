@@ -811,7 +811,8 @@ fn heightfield_from_composite(buf: &figby::tui::canvas::CanvasBuffer) -> Vec<Vec
 /// Apply luminance shading to a composite, producing lit CanvasCells.
 fn apply_luminance_to_composite(
     buf: &figby::tui::canvas::CanvasBuffer,
-    lum: &[Vec<f32>],
+    fg_lum: &[Vec<f32>],
+    bg_lum: &[Vec<f32>],
 ) -> figby::tui::canvas::CanvasBuffer {
     let w = buf.width();
     let h = buf.height();
@@ -819,22 +820,28 @@ fn apply_luminance_to_composite(
     for y in 0..h {
         for x in 0..w {
             if let Some(cell) = buf.get(x, y) {
-                let l = lum
+                let fl = fg_lum
                     .get(y)
                     .and_then(|row| row.get(x))
                     .copied()
                     .unwrap_or(1.0);
-                let modulate = |c: u8| (c as f32 * l).round() as u8;
+                let bl = bg_lum
+                    .get(y)
+                    .and_then(|row| row.get(x))
+                    .copied()
+                    .unwrap_or(1.0);
+                let modulate_fg = |c: u8| (c as f32 * fl).round() as u8;
+                let modulate_bg = |c: u8| (c as f32 * bl).round() as u8;
                 let fg = cell.fg.map(|color| {
                     if let ratatui::style::Color::Rgb(r, g, b) = color {
-                        ratatui::style::Color::Rgb(modulate(r), modulate(g), modulate(b))
+                        ratatui::style::Color::Rgb(modulate_fg(r), modulate_fg(g), modulate_fg(b))
                     } else {
                         color
                     }
                 });
                 let bg = cell.bg.map(|color| {
                     if let ratatui::style::Color::Rgb(r, g, b) = color {
-                        ratatui::style::Color::Rgb(modulate(r), modulate(g), modulate(b))
+                        ratatui::style::Color::Rgb(modulate_bg(r), modulate_bg(g), modulate_bg(b))
                     } else {
                         color
                     }
@@ -1289,7 +1296,7 @@ fn main() {
                             &heightfield_from_composite(&composite),
                             0.5,
                         );
-                        let lum = figby::tui::lighting::shade_canvas(
+                        let (fg_lum, bg_lum) = figby::tui::lighting::shade_canvas(
                             &interpolated,
                             &nmap,
                             |x: u16, y: u16| {
@@ -1299,7 +1306,7 @@ fn main() {
                             },
                             50,
                         );
-                        apply_luminance_to_composite(&composite, &lum)
+                        apply_luminance_to_composite(&composite, &fg_lum, &bg_lum)
                     } else {
                         composite
                     };

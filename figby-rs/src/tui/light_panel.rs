@@ -167,7 +167,7 @@ impl Default for LightPanel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tui::lighting::{Attenuation, Rgb};
+    use crate::tui::lighting::{Attenuation, LightTarget, Rgb};
 
     #[test]
     fn test_light_panel_empty() {
@@ -183,6 +183,7 @@ mod tests {
         scene.add_light(Light::Ambient {
             intensity: 0.7,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         });
         assert_eq!(LightPanel::light_type_str(&scene, 0), Some("Ambient"));
         assert!((LightPanel::light_intensity(&scene, 0).unwrap() - 0.7).abs() < 0.001);
@@ -194,11 +195,13 @@ mod tests {
         scene.add_light(Light::Ambient {
             intensity: 0.5,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         });
         scene.add_light(Light::Directional {
             direction: (0.0, 0.0, 1.0),
             intensity: 0.8,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         });
 
         let mut panel = LightPanel::new();
@@ -215,17 +218,20 @@ mod tests {
         scene.add_light(Light::Ambient {
             intensity: 0.5,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         });
         scene.add_light(Light::Directional {
             direction: (0.0, 0.0, 1.0),
             intensity: 0.8,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         });
         scene.add_light(Light::Point {
             position: (5.0, 3.0, 5.0),
             intensity: 0.9,
             color: Rgb(255, 255, 255),
             attenuation: Attenuation::default(),
+            target: LightTarget::default(),
         });
 
         assert_eq!(scene.lights.len(), 3);
@@ -240,6 +246,7 @@ mod tests {
         scene.add_light(Light::Ambient {
             intensity: 0.5,
             color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
         });
 
         LightPanel::adjust_intensity(&mut scene, 0, 0.2);

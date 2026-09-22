@@ -63,7 +63,8 @@ pub fn shade_composited(
         let (ux, uy) = (x as usize, y as usize);
         ux < w && uy < h && shadow_mask[uy][ux]
     };
-    let luminance = lighting::shade_canvas(scene, &normal_map, shadow_check, max_shadow_distance);
+    let (fg_luminance, bg_luminance) =
+        lighting::shade_canvas(scene, &normal_map, shadow_check, max_shadow_distance);
 
     // Pre-compute specular contribution per cell
     let specular_luminance: Vec<Vec<f32>> = (0..h)
@@ -91,23 +92,26 @@ pub fn shade_composited(
                     .get(swatch_idx)
                     .map(|s| s.shininess)
                     .unwrap_or(32.0);
-                let mut lum = luminance[y][x];
+                let mut fg_lum = fg_luminance[y][x];
+                let mut bg_lum = bg_luminance[y][x];
                 if has_specular {
                     let spec_term = specular_luminance[y][x] * shininess.recip();
-                    lum = (lum + spec_term * 0.5).min(1.0);
+                    fg_lum = (fg_lum + spec_term * 0.5).min(1.0);
+                    bg_lum = (bg_lum + spec_term * 0.5).min(1.0);
                 }
-                let entry = lut.get_swatched(lum, swatch_idx);
+                let fg_entry = lut.get_swatched(fg_lum, swatch_idx);
+                let bg_entry = lut.get_swatched(bg_lum, swatch_idx);
                 result.set(
                     x,
                     y,
                     CanvasCell {
-                        ch: entry.ch,
+                        ch: fg_entry.ch,
                         fg: Some(ratatui::style::Color::Rgb(
-                            entry.fg_color.0,
-                            entry.fg_color.1,
-                            entry.fg_color.2,
+                            fg_entry.fg_color.0,
+                            fg_entry.fg_color.1,
+                            fg_entry.fg_color.2,
                         )),
-                        bg: entry
+                        bg: bg_entry
                             .bg_color
                             .map(|(r, gg, b)| ratatui::style::Color::Rgb(r, gg, b)),
                         height: None,

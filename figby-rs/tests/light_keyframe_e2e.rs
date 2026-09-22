@@ -7,7 +7,8 @@ use figby::output::export_cells_to_gif;
 use figby::render::render_string;
 use figby::tui::canvas::{CanvasBuffer, CanvasCell};
 use figby::tui::lighting::{
-    self, interpolate_scene, Attenuation, Light, LightKeyframe, LightProperties, Rgb, Scene,
+    self, interpolate_scene, Attenuation, Light, LightKeyframe, LightProperties, LightTarget, Rgb,
+    Scene,
 };
 use figby::tui::timeline::EasingFunction;
 
@@ -100,6 +101,7 @@ fn light_sweep_animation() {
             Light::Ambient {
                 intensity: 0.3,
                 color: Rgb(255, 255, 255),
+                target: LightTarget::default(),
             },
             Light::Point {
                 position: (0.0, h as f32 * 0.5, 20.0),
@@ -110,6 +112,7 @@ fn light_sweep_animation() {
                     linear: 0.008,
                     quadratic: 0.0005,
                 },
+                target: LightTarget::default(),
             },
         ],
     };
@@ -152,7 +155,7 @@ fn light_sweep_animation() {
                 |x: u16, y: u16| mk[y as usize][x as usize],
                 SD,
             );
-            shade_to_cells(&lum, &mk, (200, 200, 255))
+            shade_to_cells(&lum.0, &mk, (200, 200, 255))
         })
         .collect();
 
@@ -227,6 +230,7 @@ fn light_keyframe_easing_comparison() {
         lights: vec![Light::Ambient {
             intensity: 0.0,
             color: Rgb(0, 0, 0),
+            target: LightTarget::default(),
         }],
     };
 
@@ -355,6 +359,7 @@ fn figmap_roundtrip_with_light_keyframes() {
     let lights = vec![Light::Ambient {
         intensity: 0.5,
         color: Rgb(255, 255, 255),
+        target: LightTarget::default(),
     }];
 
     let layers = LayerStack {
@@ -390,6 +395,7 @@ fn figmap_roundtrip_with_light_keyframes() {
         lights: vec![Light::Ambient {
             intensity: 0.0,
             color: Rgb(0, 0, 0),
+            target: LightTarget::default(),
         }],
     };
     let scene = interpolate_scene(&base, &tl.light_keyframes, 0.5);
@@ -414,12 +420,14 @@ fn multi_light_independent_keyframes() {
             Light::Ambient {
                 intensity: 0.0,
                 color: Rgb(0, 0, 0),
+                target: LightTarget::default(),
             },
             Light::Point {
                 position: (10.0, 10.0, 5.0),
                 intensity: 0.0,
                 color: Rgb(0, 0, 0),
                 attenuation: Attenuation::default(),
+                target: LightTarget::default(),
             },
         ],
     };
