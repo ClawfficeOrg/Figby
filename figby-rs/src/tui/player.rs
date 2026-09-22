@@ -673,17 +673,21 @@ pub fn render_frame_raw(frame: &AnimationFrame) -> String {
 /// bypassed — any keypress exits immediately. This is the "banner" mode:
 /// loop until dismissed, rather than play-once-and-return.
 pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io::Result<()> {
-    play_raw_timed(frames, fps, None, loop_playback)
+    play_raw_timed(frames, fps, None, loop_playback, false)
 }
 
 /// `play_raw` with per-frame hold times (centiseconds) so GIF-imported
 /// variable timing isn't discarded (GPT review F-26). `fps` is still used
 /// as the fallback for any frame without an explicit delay.
+///
+/// When `inline` is true, renders at current cursor position without clearing
+/// the screen — animation plays "in place" and cursor moves below on exit.
 pub fn play_raw_timed(
     frames: Vec<AnimationFrame>,
     fps: u8,
     delays: Option<Vec<u16>>,
     loop_playback: bool,
+    inline: bool,
 ) -> io::Result<()> {
     if frames.is_empty() {
         return Ok(());
@@ -704,16 +708,30 @@ pub fn play_raw_timed(
     // RAII guard (GPT review F-25): restores cursor visibility and raw
     // mode on ANY exit path, including errors mid-playback — previously
     // cleanup ran only on the normal tail.
-    struct RawModeGuard;
+    struct RawModeGuard {
+        inline: bool,
+    }
     impl Drop for RawModeGuard {
         fn drop(&mut self) {
-            let _ = write!(io::stdout(), "\x1b[?25h\x1b[0m\x1b[2J\x1b[H");
+            if self.inline {
+                // Inline: just show cursor, move below animation
+                let _ = write!(io::stdout(), "\x1b[?25h\x1b[0m\n");
+            } else {
+                // Fullscreen: restore terminal
+                let _ = write!(io::stdout(), "\x1b[?25h\x1b[0m\x1b[2J\x1b[H");
+            }
             let _ = io::stdout().flush();
             let _ = terminal::disable_raw_mode();
         }
     }
-    let _raw_guard = RawModeGuard;
-    write!(io::stdout(), "\x1b[?25l\x1b[2J")?;
+    let _raw_guard = RawModeGuard { inline };
+    if inline {
+        // Inline: hide cursor, don't clear screen
+        write!(io::stdout(), "\x1b[?25l")?;
+    } else {
+        // Fullscreen: hide cursor, clear screen
+        write!(io::stdout(), "\x1b[?25l\x1b[2J")?;
+    }
     io::stdout().flush()?;
 
     let mut finished = false;
@@ -722,7 +740,9 @@ pub fn play_raw_timed(
         let cur = player.current_frame();
 
         write!(io::stdout(), "{}", precomputed[cur])?;
-        write_playback_progress_bar(&player, cur, total)?;
+        if !inline {
+            write_playback_progress_bar(&player, cur, total)?;
+        }
         io::stdout().flush()?;
 
         let frame_interval = player.frame_interval();

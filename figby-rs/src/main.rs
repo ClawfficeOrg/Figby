@@ -368,6 +368,11 @@ struct CliArgs {
     )]
     play_loop: bool,
     #[arg(
+        long = "play-inline",
+        help = "With --play: render animation at cursor position without clearing screen"
+    )]
+    play_inline: bool,
+    #[arg(
         long = "play-daemon",
         help = "Fork animation to background, return to shell immediately (kill PID to stop)"
     )]
@@ -1328,7 +1333,7 @@ fn main() {
                 .map(|f| f.clamp(1, 60) as u8)
                 .unwrap_or(10);
             if let Err(e) =
-                figby::tui::player::play_raw_timed(frame_cells, fps, Some(delays), args.play_loop)
+                figby::tui::player::play_raw_timed(frame_cells, fps, Some(delays), args.play_loop, args.play_inline)
             {
                 eprintln!("Playback error: {e}");
                 process::exit(1);
@@ -1372,6 +1377,7 @@ fn main() {
             fps,
             Some(gif_result.frame_delays),
             args.play_loop,
+            args.play_inline,
         ) {
             eprintln!("Playback error: {e}");
             process::exit(1);
