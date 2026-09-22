@@ -668,29 +668,34 @@ impl TuiApp {
                     let (sx, sy) = self.editor.canvas.scroll_offset();
                     let buf = frame.buffer_mut();
                     for (i, light) in scene.lights.iter().enumerate() {
-                        if let lighting::Light::Point { position, .. } = light {
-                            let bx = position.0 as i16;
-                            let by = position.1 as i16;
-                            let screen_x = canvas_inner_rect.x as i16 + (bx - sx as i16) * zoom;
-                            let screen_y = canvas_inner_rect.y as i16 + (by - sy as i16) * zoom;
-                            if screen_x >= canvas_inner_rect.x as i16
-                                && screen_x < (canvas_inner_rect.x + canvas_inner_rect.width) as i16
-                                && screen_y >= canvas_inner_rect.y as i16
-                                && screen_y
-                                    < (canvas_inner_rect.y + canvas_inner_rect.height) as i16
-                            {
-                                if let Some(cell) = buf.cell_mut((screen_x as u16, screen_y as u16))
-                                {
-                                    let marker = "\u{2726}";
-                                    let fg = if i == self.lighting.panel.selected_index {
-                                        self.ctx.theme.general.primary
-                                    } else {
-                                        self.ctx.theme.general.secondary
-                                    };
-                                    cell.set_symbol(marker);
-                                    cell.set_fg(fg);
-                                    cell.set_bg(ratatui::style::Color::Reset);
-                                }
+                        let (bx, by, marker) = match light {
+                            lighting::Light::Point { position, .. } => {
+                                (position.0 as i16, position.1 as i16, "\u{2726}")
+                            }
+                            lighting::Light::Directional { direction, .. } => {
+                                // Show directional light origin at center with arrow
+                                let ox = direction.0 * 5.0;
+                                let oy = direction.1 * 5.0;
+                                (ox as i16, oy as i16, "\u{2192}")
+                            }
+                            lighting::Light::Ambient { .. } => continue,
+                        };
+                        let screen_x = canvas_inner_rect.x as i16 + (bx - sx as i16) * zoom;
+                        let screen_y = canvas_inner_rect.y as i16 + (by - sy as i16) * zoom;
+                        if screen_x >= canvas_inner_rect.x as i16
+                            && screen_x < (canvas_inner_rect.x + canvas_inner_rect.width) as i16
+                            && screen_y >= canvas_inner_rect.y as i16
+                            && screen_y < (canvas_inner_rect.y + canvas_inner_rect.height) as i16
+                        {
+                            if let Some(cell) = buf.cell_mut((screen_x as u16, screen_y as u16)) {
+                                let fg = if i == self.lighting.panel.selected_index {
+                                    self.ctx.theme.general.primary
+                                } else {
+                                    self.ctx.theme.general.secondary
+                                };
+                                cell.set_symbol(marker);
+                                cell.set_fg(fg);
+                                cell.set_bg(ratatui::style::Color::Reset);
                             }
                         }
                     }

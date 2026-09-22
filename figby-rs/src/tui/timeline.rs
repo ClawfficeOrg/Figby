@@ -187,6 +187,8 @@ pub struct TimelineState {
     pub layer_row_offset: usize,
     /// Updated each render pass — used by key handler to keep current frame in view.
     pub cached_max_vis_frames: usize,
+    /// Frame indices that have light keyframes (for ruler markers).
+    pub light_keyframe_frames: Vec<usize>,
 }
 
 impl Default for TimelineState {
@@ -201,6 +203,7 @@ impl Default for TimelineState {
             layer_names: Vec::new(),
             layer_row_offset: 0,
             cached_max_vis_frames: 5,
+            light_keyframe_frames: Vec::new(),
         }
     }
 }
@@ -211,6 +214,22 @@ impl TimelineState {
     /// very high fps from producing a zero (meaningless) delay.
     pub fn default_delay(&self) -> u16 {
         (100u16 / self.fps.max(1) as u16).max(1)
+    }
+
+    /// Recompute which frames have light keyframes based on the given
+    /// light keyframe list. Call after modifying light keyframes.
+    pub fn update_light_keyframe_frames(
+        &mut self,
+        light_keyframes: &[super::lighting::LightKeyframe],
+    ) {
+        let total = self.frames.len().max(1) as f32;
+        let mut frames: Vec<usize> = light_keyframes
+            .iter()
+            .map(|kf| (kf.time * total).round() as usize)
+            .collect();
+        frames.sort();
+        frames.dedup();
+        self.light_keyframe_frames = frames;
     }
 
     /// Per-frame hold times in timeline order. Because `delay` lives inside
@@ -1080,11 +1099,26 @@ impl StatefulWidget for &AnimationTimeline {
         for (vis_i, frame_idx) in (f_start..f_end).enumerate() {
             let col_x = area.x + self.label_col_width + vis_i as u16 * stride;
             let is_active = frame_idx == state.current_frame;
+            let has_light_kf = state.light_keyframe_frames.contains(&frame_idx);
 
             // Separator
             if let Some(cell) = buf.cell_mut((col_x, ruler_y)) {
                 cell.set_char('│');
                 cell.set_style(Style::default().fg(self.theme.ruler));
+            }
+            // Light keyframe indicator (diamond in first char position)
+            if has_light_kf {
+                let lx = col_x + 1;
+                if lx < area.x + area.width {
+                    if let Some(cell) = buf.cell_mut((lx, ruler_y)) {
+                        cell.set_char('\u{25C6}');
+                        cell.set_style(
+                            Style::default()
+                                .fg(self.theme.keyframe)
+                                .add_modifier(ratatui::style::Modifier::BOLD),
+                        );
+                    }
+                }
             }
             // Frame label (right-justified in cell_width)
             let label = format!("{:>width$}", frame_idx, width = self.cell_width as usize);

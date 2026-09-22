@@ -1645,7 +1645,12 @@ impl TuiApp {
                     self.frame.dirty = true;
                     return None;
                 }
-                Some(true) => return None,
+                Some(true) => {
+                    self.animation
+                        .timeline_state
+                        .update_light_keyframe_frames(&self.lighting.light_keyframes);
+                    return None;
+                }
                 None => {}
             }
         }
