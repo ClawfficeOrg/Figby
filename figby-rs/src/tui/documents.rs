@@ -386,3 +386,31 @@ mod tests {
         assert_eq!(app.doc_title(99), "Untitled");
     }
 }
+
+#[cfg(test)]
+mod roundtrip_tests {
+    use super::super::{AppMode, TuiApp};
+    use super::*;
+
+    #[test]
+    fn test_canvas_content_survives_switch_round_trip() {
+        let mut app = TuiApp::new();
+        let mark = crate::tui::canvas::CanvasCell {
+            ch: 'Z',
+            fg: None,
+            bg: None,
+            height: None,
+        };
+        app.editor.canvas.buffer.set(3, 2, mark);
+        app.editor.font_editor.font_storage_name = String::from("first");
+        app.new_document(DocumentKind::Image);
+        // Fresh tab is blank and independent.
+        assert_eq!(app.editor.canvas.buffer.get(3, 2).map(|c| c.ch), Some(' '));
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        // Switch back: canvas mark, name, and mode all restored.
+        assert!(app.switch_document(0));
+        assert_eq!(app.editor.canvas.buffer.get(3, 2).map(|c| c.ch), Some('Z'));
+        assert_eq!(app.doc_title(0), "first");
+        assert_eq!(app.ui.mode, AppMode::FontEditor);
+    }
+}

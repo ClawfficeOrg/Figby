@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.0.41] - 2026-09-22
+
+### Added
+- File > New Animation: fresh image tab with the timeline already open
+  (8.6.3 leftover, unblocked by the document model).
+
+### Fixed
+- Canvas content verified to survive a tab switch round-trip
+  (regression test on the hot-swap).
+
 ## [6.0.40] - 2026-09-22
 
 ### Added (todo-v8 8.5 — document tabs, 8.6.3 gap)

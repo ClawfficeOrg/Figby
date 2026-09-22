@@ -1,6 +1,6 @@
 [package]
 name = "figby"
-version = "6.0.40"
+version = "6.0.41"
 edition = "2021"
 description = "FIGlet deluxe: drop in rust replacement but with more time-wasting toys"
 license = "BSD-3-Clause"

@@ -899,7 +899,7 @@ dependencies = [
 
 [[package]]
 name = "figby"
-version = "6.0.40"
+version = "6.0.41"
 dependencies = [
  "clap",
  "criterion",
