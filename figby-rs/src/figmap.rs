@@ -202,7 +202,8 @@ pub fn load_figmap(path: &Path) -> Result<FigmapFile, FigmapError> {
     let layer_count = figmap.layers.len();
     if let Some(ref timeline) = figmap.timeline {
         for frame in &timeline.frames {
-            if frame.document_state.len() != layer_count {
+            // Empty document_state is valid — means "derive from live layers"
+            if !frame.document_state.is_empty() && frame.document_state.len() != layer_count {
                 return Err(FigmapError::LayerCountMismatch {
                     expected: layer_count,
                     actual: frame.document_state.len(),
