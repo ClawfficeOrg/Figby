@@ -145,23 +145,93 @@ impl Default for Attenuation {
     }
 }
 
+/// Which channel(s) a light affects.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LightTarget {
+    Fg,
+    Bg,
+    #[default]
+    Both,
+}
+
+impl LightTarget {
+    pub fn applies_fg(&self) -> bool {
+        matches!(self, LightTarget::Fg | LightTarget::Both)
+    }
+    pub fn applies_bg(&self) -> bool {
+        matches!(self, LightTarget::Bg | LightTarget::Both)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Light {
     Ambient {
         intensity: f32,
         color: Rgb,
+        #[serde(default)]
+        target: LightTarget,
     },
     Directional {
         direction: (f32, f32, f32),
         intensity: f32,
         color: Rgb,
+        #[serde(default)]
+        target: LightTarget,
     },
     Point {
         position: (f32, f32, f32),
         intensity: f32,
         color: Rgb,
         attenuation: Attenuation,
+        #[serde(default)]
+        target: LightTarget,
     },
+}
+
+impl Light {
+    pub fn target(&self) -> LightTarget {
+        match self {
+            Light::Ambient { target, .. }
+            | Light::Directional { target, .. }
+            | Light::Point { target, .. } => *target,
+        }
+    }
+    pub fn set_target(&mut self, t: LightTarget) {
+        match self {
+            Light::Ambient { target, .. }
+            | Light::Directional { target, .. }
+            | Light::Point { target, .. } => *target = t,
+        }
+    }
+    pub fn ambient(intensity: f32, color: Rgb) -> Self {
+        Light::Ambient {
+            intensity,
+            color,
+            target: LightTarget::default(),
+        }
+    }
+    pub fn directional(direction: (f32, f32, f32), intensity: f32, color: Rgb) -> Self {
+        Light::Directional {
+            direction,
+            intensity,
+            color,
+            target: LightTarget::default(),
+        }
+    }
+    pub fn point(
+        position: (f32, f32, f32),
+        intensity: f32,
+        color: Rgb,
+        attenuation: Attenuation,
+    ) -> Self {
+        Light::Point {
+            position,
+            intensity,
+            color,
+            attenuation,
+            target: LightTarget::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -263,29 +333,38 @@ fn lerp_attenuation(a: &Attenuation, b: &Attenuation, t: f32) -> Attenuation {
 /// Apply property overrides from a keyframe to a base light, returning a new Light.
 fn apply_overrides(base: &Light, props: &LightProperties) -> Light {
     match base {
-        Light::Ambient { intensity, color } => Light::Ambient {
+        Light::Ambient {
+            intensity,
+            color,
+            target: _,
+        } => Light::Ambient {
             intensity: props.intensity.unwrap_or(*intensity),
             color: props.color.unwrap_or(*color),
+            target: LightTarget::default(),
         },
         Light::Directional {
             direction,
             intensity,
             color,
+            target: _,
         } => Light::Directional {
             direction: props.direction.unwrap_or(*direction),
             intensity: props.intensity.unwrap_or(*intensity),
             color: props.color.unwrap_or(*color),
+            target: LightTarget::default(),
         },
         Light::Point {
             position,
             intensity,
             color,
             attenuation,
+            target: _,
         } => Light::Point {
             position: props.position.unwrap_or(*position),
             intensity: props.intensity.unwrap_or(*intensity),
             color: props.color.unwrap_or(*color),
             attenuation: props.attenuation.as_ref().unwrap_or(attenuation).clone(),
+            target: LightTarget::default(),
         },
     }
 }
@@ -297,30 +376,36 @@ fn interpolate_lights(base: &Light, from: &Light, to: &Light, t: f32) -> Light {
             Light::Ambient {
                 intensity: i1,
                 color: c1,
+                target: _,
             },
             Light::Ambient {
                 intensity: i2,
                 color: c2,
+                target: _,
             },
         ) => Light::Ambient {
             intensity: lerp_f32(*i1, *i2, t),
             color: lerp_rgb(*c1, *c2, t),
+            target: LightTarget::default(),
         },
         (
             Light::Directional {
                 direction: d1,
                 intensity: i1,
                 color: c1,
+                target: _,
             },
             Light::Directional {
                 direction: d2,
                 intensity: i2,
                 color: c2,
+                target: _,
             },
         ) => Light::Directional {
             direction: lerp_tuple3(*d1, *d2, t),
             intensity: lerp_f32(*i1, *i2, t),
             color: lerp_rgb(*c1, *c2, t),
+            target: LightTarget::default(),
         },
         (
             Light::Point {
@@ -328,20 +413,22 @@ fn interpolate_lights(base: &Light, from: &Light, to: &Light, t: f32) -> Light {
                 intensity: i1,
                 color: c1,
                 attenuation: a1,
+                target: _,
             },
             Light::Point {
                 position: p2,
                 intensity: i2,
                 color: c2,
                 attenuation: a2,
+                target: _,
             },
         ) => Light::Point {
             position: lerp_tuple3(*p1, *p2, t),
             intensity: lerp_f32(*i1, *i2, t),
             color: lerp_rgb(*c1, *c2, t),
             attenuation: lerp_attenuation(a1, a2, t),
+            target: LightTarget::default(),
         },
-        // Type mismatch: return `to` unchanged
         _ => base.clone(),
     }
 }
@@ -588,6 +675,7 @@ pub fn shade_canvas(
                     Light::Ambient {
                         intensity,
                         color: _,
+                        target: _,
                     } => {
                         total += intensity;
                     }
@@ -595,6 +683,7 @@ pub fn shade_canvas(
                         direction,
                         intensity,
                         color: _,
+                        target: _,
                     } => {
                         let (nx, ny, nz) = normal.to_f32();
                         let ndotl =
@@ -619,6 +708,7 @@ pub fn shade_canvas(
                         intensity,
                         color: _,
                         attenuation,
+                        target: _,
                     } => {
                         let lx = position.0 - x as f32;
                         let ly = position.1 - y as f32;
@@ -903,10 +993,11 @@ mod tests {
             lights: vec![Light::Ambient {
                 intensity: 0.7,
                 color: Rgb(255, 255, 255),
+                target: LightTarget::default(),
             }],
         };
         let nmap = NormalMap::new(2, 2);
-        let lum = shade_canvas(&scene, &nmap, |_, _| false, 50);
+        let (lum, _) = shade_canvas(&scene, &nmap, |_, _| false, 50);
         for row in &lum {
             for val in row {
                 assert!((val - 0.7).abs() < 0.001);
@@ -921,10 +1012,11 @@ mod tests {
                 direction: (0.0, 0.0, 1.0),
                 intensity: 1.0,
                 color: Rgb(255, 255, 255),
+                target: LightTarget::default(),
             }],
         };
         let nmap = NormalMap::new(1, 1);
-        let lum = shade_canvas(&scene, &nmap, |_, _| false, 50);
+        let (lum, _) = shade_canvas(&scene, &nmap, |_, _| false, 50);
         assert!((lum[0][0] - 1.0).abs() < 0.001);
     }
 
@@ -936,10 +1028,11 @@ mod tests {
                 intensity: 1.0,
                 color: Rgb(255, 255, 255),
                 attenuation: Attenuation::default(),
+                target: LightTarget::default(),
             }],
         };
         let nmap = NormalMap::new(1, 1);
-        let lum = shade_canvas(&scene, &nmap, |_, _| false, 50);
+        let (lum, _) = shade_canvas(&scene, &nmap, |_, _| false, 50);
         let expected = 1.0 / (1.0 + 0.09 * 5.0 + 0.032 * 25.0);
         assert!(
             (lum[0][0] - expected).abs() < 0.001,
@@ -956,15 +1049,17 @@ mod tests {
                 Light::Ambient {
                     intensity: 0.6,
                     color: Rgb(255, 255, 255),
+                    target: LightTarget::default(),
                 },
                 Light::Ambient {
                     intensity: 0.7,
                     color: Rgb(255, 255, 255),
+                    target: LightTarget::default(),
                 },
             ],
         };
         let nmap = NormalMap::new(1, 1);
-        let lum = shade_canvas(&scene, &nmap, |_, _| false, 50);
+        let (lum, _) = shade_canvas(&scene, &nmap, |_, _| false, 50);
         assert!((lum[0][0] - 1.0).abs() < 0.001);
     }
 

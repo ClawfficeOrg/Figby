@@ -1664,6 +1664,7 @@ impl TuiApp {
                 scene.add_light(lighting::Light::Ambient {
                     intensity: 0.5,
                     color: lighting::Rgb(255, 255, 255),
+                    target: lighting::LightTarget::default(),
                 });
                 self.lighting.scene = Some(scene);
                 // Regenerate LUT from palette when scene activates

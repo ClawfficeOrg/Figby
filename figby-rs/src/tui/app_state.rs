@@ -780,7 +780,9 @@ impl LightingState {
         if let Some(ref scene) = self.scene {
             if let Some(light) = scene.lights.get(light_idx) {
                 match light {
-                    lighting::Light::Ambient { intensity, color } => {
+                    lighting::Light::Ambient {
+                        intensity, color, ..
+                    } => {
                         props.intensity = Some(*intensity);
                         props.color = Some(*color);
                     }
@@ -788,6 +790,7 @@ impl LightingState {
                         direction,
                         intensity,
                         color,
+                        ..
                     } => {
                         props.direction = Some(*direction);
                         props.intensity = Some(*intensity);
@@ -798,6 +801,7 @@ impl LightingState {
                         intensity,
                         color,
                         attenuation,
+                        ..
                     } => {
                         props.position = Some(*position);
                         props.intensity = Some(*intensity);
@@ -815,7 +819,9 @@ impl LightingState {
         if let Some(ref mut scene) = self.scene {
             if let Some(light) = scene.lights.get_mut(light_idx) {
                 match light {
-                    lighting::Light::Ambient { intensity, color } => {
+                    lighting::Light::Ambient {
+                        intensity, color, ..
+                    } => {
                         if let Some(i) = props.intensity {
                             *intensity = i;
                         }
@@ -827,6 +833,7 @@ impl LightingState {
                         direction,
                         intensity,
                         color,
+                        ..
                     } => {
                         if let Some(d) = props.direction {
                             *direction = d;
@@ -843,6 +850,7 @@ impl LightingState {
                         intensity,
                         color,
                         attenuation,
+                        ..
                     } => {
                         if let Some(p) = props.position {
                             *position = p;
@@ -964,6 +972,7 @@ impl LightingState {
                     scene.add_light(lighting::Light::Ambient {
                         intensity: 0.5,
                         color: lighting::Rgb(255, 255, 255),
+                        target: lighting::LightTarget::default(),
                     });
                     self.panel.selected_index = scene.lights.len() - 1;
                     *dirty = true;
@@ -975,6 +984,7 @@ impl LightingState {
                         direction: (0.0, 0.0, 1.0),
                         intensity: 0.8,
                         color: lighting::Rgb(255, 255, 255),
+                        target: lighting::LightTarget::default(),
                     });
                     self.panel.selected_index = scene.lights.len() - 1;
                     *dirty = true;
@@ -987,6 +997,7 @@ impl LightingState {
                         intensity: 0.8,
                         color: lighting::Rgb(255, 255, 255),
                         attenuation: lighting::Attenuation::default(),
+                        target: lighting::LightTarget::default(),
                     });
                     self.panel.selected_index = scene.lights.len() - 1;
                     *dirty = true;
