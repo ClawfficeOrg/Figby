@@ -189,6 +189,19 @@ Keys in Lighting mode (G to enter):
 - Plays via `play_raw_timed` with per-frame delays
 - Supports `--loop` flag for repeated playback
 
+### Daemon/tmux/detach CLI Modes (Phase 3.2–3.4)
+- `--play-daemon <path>`: Forks child running `--play`, parent prints PID and returns
+- `--play-tmux <path>`: Opens in `tmux split-window -h`, falls back to daemon if not in tmux
+- `--play-detach <path>`: Runs synchronously, returns to shell when animation finishes
+- All modes forward `--loop` flag to child
+
+### Figmap File Dialog Integration (Phase 1.3)
+- Open dialog now shows `.figmap` files alongside `.flf`/`.tlf`
+- Opening a `.figmap` loads layers, timeline, light keyframes, and scene into TUI
+- SaveAs dialog saves `.figmap` when filename ends with `.figmap`
+- `perform_open_figmap()` handles load + unsaved-changes guard
+- `perform_save()` routes to `save_figmap()` for `.figmap` extension
+
 ### Smushing Engine as Pure Functions
 The C `smushem()` function uses global `smushmode`, `previouscharwidth`,
 `currcharwidth`, `hardblank`, `right2left`. Rust version takes these

@@ -2149,9 +2149,13 @@ impl TuiApp {
                 }
                 if path.is_dir() {
                     self.dialogs.file_ops.error_message =
-                        "Select a .flf or .tlf file, not a directory".to_string();
+                        "Select a .flf, .tlf, or .figmap file, not a directory".to_string();
                     self.dialogs.file_ops.mode = file_ops::FileOpsMode::Open;
                     return None;
+                }
+                // Handle .figmap files: load and apply document state
+                if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
+                    return self.perform_open_figmap(&path);
                 }
                 self.perform_open();
                 Some(AppEvent::OpenRequested)
@@ -2211,6 +2215,61 @@ impl TuiApp {
             return;
         }
         let path = self.dialogs.file_ops.selected_path();
+
+        // Handle .figmap save
+        if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
+            let swatch_data = self.palette_editor.lighting_swatches();
+            let figmap_timeline = if self.animation.timeline_state.frames.is_empty() {
+                None
+            } else {
+                Some(crate::figmap::FigmapTimeline {
+                    fps: self.animation.timeline_state.fps,
+                    loop_enabled: false,
+                    frames: self.animation.timeline_state.frames.clone(),
+                    light_keyframes: self.lighting.light_keyframes.clone(),
+                })
+            };
+            let lights = self
+                .lighting
+                .scene
+                .as_ref()
+                .map(|s| s.lights.clone())
+                .unwrap_or_default();
+            let palette: Vec<crate::palette_import::Swatch> = swatch_data
+                .iter()
+                .map(|s| crate::palette_import::Swatch {
+                    name: String::new(),
+                    hex: format!("#{:02X}{:02X}{:02X}", s.lit.0, s.lit.1, s.lit.2),
+                    lit_hex: None,
+                    shadow_hex: Some(format!(
+                        "#{:02X}{:02X}{:02X}",
+                        s.shadow.0, s.shadow.1, s.shadow.2
+                    )),
+                    specular: Some(s.specular),
+                    shininess: Some(s.shininess),
+                })
+                .collect();
+            let result = crate::figmap::save_figmap(
+                &self.editor.layer_stack,
+                figmap_timeline.as_ref(),
+                &lights,
+                &palette,
+                &path,
+            );
+            match result {
+                Ok(()) => {
+                    self.editor.unsaved = false;
+                    self.frame.dirty = true;
+                }
+                Err(e) => {
+                    self.dialogs.file_ops.error_message = format!("Failed to save figmap: {e}");
+                    self.dialogs.file_ops.mode = file_ops::FileOpsMode::SaveAs;
+                }
+            }
+            return;
+        }
+
+        // Font save (existing)
         let font = match &self.editor.font_editor.font {
             Some(f) => f.clone(),
             None => return,
@@ -2267,6 +2326,39 @@ impl TuiApp {
             })();
             let _ = tx.send(AsyncResult::OpenComplete(result));
         });
+    }
+
+    fn perform_open_figmap(&mut self, path: &std::path::Path) -> Option<AppEvent> {
+        if self.editor.unsaved && self.dialogs.pending_transition.is_none() {
+            self.dialogs.pending_transition = Some(PendingDocAction::OpenFont);
+            self.dialogs.pending_open_path = Some(path.to_path_buf());
+            self.dialogs.quit_confirm_dialog = true;
+            self.frame.dirty = true;
+            return None;
+        }
+        match crate::figmap::load_figmap(path) {
+            Ok(figmap) => {
+                let (layers, timeline, lights, _palette) = crate::figmap::into_runtime(figmap);
+                self.editor.layer_stack = layers;
+                if let Some(tl) = timeline {
+                    self.animation.timeline_state.frames = tl.frames;
+                    self.animation.timeline_state.fps = tl.fps;
+                    self.lighting.light_keyframes = tl.light_keyframes;
+                }
+                if !lights.is_empty() {
+                    self.lighting.scene = Some(crate::tui::lighting::Scene { lights });
+                }
+                self.editor.unsaved = false;
+                self.frame.dirty = true;
+                self.frame.force_full_redraw = true;
+                None
+            }
+            Err(e) => {
+                self.dialogs.file_ops.error_message = format!("Failed to load figmap: {e}");
+                self.dialogs.file_ops.mode = file_ops::FileOpsMode::Open;
+                None
+            }
+        }
     }
 
     pub(crate) fn perform_open(&mut self) {

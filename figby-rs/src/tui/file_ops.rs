@@ -366,7 +366,10 @@ impl FileOpsDialog {
                 lower.ends_with(".ttf") || lower.ends_with(".otf") || lower.ends_with(".zip")
             }
             FileOpsMode::Open | FileOpsMode::SaveAs => {
-                lower.ends_with(".flf") || lower.ends_with(".tlf") || lower.ends_with(".zip")
+                lower.ends_with(".flf")
+                    || lower.ends_with(".tlf")
+                    || lower.ends_with(".zip")
+                    || lower.ends_with(".figmap")
             }
             FileOpsMode::Idle => false,
         }
@@ -378,7 +381,7 @@ impl FileOpsDialog {
     fn mode_matches_extension(&self, lower: &str) -> bool {
         match self.mode {
             FileOpsMode::Open | FileOpsMode::SaveAs => {
-                lower.ends_with(".flf") || lower.ends_with(".tlf")
+                lower.ends_with(".flf") || lower.ends_with(".tlf") || lower.ends_with(".figmap")
             }
             FileOpsMode::ImportFont => lower.ends_with(".ttf") || lower.ends_with(".otf"),
             FileOpsMode::ImportGif => lower.ends_with(".gif"),

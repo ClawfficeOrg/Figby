@@ -367,6 +367,21 @@ struct CliArgs {
         help = "With --play: repeat the animation until any key is pressed, instead of playing once"
     )]
     play_loop: bool,
+    #[arg(
+        long = "play-daemon",
+        help = "Fork animation to background, return to shell immediately (kill PID to stop)"
+    )]
+    play_daemon: Option<String>,
+    #[arg(
+        long = "play-tmux",
+        help = "Open animation in new tmux pane (falls back to --play-daemon if not in tmux)"
+    )]
+    play_tmux: Option<String>,
+    #[arg(
+        long = "play-detach",
+        help = "Run animation synchronously in child process, return to shell when done"
+    )]
+    play_detach: Option<String>,
     #[arg(help = "Text to render (reads from stdin if omitted)")]
     message: Vec<String>,
 }
@@ -1350,6 +1365,87 @@ fn main() {
             process::exit(1);
         }
         return;
+    }
+
+    // ─── Daemon/tmux/detach modes ───────────────────────────────
+    if let Some(ref path) = args.play_daemon {
+        let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
+        let mut cmd = std::process::Command::new(exe);
+        cmd.arg("--play").arg(path);
+        if args.play_loop {
+            cmd.arg("--loop");
+        }
+        match cmd.spawn() {
+            Ok(child) => {
+                println!("figby playback started (PID {})", child.id());
+                return;
+            }
+            Err(e) => {
+                eprintln!("Failed to start daemon: {e}");
+                process::exit(1);
+            }
+        }
+    }
+
+    if let Some(ref path) = args.play_tmux {
+        let in_tmux = std::env::var("TMUX").is_ok();
+        if in_tmux {
+            let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
+            let mut play_cmd = format!("{} --play \"{}\"", exe.display(), path);
+            if args.play_loop {
+                play_cmd.push_str(" --loop");
+            }
+            let status = std::process::Command::new("tmux")
+                .args(["split-window", "-h", &play_cmd])
+                .status();
+            match status {
+                Ok(s) if s.success() => return,
+                Ok(_) => {
+                    eprintln!("tmux split-window failed, falling back to daemon mode");
+                }
+                Err(e) => {
+                    eprintln!("tmux not available ({e}), falling back to daemon mode");
+                }
+            }
+        }
+        // Fallback: daemon mode
+        let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
+        let mut cmd = std::process::Command::new(exe);
+        cmd.arg("--play").arg(path);
+        if args.play_loop {
+            cmd.arg("--loop");
+        }
+        match cmd.spawn() {
+            Ok(child) => {
+                println!("figby playback started (PID {})", child.id());
+                return;
+            }
+            Err(e) => {
+                eprintln!("Failed to start daemon: {e}");
+                process::exit(1);
+            }
+        }
+    }
+
+    if let Some(ref path) = args.play_detach {
+        let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
+        let mut cmd = std::process::Command::new(exe);
+        cmd.arg("--play").arg(path);
+        if args.play_loop {
+            cmd.arg("--loop");
+        }
+        match cmd.status() {
+            Ok(s) => {
+                if !s.success() {
+                    process::exit(s.code().unwrap_or(1));
+                }
+                return;
+            }
+            Err(e) => {
+                eprintln!("Failed to start playback: {e}");
+                process::exit(1);
+            }
+        }
     }
 
     if args.flag_tui {
