@@ -3052,6 +3052,13 @@ impl TuiApp {
                 self.new_document(crate::tui::documents::DocumentKind::Image);
                 self.ui.menu_bar_state.reset();
             }
+            menu::MenuAction::FileNewAnimation => {
+                // 8.6.3 leftover, unblocked by 8.5: a fresh image tab with
+                // the timeline panel already open, ready to add frames.
+                self.new_document(crate::tui::documents::DocumentKind::Image);
+                self.animation.timeline_visible = true;
+                self.ui.menu_bar_state.reset();
+            }
             menu::MenuAction::FileCloseTab => {
                 self.request_close_document(self.active_doc);
                 self.ui.menu_bar_state.reset();
@@ -3822,5 +3829,20 @@ mod keybind_collision_tests {
         assert_eq!(app.document_count(), 3);
         app.handle_menu_action(MenuAction::FileCloseTab);
         assert_eq!(app.document_count(), 2);
+    }
+
+    #[test]
+    fn test_menu_new_animation_opens_image_tab_with_timeline() {
+        use crate::tui::menu::MenuAction;
+
+        let mut app = app_not_font_editor();
+        assert!(!app.animation.timeline_visible);
+        app.handle_menu_action(MenuAction::FileNewAnimation);
+        assert_eq!(app.document_count(), 2);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        assert!(
+            app.animation.timeline_visible,
+            "new animation must show the timeline"
+        );
     }
 }

@@ -294,8 +294,8 @@ checklist) — don't batch multiple tasks into one unverified pass.
   entry reached the save path outside font mode (`start_save_as` is
   font-gated) — added File > Save as Figmap (`MenuAction::FileSaveAsFigmap`
   → `start_save_as_figmap`, any mode, seeds `untitled.figmap` via
-  `enter_save_as_with_extension`). DEFERRED to 8.5: File > New Animation
-  (needs the document model to mean anything).
+  `enter_save_as_with_extension`). File > New Animation landed after
+  8.5 unblocked it: fresh image tab with the timeline already open.
   - **Difficulty:** Medium
 
 ---

@@ -18,6 +18,7 @@ pub enum MenuAction {
     FileSaveAsFigmap,
     FileNewTabFont,
     FileNewTabImage,
+    FileNewAnimation,
     FileCloseTab,
     FileExport,
     FileImportGif,
@@ -454,6 +455,7 @@ fn build_menus() -> Vec<TopMenu> {
                 ("Save as Figmap", None, MenuAction::FileSaveAsFigmap),
                 ("New Tab (Font)", None, MenuAction::FileNewTabFont),
                 ("New Tab (Image)", None, MenuAction::FileNewTabImage),
+                ("New Animation", None, MenuAction::FileNewAnimation),
                 (
                     "Close Tab",
                     g(GlobalAction::DocClose),
