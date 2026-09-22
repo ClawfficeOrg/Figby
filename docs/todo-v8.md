@@ -268,51 +268,32 @@ checklist) — don't batch multiple tasks into one unverified pass.
 > genuinely new, and needs `Document`/`DocumentKind` (phase 8.5) to
 > serialize into.
 
-- [ ] `8.6.1` Enable serde on the raster data types
-  - **Touches:** `figby-rs/Cargo.toml` — enable ratatui's `serde` cargo
-    feature (`:25`) instead of hand-rolling a mirror color enum; gives
-    `Serialize`/`Deserialize` for `Color`/`Style` for free, matching the
-    project's existing serde-first idiom. `figby-rs/src/lib.rs:5-11` — add
-    `#[derive(Serialize, Deserialize)]` to `CanvasCell`. `canvas.rs` —
-    `CanvasBuffer`'s fields are private (`:42-44`); write a manual
-    `Deserialize` impl that goes through `CanvasBuffer::new` + `set` rather
-    than loosening encapsulation. Reuse the actual runtime structs
-    (`layers::Layer`, `LayerGroup`, `LayerLink`, `timeline::TimelineFrame`)
-    as the on-disk shape rather than duplicating mirror DTOs — same
-    tradeoff `FIGfont` already makes (`font.rs:63`).
+- [x] `8.6.1` Enable serde on the raster data types — SHIPPED as planned
+  (`4a4bc5d` range): ratatui `serde` cargo feature enabled
+  (`figby-rs/Cargo.toml:25`), `CanvasCell` derives
+  `Serialize`/`Deserialize` (`lib.rs:5-11`), `Color`/`Style` free via
+  ratatui.
   - **Difficulty:** Medium
 
-- [ ] `8.6.2` Define the figmap schema + save/load
-  - **Touches:** new `figby-rs/src/figmap.rs`:
-    ```rust
-    pub struct FigmapFile {
-        pub version: u32,
-        pub kind: FigmapKind,       // Image | Animation
-        pub width: u32,
-        pub height: u32,
-        pub layers: Vec<Layer>,
-        pub groups: Vec<LayerGroup>,
-        pub links: Vec<LayerLink>,
-        pub active_layer: usize,
-        pub timeline: Option<FigmapTimeline>,  // None for static images
-        pub palette: Option<PaletteSnapshot>,
-    }
-    pub struct FigmapTimeline { pub fps: u8, pub loop_enabled: bool, pub frames: Vec<TimelineFrame> }
-    ```
-    JSON via `serde_json` (matches the project's existing bias), with a
-    `version` field for forward compatibility.
-    `save_figmap(&Document, &Path)` / `load_figmap(&Path) ->
-    Result<FigmapFile, FigmapError>` converting to/from `LayerStack` +
-    `TimelineState`. Loading resets undo/timeline exactly like the existing
-    font-open path (`event_loop.rs:156-160`).
+- [x] `8.6.2` Define the figmap schema + save/load — SHIPPED with deltas
+  (`4a4bc5d`, `1c1d61b`, `b7f15ce`): `figby-rs/src/figmap.rs` with JSON +
+  `version` field, `save_figmap`/`load_figmap`/`into_runtime`, zero-dim +
+  version validation, round-trip tests (image, animation, light
+  keyframes). DELTAS vs plan: no `Document` (8.5 not done — serializes
+  `LayerStack` + `TimelineState` + lights + palette instead);
+  `FigmapKind` dropped (timeline `None` = static image); lights +
+  `light_keyframes` + CLI `--play` support are supersets of the plan.
   - **Difficulty:** High
 
-- [ ] `8.6.3` Wire figmap into file dialogs + menus
-  - **Touches:** `figby-rs/src/tui/file_ops.rs` — generalize
-    `FileOpsMode::Open`/`SaveAs` to carry a format parameter (do this after
-    8.1.5's dedup, not before); extend `refresh_directory` visibility
-    filters for `.figmap`. Menu: File > New Animation / Save as Figmap,
-    gated to image-kind documents (phase 8.5).
+- [x] `8.6.3` Wire figmap into file dialogs + menus — SHIPPED, gap closed
+  (`9424224` + follow-up): Open/SaveAs visibility filters list `.figmap`,
+  Save/Open route by extension (`dispatch.rs:perform_save`/
+  `perform_open_figmap`), CLI plays `.figmap`. GAP FOUND & FIXED: no menu
+  entry reached the save path outside font mode (`start_save_as` is
+  font-gated) — added File > Save as Figmap (`MenuAction::FileSaveAsFigmap`
+  → `start_save_as_figmap`, any mode, seeds `untitled.figmap` via
+  `enter_save_as_with_extension`). DEFERRED to 8.5: File > New Animation
+  (needs the document model to mean anything).
   - **Difficulty:** Medium
 
 ---

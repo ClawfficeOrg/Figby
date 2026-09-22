@@ -2128,6 +2128,17 @@ impl TuiApp {
         self.frame.dirty = true;
     }
 
+    /// Open the Save As dialog pre-seeded for a `.figmap` project file.
+    /// Unlike `start_save_as` (font mode only), this is reachable from any
+    /// mode — image/animation sessions otherwise had no path to the
+    /// `.figmap` branch of `perform_save`, which keys off the extension.
+    fn start_save_as_figmap(&mut self) {
+        self.dialogs
+            .file_ops
+            .enter_save_as_with_extension(None, "untitled", "figmap");
+        self.frame.dirty = true;
+    }
+
     /// Shared completion logic for when the file-ops dialog transitions
     /// back to Idle, regardless of whether that happened via keyboard
     /// (Enter) or mouse (click). `prev_mode` is the mode the dialog was in
@@ -2975,6 +2986,10 @@ impl TuiApp {
                 self.start_save_as();
                 self.ui.menu_bar_state.reset();
             }
+            menu::MenuAction::FileSaveAsFigmap => {
+                self.start_save_as_figmap();
+                self.ui.menu_bar_state.reset();
+            }
             menu::MenuAction::FileExport => {
                 let mode = match self.ui.mode {
                     AppMode::FontEditor => export::ExportMode::Txt,
@@ -3642,10 +3657,23 @@ mod keybind_collision_tests {
     fn test_s_not_consumed_by_toolbox_in_image_editor() {
         let mut app = app_not_font_editor();
         let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
-        // S should open settings, not be consumed by toolbox
+        // S should open settings, not be consumed by toolbox catch-all
         assert!(
             app.dialogs.settings.settings_open,
             "S must not be consumed by toolbox catch-all"
         );
+    }
+
+    #[test]
+    fn test_save_as_figmap_reachable_outside_font_mode() {
+        // Regression: image/animation sessions had no path to the .figmap
+        // branch of perform_save (start_save_as is font-gated).
+        let mut app = app_not_font_editor();
+        app.start_save_as_figmap();
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        assert_eq!(app.dialogs.file_ops.filename_buffer, "untitled.figmap");
     }
 }

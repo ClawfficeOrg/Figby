@@ -235,6 +235,19 @@ impl FileOpsDialog {
     /// newly created, never-saved font) — typically the font's in-memory
     /// name, falling back to "untitled".
     pub fn enter_save_as(&mut self, current: Option<&Path>, default_name: &str) {
+        self.enter_save_as_with_extension(current, default_name, "flf");
+    }
+
+    /// `enter_save_as` with an explicit default extension (e.g. `figmap`
+    /// for project files). A typed filename that already carries an
+    /// extension keeps it — only extensionless names gain the default
+    /// (see `save_target_path`).
+    pub fn enter_save_as_with_extension(
+        &mut self,
+        current: Option<&Path>,
+        default_name: &str,
+        ext: &str,
+    ) {
         self.mode = FileOpsMode::SaveAs;
         match current {
             Some(p) => {
@@ -245,11 +258,11 @@ impl FileOpsDialog {
                 self.filename_buffer = p
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| format!("{default_name}.flf"));
+                    .unwrap_or_else(|| format!("{default_name}.{ext}"));
             }
             None => {
                 self.path_buffer.clear();
-                self.filename_buffer = format!("{default_name}.flf");
+                self.filename_buffer = format!("{default_name}.{ext}");
             }
         }
         self.save_focus = SaveFocus::Filename;
@@ -1369,6 +1382,19 @@ mod tests {
         dialog.enter_save_as(Some(Path::new("/tmp/test.flf")), "untitled");
         assert_eq!(dialog.path_buffer, "/tmp");
         assert_eq!(dialog.filename_buffer, "test.flf");
+    }
+
+    #[test]
+    fn test_file_ops_enter_save_as_with_extension() {
+        let mut dialog = FileOpsDialog::new();
+        dialog.enter_save_as_with_extension(None, "untitled", "figmap");
+        assert_eq!(dialog.mode, FileOpsMode::SaveAs);
+        assert_eq!(dialog.filename_buffer, "untitled.figmap");
+        // Extension present → perform_save takes the .figmap branch.
+        assert_eq!(
+            dialog.selected_path().extension().and_then(|e| e.to_str()),
+            Some("figmap")
+        );
     }
 
     #[test]
