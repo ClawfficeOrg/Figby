@@ -770,11 +770,103 @@ pub struct LightingState {
     pub max_shadow_distance: u16,
     pub height_scale: f32,
     pub panel: light_panel::LightPanel,
+    pub light_keyframes: Vec<lighting::LightKeyframe>,
 }
 
 impl LightingState {
+    /// Extract current properties from the selected light for keyframe insertion.
+    fn current_light_properties(&self, light_idx: usize) -> lighting::LightProperties {
+        let mut props = lighting::LightProperties::default();
+        if let Some(ref scene) = self.scene {
+            if let Some(light) = scene.lights.get(light_idx) {
+                match light {
+                    lighting::Light::Ambient { intensity, color } => {
+                        props.intensity = Some(*intensity);
+                        props.color = Some(*color);
+                    }
+                    lighting::Light::Directional {
+                        direction,
+                        intensity,
+                        color,
+                    } => {
+                        props.direction = Some(*direction);
+                        props.intensity = Some(*intensity);
+                        props.color = Some(*color);
+                    }
+                    lighting::Light::Point {
+                        position,
+                        intensity,
+                        color,
+                        attenuation,
+                    } => {
+                        props.position = Some(*position);
+                        props.intensity = Some(*intensity);
+                        props.color = Some(*color);
+                        props.attenuation = Some(attenuation.clone());
+                    }
+                }
+            }
+        }
+        props
+    }
+
+    /// Apply keyframe property overrides to a live light in the scene.
+    fn apply_keyframe_to_light(&mut self, light_idx: usize, props: &lighting::LightProperties) {
+        if let Some(ref mut scene) = self.scene {
+            if let Some(light) = scene.lights.get_mut(light_idx) {
+                match light {
+                    lighting::Light::Ambient { intensity, color } => {
+                        if let Some(i) = props.intensity {
+                            *intensity = i;
+                        }
+                        if let Some(c) = props.color {
+                            *color = c;
+                        }
+                    }
+                    lighting::Light::Directional {
+                        direction,
+                        intensity,
+                        color,
+                    } => {
+                        if let Some(d) = props.direction {
+                            *direction = d;
+                        }
+                        if let Some(i) = props.intensity {
+                            *intensity = i;
+                        }
+                        if let Some(c) = props.color {
+                            *color = c;
+                        }
+                    }
+                    lighting::Light::Point {
+                        position,
+                        intensity,
+                        color,
+                        attenuation,
+                    } => {
+                        if let Some(p) = props.position {
+                            *position = p;
+                        }
+                        if let Some(i) = props.intensity {
+                            *intensity = i;
+                        }
+                        if let Some(c) = props.color {
+                            *color = c;
+                        }
+                        if let Some(a) = &props.attenuation {
+                            *attenuation = a.clone();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Handle a key press in lighting mode.
+    /// `timeline_frame` and `timeline_total` are the current/total frame counts
+    /// for computing normalized keyframe time. Pass (0, 0) when no timeline exists.
     /// Returns `Some(true)` = consumed, `Some(false)` = exit mode (Esc), `None` = not matched.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn handle_key(
         &mut self,
         code: KeyCode,
@@ -782,6 +874,8 @@ impl LightingState {
         w: i16,
         h: i16,
         dirty: &mut bool,
+        timeline_frame: usize,
+        timeline_total: usize,
     ) -> Option<bool> {
         match code {
             KeyCode::Esc => return Some(false),
@@ -908,6 +1002,59 @@ impl LightingState {
                         {
                             self.panel.selected_index = scene.lights.len() - 1;
                         }
+                        *dirty = true;
+                    }
+                }
+            }
+            KeyCode::Char('K') => {
+                // Insert/update a light keyframe at the current timeline time
+                if let Some(ref scene) = self.scene {
+                    let idx = self.panel.selected_index;
+                    if idx < scene.lights.len() && timeline_total > 0 {
+                        let t = timeline_frame as f32 / timeline_total as f32;
+                        let props = self.current_light_properties(idx);
+                        let kf = lighting::LightKeyframe::new(t, idx, props);
+                        // Remove existing keyframe for this light at this time
+                        self.light_keyframes
+                            .retain(|k| !(k.light_index == idx && (k.time - t).abs() < 0.001));
+                        self.light_keyframes.push(kf);
+                        lighting::sort_light_keyframes(&mut self.light_keyframes);
+                        *dirty = true;
+                    }
+                }
+            }
+            KeyCode::Char('N') => {
+                // Jump to the next keyframe for the selected light
+                if let Some(ref scene) = self.scene {
+                    let idx = self.panel.selected_index;
+                    if idx < scene.lights.len() {
+                        let t = if timeline_total > 0 {
+                            timeline_frame as f32 / timeline_total as f32
+                        } else {
+                            0.0
+                        };
+                        let next = self
+                            .light_keyframes
+                            .iter()
+                            .filter(|k| k.light_index == idx && k.time > t + 0.001)
+                            .min_by(|a, b| a.time.partial_cmp(&b.time).unwrap())
+                            .map(|k| k.properties.clone());
+                        if let Some(props) = next {
+                            self.apply_keyframe_to_light(idx, &props);
+                            *dirty = true;
+                        }
+                    }
+                }
+            }
+            KeyCode::Char('X') => {
+                // Delete keyframe(s) for the selected light at the current time
+                if timeline_total > 0 {
+                    let t = timeline_frame as f32 / timeline_total as f32;
+                    let idx = self.panel.selected_index;
+                    let before = self.light_keyframes.len();
+                    self.light_keyframes
+                        .retain(|k| !(k.light_index == idx && (k.time - t).abs() < 0.001));
+                    if self.light_keyframes.len() < before {
                         *dirty = true;
                     }
                 }
@@ -1362,6 +1509,7 @@ impl TuiApp {
                     crate::image_input::DEFAULT_CHAR_MAP,
                 ),
                 panel: LightPanel::new(),
+                light_keyframes: Vec::new(),
             },
             side_panel: SidePanel::new(icons.clone(), theme.clone()),
             palette_editor: palette_editor::PaletteEditor::new(),

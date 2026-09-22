@@ -1,5 +1,30 @@
 # Figby — Learnings
 
+## 6.0.39 — Figmap + Light Keyframing
+
+- **CanvasBuffer serde needs manual impl**: private fields (`cells`, `width`,
+  `height`) mean `#[derive(Serialize)]` won't work. Manual impl serializes
+  the flat structure; manual Deserialize validates dimensions and row lengths
+  to reject corrupt files early.
+- **`Color::Rgb` pattern matching**: ratatui's `Color::Rgb(r, g, b)` is a
+  tuple variant. Destructure with `if let Color::Rgb(r, g, b) = color` before
+  constructing a new `Color::Rgb(...)` — can't use field access syntax on
+  a Color value.
+- **Clippy `unnecessary_unwrap`**: after `if self.scene.is_some()` + `.unwrap()`,
+  use `if let Some(ref scene) = self.scene` instead. Cleaner and avoids the
+  lint.
+- **Clippy `too_many_arguments`**: 8 params triggers the lint. Use
+  `#[allow(clippy::too_many_arguments)]` when the extra param (timeline
+  frame info) is genuinely needed and a struct would over-abstract.
+- **Borrow checker + keyframe iteration**: `self.light_keyframes.iter()` +
+  `self.apply_keyframe_to_light()` in same arm causes borrow conflict.
+  Solution: `.map(|k| k.properties.clone())` to release immutable borrow
+  before mutable call.
+- **`FigmapTimeline` vs `TimelineState`**: they share frame data but
+  `TimelineState` has UI state (scroll, tween preview). Kept separate;
+  `FigmapTimeline` got its own `get_interpolated_properties()` method
+  for CLI path that doesn't need the UI state.
+
 ## 6.0.33 — GPT-review remediation Phase 1 (document model)
 
 - **Two keyboard-paint paths existed** (`dispatch.rs` AND
@@ -1689,3 +1714,35 @@ Three bugs found in phase merge review:
 - F-12: u16 max × u16 max = ~4.3e9 cells — any dialog that accepts u16 width/height and then allocates needs the same 1M-cell budget as template/gif_import; put the constant once in canvas.rs (`MAX_CANVAS_CELLS`) and reuse it in every canvas-creating path.
 - F-15: cursor-as-char-index but text as String means edits must convert char index → byte offset via `char_indices().nth(pos)` before insert/remove; never mutate by char index directly.
 - F-17: `&s[..n]` truncation on any String that may hold multi-byte chars can panic; always truncate at char boundaries (`s.chars().take(n).collect()`). proptest fuzz for text-format parsers is the cheap way to keep no-panic guarantees.
+
+## Particle & Lighting E2E Demos (2026-09-21)
+
+- **Self-shadowing in `shade_canvas`**: When `max_shadow_distance > 0`, every
+  cell with content shadows its neighbors. For solid heightfields (sphere,
+  pyramid), this means the entire shape is in self-shadow. Set `max_shadow_distance = 0`
+  to disable shadows, or use sparse heightfields where only specific cells cast shadows.
+
+- **Heightfield normalization matters**: `compute_normal_map_figfont` applies
+  Sobel kernels to the heightfield. Values in 0.0-1.0 range produce smooth
+  normals. Values in 0-255 range produce very weak normals because the Sobel
+  gradient magnitudes are tiny relative to the scale. Always normalize to 0-1.
+
+- **GIF encoder treats transparent cells as white**: `export_cells_to_gif` in
+  `output.rs` renders transparent (space) cells as `(255, 255, 255)`. To get
+  dark backgrounds, set `bg: Some(Color::Rgb(10, 10, 18))` on all `CanvasCell`
+  entries before export.
+
+- **FIGlet fonts are tiny at native resolution**: Standard font renders 6 rows
+  high. Even `banner` is only 8 rows. Use `font_file_to_figfont(ttf, point_size, charset)`
+  to generate taller fonts from TTF at arbitrary sizes — this is the proper way
+  to get larger text, not post-processing scaling.
+
+- **`font_file_to_figfont` requires charset leak**: The `charset: &[&str]`
+  parameter needs static lifetime strings. Use `Box::leak(Box::new(...))` to
+  convert runtime strings to `&'static str`. Alternatively, use the built-in
+  charset presets from `font_gen::resolve_charset()`.
+
+- **Particle demo timing**: `bake_frames` with 40 frames at dt=0.05 (20fps)
+  takes ~25s due to GIF encoding. The GIF encoder's color quantization is the
+  bottleneck, not the particle simulation. For faster tests, reduce frame count
+  or use simpler color palettes.

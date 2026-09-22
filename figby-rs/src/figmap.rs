@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::palette_import::Swatch;
 use crate::tui::layers::{Layer, LayerGroup, LayerLink, LayerStack};
 use crate::tui::lighting::{Light, LightKeyframe};
-use crate::tui::timeline::TimelineFrame;
+use crate::tui::timeline::{LayerKeyframe, TimelineFrame};
 
 const FIGMAP_VERSION: u32 = 1;
 
@@ -22,6 +22,57 @@ pub struct FigmapTimeline {
     pub frames: Vec<TimelineFrame>,
     #[serde(default)]
     pub light_keyframes: Vec<LightKeyframe>,
+}
+
+impl FigmapTimeline {
+    /// Interpolate layer keyframe properties at a given frame index.
+    /// Mirrors `TimelineState::get_interpolated_properties`.
+    pub fn get_interpolated_properties(&self, frame_idx: usize, layer_idx: usize) -> LayerKeyframe {
+        let prev = (0..=frame_idx).rev().find_map(|i| {
+            let f = self.frames.get(i)?;
+            let kf = (*f.layer_keyframes.get(layer_idx)?)?;
+            Some((i, kf))
+        });
+        let next = (frame_idx..self.frames.len()).find_map(|i| {
+            let f = self.frames.get(i)?;
+            let kf = (*f.layer_keyframes.get(layer_idx)?)?;
+            Some((i, kf))
+        });
+        match (prev, next) {
+            (Some((pi, pk)), Some((ni, _))) if pi == ni => pk,
+            (Some((pi, pk)), Some((ni, nk))) => {
+                if frame_idx <= pi {
+                    pk
+                } else if frame_idx >= ni {
+                    nk
+                } else {
+                    let range = ni - pi;
+                    let offset = frame_idx.saturating_sub(pi);
+                    let t = if range == 0 {
+                        0.0
+                    } else {
+                        offset as f64 / range as f64
+                    };
+                    LayerKeyframe {
+                        position_offset: (
+                            (pk.position_offset.0 as f64
+                                + (nk.position_offset.0 as f64 - pk.position_offset.0 as f64) * t)
+                                as i16,
+                            (pk.position_offset.1 as f64
+                                + (nk.position_offset.1 as f64 - pk.position_offset.1 as f64) * t)
+                                as i16,
+                        ),
+                        opacity: (pk.opacity as f64 + (nk.opacity as f64 - pk.opacity as f64) * t)
+                            as u8,
+                        blend_mode: pk.blend_mode,
+                    }
+                }
+            }
+            (Some((_, pk)), None) => pk,
+            (None, Some((_, nk))) => nk,
+            (None, None) => LayerKeyframe::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

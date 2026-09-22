@@ -1628,9 +1628,17 @@ impl TuiApp {
         if self.ui.mode == AppMode::Lighting {
             let w = self.editor.canvas.buffer.width() as i16;
             let h = self.editor.canvas.buffer.height() as i16;
+            let (tf, tt) = if self.animation.timeline_state.frames.is_empty() {
+                (0, 0)
+            } else {
+                (
+                    self.animation.timeline_state.current_frame,
+                    self.animation.timeline_state.frames.len(),
+                )
+            };
             match self
                 .lighting
-                .handle_key(code, modifiers, w, h, &mut self.frame.dirty)
+                .handle_key(code, modifiers, w, h, &mut self.frame.dirty, tf, tt)
             {
                 Some(false) => {
                     self.ui.mode = self.ui.prev_mode;
@@ -2570,7 +2578,32 @@ impl TuiApp {
             && !self.animation.timeline_state.frames.is_empty()
         {
             let ts = &self.animation.timeline_state;
-            export::capture_timeline_frames(ts, &self.editor.layer_stack, w, h, None)
+            let swatch_data = self.palette_editor.lighting_swatches();
+            let lighting_ctx = if let Some(ref scene) = self.lighting.scene {
+                if !self.lighting.light_keyframes.is_empty() {
+                    Some(export::LightingContext {
+                        base_scene: scene,
+                        light_keyframes: &self.lighting.light_keyframes,
+                        lut: &self.lighting.lut,
+                        layer_stack: &self.editor.layer_stack,
+                        max_shadow_distance: self.lighting.max_shadow_distance,
+                        height_scale: self.lighting.height_scale,
+                        palette_rgb_to_swatch: &self.ctx.palette_rgb_to_swatch,
+                        swatch_data: &swatch_data,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            export::capture_timeline_frames(
+                ts,
+                &self.editor.layer_stack,
+                w,
+                h,
+                lighting_ctx.as_ref(),
+            )
         } else {
             vec![cells.clone()]
         };
@@ -2667,7 +2700,7 @@ impl TuiApp {
             &self.editor.layer_stack,
             w,
             h,
-            None,
+            None, // player preview skips lighting for speed
         );
         if frames.is_empty() {
             return;

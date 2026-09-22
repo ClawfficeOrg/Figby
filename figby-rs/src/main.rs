@@ -774,6 +774,67 @@ fn flush_output_line(
     *prev_width = 0;
 }
 
+/// Build a heightfield from a composite CanvasBuffer (for lighting normal map).
+fn heightfield_from_composite(buf: &figby::tui::canvas::CanvasBuffer) -> Vec<Vec<f32>> {
+    (0..buf.height())
+        .map(|y| {
+            (0..buf.width())
+                .map(|x| {
+                    buf.get(x, y)
+                        .map_or(0.0, |c| c.height.unwrap_or(0) as f32 / 255.0)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Apply luminance shading to a composite, producing lit CanvasCells.
+fn apply_luminance_to_composite(
+    buf: &figby::tui::canvas::CanvasBuffer,
+    lum: &[Vec<f32>],
+) -> figby::tui::canvas::CanvasBuffer {
+    let w = buf.width();
+    let h = buf.height();
+    let mut result = figby::tui::canvas::CanvasBuffer::new(w, h);
+    for y in 0..h {
+        for x in 0..w {
+            if let Some(cell) = buf.get(x, y) {
+                let l = lum
+                    .get(y)
+                    .and_then(|row| row.get(x))
+                    .copied()
+                    .unwrap_or(1.0);
+                let modulate = |c: u8| (c as f32 * l).round() as u8;
+                let fg = cell.fg.map(|color| {
+                    if let ratatui::style::Color::Rgb(r, g, b) = color {
+                        ratatui::style::Color::Rgb(modulate(r), modulate(g), modulate(b))
+                    } else {
+                        color
+                    }
+                });
+                let bg = cell.bg.map(|color| {
+                    if let ratatui::style::Color::Rgb(r, g, b) = color {
+                        ratatui::style::Color::Rgb(modulate(r), modulate(g), modulate(b))
+                    } else {
+                        color
+                    }
+                });
+                result.set(
+                    x,
+                    y,
+                    figby::CanvasCell {
+                        ch: cell.ch,
+                        fg,
+                        bg,
+                        height: cell.height,
+                    },
+                );
+            }
+        }
+    }
+    result
+}
+
 fn run(config: CliConfig, message: Vec<String>) {
     let mut dirs: Vec<&str> = vec![&config.fontdirname];
     dirs.extend(font::DEFAULT_FONT_DIRS);
@@ -1115,6 +1176,140 @@ fn main() {
     let infocode = args.infocode;
 
     if let Some(ref path) = args.play_path {
+        let ext = std::path::Path::new(path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+
+        if ext.eq_ignore_ascii_case("figmap") {
+            // ─── .figmap playback ───────────────────────────────────
+            let figmap = match figby::figmap::load_figmap(std::path::Path::new(path)) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Error loading figmap '{path}': {e}");
+                    process::exit(1);
+                }
+            };
+            let (layers, timeline, lights, _palette) = figby::figmap::into_runtime(figmap);
+            let timeline = match timeline {
+                Some(t) if !t.frames.is_empty() => t,
+                _ => {
+                    eprintln!("Figmap '{path}' has no animation frames to play");
+                    process::exit(1);
+                }
+            };
+
+            let w = layers
+                .layers
+                .first()
+                .map(|l| l.buffer.width())
+                .unwrap_or(80);
+            let h = layers
+                .layers
+                .first()
+                .map(|l| l.buffer.height())
+                .unwrap_or(24);
+
+            // Build frames with light keyframing
+            let mut sorted_kfs = timeline.light_keyframes.clone();
+            figby::tui::lighting::sort_light_keyframes(&mut sorted_kfs);
+
+            let scene = if lights.is_empty() {
+                figby::tui::lighting::Scene::new()
+            } else {
+                figby::tui::lighting::Scene {
+                    lights: lights.clone(),
+                }
+            };
+
+            let frame_cells: Vec<Vec<Vec<figby::CanvasCell>>> = timeline
+                .frames
+                .iter()
+                .enumerate()
+                .map(|(frame_idx, frame)| {
+                    // Use committed document_state if available
+                    let composite = if !frame.document_state.is_empty() {
+                        // Composite layers from document_state with keyframe transforms
+                        let mut buf = figby::tui::canvas::CanvasBuffer::new(w, h);
+                        for (layer_idx, state_buf) in frame.document_state.iter().enumerate() {
+                            let props = timeline.get_interpolated_properties(frame_idx, layer_idx);
+                            if props.opacity == 0 {
+                                continue;
+                            }
+                            let (ox, oy) = props.position_offset;
+                            for y in 0..h.min(state_buf.height()) {
+                                for x in 0..w.min(state_buf.width()) {
+                                    let bx = (x as i16 + ox) as usize;
+                                    let by = (y as i16 + oy) as usize;
+                                    if bx >= w || by >= h {
+                                        continue;
+                                    }
+                                    if let Some(top) = state_buf.get(x, y) {
+                                        if top.ch == ' ' && top.fg.is_none() && top.bg.is_none() {
+                                            continue;
+                                        }
+                                        buf.set(bx, by, *top);
+                                    }
+                                }
+                            }
+                        }
+                        buf
+                    } else {
+                        // Use live layers
+                        layers.composite()
+                    };
+
+                    // Apply light shading if keyframes exist
+                    let shaded = if !sorted_kfs.is_empty() && !scene.lights.is_empty() {
+                        let total = timeline.frames.len().max(1) as f32;
+                        let t = frame_idx as f32 / total;
+                        let interpolated =
+                            figby::tui::lighting::interpolate_scene(&scene, &sorted_kfs, t);
+                        let nmap = figby::tui::lighting::compute_normal_map_figfont(
+                            &heightfield_from_composite(&composite),
+                            0.5,
+                        );
+                        let lum = figby::tui::lighting::shade_canvas(
+                            &interpolated,
+                            &nmap,
+                            |x: u16, y: u16| {
+                                composite.get(x as usize, y as usize).is_some_and(|c| {
+                                    c.ch != ' ' || c.fg.is_some() || c.bg.is_some()
+                                })
+                            },
+                            50,
+                        );
+                        apply_luminance_to_composite(&composite, &lum)
+                    } else {
+                        composite
+                    };
+
+                    // Convert to cell grid
+                    (0..h)
+                        .map(|y| {
+                            (0..w)
+                                .map(|x| shaded.get(x, y).copied().unwrap_or_default())
+                                .collect()
+                        })
+                        .collect()
+                })
+                .collect();
+
+            let delays: Vec<u16> = timeline.frames.iter().map(|f| f.delay).collect();
+            let fps = 100u16
+                .checked_div(delays.first().copied().unwrap_or(10).max(1))
+                .map(|f| f.clamp(1, 60) as u8)
+                .unwrap_or(10);
+            if let Err(e) =
+                figby::tui::player::play_raw_timed(frame_cells, fps, Some(delays), args.play_loop)
+            {
+                eprintln!("Playback error: {e}");
+                process::exit(1);
+            }
+            return;
+        }
+
+        // ─── GIF playback (existing) ──────────────────────────────
         let scale = match args.play_width {
             Some(w) => figby::gif_import::GifScaleTarget::FitWidth(w),
             None => {

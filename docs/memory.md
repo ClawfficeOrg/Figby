@@ -144,6 +144,51 @@ FIGlet C used `typedef long inchr` for internal char representation.
 We map directly to `char` (Unicode scalar value) and use `String` for
 output rows. TLF fonts already UTF-8; FIGfont ASCII is valid UTF-8.
 
+### Figmap File Format (Phase 1.2)
+Native project format for static images and animations. JSON-based
+via `serde_json`. Schema defined in `figby-rs/src/figmap.rs`:
+- `FigmapFile`: version, kind (Image/Animation), dimensions, layers,
+  groups, links, active layer, timeline, palette, lights
+- `FigmapTimeline`: fps, loop_enabled, frames (Vec<TimelineFrame>),
+  light_keyframes (Vec<LightKeyframe>)
+- `save_figmap()` / `load_figmap()` / `into_runtime()` functions
+- Validates version, dimensions, and layer counts on load
+- Serde enabled on all raster types: CanvasCell (derive), CanvasBuffer
+  (manual with dimension validation), Layer, BlendMode, LayerStack,
+  LayerKeyframe, TimelineFrame, EasingFunction
+
+### Light Keyframing (Phase 2.1)
+Animate lights over time using keyframes stored on `FigmapTimeline`:
+- `LightKeyframe`: time (0.0–1.0), light_index, properties, easing
+- `LightProperties`: optional overrides (position, direction, intensity,
+  color, attenuation) — None fields inherit from base light
+- `interpolate_scene(base, keyframes, t)` builds interpolated Scene at t
+- Supports Linear, EaseIn, EaseOut, Bounce easing functions
+- RGB lerp per channel, f32 lerp for scalars, tuple lerp for positions
+
+### Light Compositing Pipeline (Phase 2.2)
+`capture_timeline_frames` accepts optional `LightingContext`:
+- When provided, each composited frame gets light shading via
+  `interpolate_scene(t)` → `shade_composited`
+- All existing callers pass None (backward compatible)
+- Export path in dispatch.rs wires real LightingContext when
+  light_keyframes exist and scene is active
+
+### TUI Light Keyframe Editor (Phase 2.3)
+Keys in Lighting mode (G to enter):
+- `K` — insert/update keyframe for selected light at current timeline time
+- `N` — jump to next keyframe for selected light, apply its properties
+- `X` — delete keyframe(s) for selected light at current timeline time
+- Keyframes stored on `LightingState.light_keyframes: Vec<LightKeyframe>`
+- Export path passes LightingContext to capture_timeline_frames
+
+### CLI .figmap Playback (Phase 3.1)
+`--play` now accepts .figmap files in addition to GIF:
+- Loads figmap, extracts timeline + light keyframes
+- Composites frames with layer keyframe transforms + light shading
+- Plays via `play_raw_timed` with per-frame delays
+- Supports `--loop` flag for repeated playback
+
 ### Smushing Engine as Pure Functions
 The C `smushem()` function uses global `smushmode`, `previouscharwidth`,
 `currcharwidth`, `hardblank`, `right2left`. Rust version takes these
@@ -3020,3 +3065,44 @@ flags as their own milestones, not incremental fixes like 8.0–8.4.
   `timeline::TimelineFrame` directly). Nothing in the working tree is
   half-finished — every phase above landed with full
   build/test/clippy/fmt verification and its own commit.
+
+### Particle System E2E Demo (2026-09-21)
+
+Created `figby-rs/tests/particle_demo.rs` — E2E test that bakes particle
+system frames and exports them as GIF files. 6 presets: rain, fire, snow,
+fireworks (manual burst), fountain, sparkle trail. Uses `ParticleSystem::bake_frames()`
+→ `CanvasBuffer` → `export_cells_to_gif()` pipeline. PNG frame snapshots also
+exported. Animated GIF playback verified via `figby --play`.
+
+### Lighting System E2E Demo (2026-09-21)
+
+Created `figby-rs/tests/lighting_demo.rs` — E2E test demonstrating lighting
+engine capabilities. Uses `font_file_to_figfont(ttf, 48pt, charset)` to generate
+tall FIGlet fonts from TTF, then feeds through `compute_normal_map_figfont` →
+`shade_canvas` → `export_cells_to_gif` pipeline. 3 static PNGs + 1 animated
+GIF (light sweep across "FIGby" text).
+
+Key learnings:
+- Self-shadowing: `shade_canvas` with `max_shadow_distance > 0` causes
+  heightfield cells to shadow themselves. Set to 0 for clean lighting, or
+  use sparse heightfields for shadow casting.
+- Heightfield normalization: `compute_normal_map_figfont` works best with
+  0.0-1.0 range heightfields (not 0-255). Scale `height_scale` accordingly.
+- GIF transparency: `export_cells_to_gif` renders transparent cells as white.
+  Set `bg` on all `CanvasCell` entries for dark backgrounds.
+
+### Feature Inventory (2026-09-21)
+
+Comprehensive feature inventory created at `docs/feature-inventory.md` — 458
+lines documenting ~324 features across 30+ modules (81% tested). Categories:
+CLI (36), fonts (29), rendering (17), image (20), TUI tools (11), layers (10),
+particles (19), lighting (13), timeline (15), export (9), templates (18).
+
+### Light Keyframing Design (2026-09-21)
+
+Design documented in `docs/feature-inventory.md` for adding per-frame light
+keyframes to the animation timeline. Currently lighting state is a single
+global — no per-frame capture/restore. Plan: add `LightKeyframe` struct to
+`TimelineFrame`, snapshot scene in `commit_current_timeline_frame`, restore in
+`load_current_timeline_frame`, interpolate between keyframes during playback.
+Files to modify: timeline.rs, app_state.rs, mod.rs, lighting.rs, dispatch.rs.
