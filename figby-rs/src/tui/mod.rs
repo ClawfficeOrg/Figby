@@ -16,6 +16,7 @@ pub mod brush;
 pub mod canvas;
 pub mod components;
 pub mod dialogs;
+pub mod documents;
 pub mod events;
 pub mod export;
 pub mod file_ops;

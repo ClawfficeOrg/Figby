@@ -10,10 +10,10 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use super::{
-    brush, canvas, capture_thumbnail, dialogs, export, file_ops, font_editor, fx, image_editor,
-    layers, layout, light_panel, lighting, palette, palette_editor, particles, player, status,
-    theme, timeline, toolbox, tools, undo, undo_panel, welcome, LightPanel, MenuBar, MenuBarState,
-    PropsPanel, RenderMode, SidePanel, ThrobberState, Tool,
+    brush, canvas, capture_thumbnail, dialogs, documents, export, file_ops, font_editor, fx,
+    image_editor, layers, layout, light_panel, lighting, palette, palette_editor, particles,
+    player, status, theme, timeline, toolbox, tools, undo, undo_panel, welcome, LightPanel,
+    MenuBar, MenuBarState, PropsPanel, RenderMode, SidePanel, ThrobberState, Tool,
 };
 use crate::config;
 
@@ -1337,6 +1337,11 @@ pub struct TuiApp {
     pub interaction: InteractionState,
     pub animation: AnimationState,
     pub lighting: LightingState,
+    /// Open documents (8.5.1). The live per-document state is in the hot
+    /// `editor`/`animation`/`lighting` fields above; `documents[active_doc]`
+    /// always holds a placeholder — see `tui::documents`.
+    pub documents: Vec<documents::Document>,
+    pub active_doc: usize,
     pub side_panel: SidePanel,
     pub palette_editor: palette_editor::PaletteEditor,
     pub props_panel: PropsPanel,
@@ -1510,6 +1515,12 @@ impl TuiApp {
                 inline_player: None,
                 transport_rects: Vec::new(),
             },
+            // Single initial document; the slot holds a placeholder while
+            // the hot fields above are live (see tui::documents).
+            documents: vec![documents::Document::placeholder(
+                documents::DocumentKind::Font,
+            )],
+            active_doc: 0,
             lighting: LightingState {
                 scene: None,
                 max_shadow_distance: 50,
