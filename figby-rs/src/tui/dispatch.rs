@@ -683,12 +683,48 @@ impl TuiApp {
                                 grid_area,
                                 &self.animation.timeline_state,
                             ) {
+                                if anim_timeline.is_ghost_idx(idx, &self.animation.timeline_state) {
+                                    // Left-click a ghost: fill plain clones
+                                    // up to it, then land on it.
+                                    self.animation.commit_current_timeline_frame(&self.editor);
+                                    self.animation.timeline_state.fill_ghosts_to(idx, false);
+                                    self.animation.timeline_state.current_frame = idx;
+                                    self.animation
+                                        .timeline_state
+                                        .sync_layer_names(&self.editor.layer_stack);
+                                    self.animation.load_current_timeline_frame(&mut self.editor);
+                                    self.editor.sync_canvas_to_font_char();
+                                    self.frame.dirty = true;
+                                    return;
+                                }
                                 self.animation.commit_current_timeline_frame(&self.editor);
                                 self.animation.timeline_state.current_frame = idx;
                                 self.animation.load_current_timeline_frame(&mut self.editor);
                                 self.editor.sync_canvas_to_font_char();
                                 self.frame.dirty = true;
                                 return;
+                            }
+                        }
+                        MouseEventKind::Down(MouseButton::Right) => {
+                            if let Some(idx) = anim_timeline.frame_at_col(
+                                mouse.column,
+                                grid_area,
+                                &self.animation.timeline_state,
+                            ) {
+                                if anim_timeline.is_ghost_idx(idx, &self.animation.timeline_state) {
+                                    // Right-click a ghost: same fill, but
+                                    // stamped as keyframes.
+                                    self.animation.commit_current_timeline_frame(&self.editor);
+                                    self.animation.timeline_state.fill_ghosts_to(idx, true);
+                                    self.animation.timeline_state.current_frame = idx;
+                                    self.animation
+                                        .timeline_state
+                                        .sync_layer_names(&self.editor.layer_stack);
+                                    self.animation.load_current_timeline_frame(&mut self.editor);
+                                    self.editor.sync_canvas_to_font_char();
+                                    self.frame.dirty = true;
+                                    return;
+                                }
                             }
                         }
                         MouseEventKind::ScrollUp => {

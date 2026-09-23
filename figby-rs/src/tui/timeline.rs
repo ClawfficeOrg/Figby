@@ -252,6 +252,50 @@ impl TimelineState {
     pub fn add_frame(&mut self, frame: TimelineFrame) {
         self.frames.push(frame);
     }
+    /// Fill ghost slots `len..=target` with frames cloned from the last
+    /// real frame (pixels + layer keyframes copied). `keyframe=true`
+    /// (right-click) marks every new frame `has_keyframe` with default
+    /// identity transforms for layers missing them; `false`
+    /// (left-click) leaves plain snapshots. Returns the number created.
+    pub fn fill_ghosts_to(&mut self, target: usize, keyframe: bool) -> usize {
+        if target < self.frames.len() || self.frames.is_empty() {
+            return 0;
+        }
+        let delay = self.default_delay();
+        let n_layers = self
+            .frames
+            .iter()
+            .map(|f| f.layer_keyframes.len())
+            .max()
+            .unwrap_or(0);
+        let mut made = 0;
+        while self.frames.len() <= target {
+            let src = self.frames.last().expect("checked non-empty");
+            let mut kf = src.layer_keyframes.clone();
+            kf.resize(n_layers, None);
+            let has_kf = if keyframe {
+                for slot in kf.iter_mut() {
+                    if slot.is_none() {
+                        *slot = Some(LayerKeyframe::default());
+                    }
+                }
+                true
+            } else {
+                src.has_keyframe
+            };
+            let idx = self.frames.len();
+            self.frames.push(TimelineFrame {
+                thumbnail: src.thumbnail.clone(),
+                has_keyframe: has_kf,
+                label: format!("F{idx}"),
+                delay,
+                document_state: src.document_state.clone(),
+                layer_keyframes: kf,
+            });
+            made += 1;
+        }
+        made
+    }
 
     /// Insert a frame at the given index.
     pub fn insert_frame(&mut self, index: usize, frame: TimelineFrame) {
@@ -933,9 +977,10 @@ impl AnimationTimeline {
     }
 
     /// Map a screen column within the frame-grid area back to a frame
-    /// index, accounting for horizontal scroll. Returns `None` when the
-    /// column falls in the label gutter, past the last visible frame, or
-    /// out of bounds.
+    /// index, accounting for horizontal scroll. Real frames return
+    /// `Some`; the next `GHOST_SLOTS` columns past the last frame return
+    /// `Some` too via `ghost_at_col` — plain `None` only for the label
+    /// gutter or truly out-of-bounds columns.
     pub fn frame_at_col(&self, col: u16, area: Rect, state: &TimelineState) -> Option<usize> {
         let stride = self.frame_stride();
         if stride == 0 || col < area.x + self.label_col_width {
@@ -943,7 +988,37 @@ impl AnimationTimeline {
         }
         let vis_i = (col - area.x - self.label_col_width) / stride;
         let idx = state.scroll_offset + vis_i as usize;
-        (idx < state.frames.len()).then_some(idx)
+        if idx < state.frames.len() {
+            return Some(idx);
+        }
+        // Ghost zone: clickable blank slots past the last frame.
+        let ghosts = self.ghost_count(area, state);
+        if idx < state.frames.len() + ghosts {
+            return Some(idx);
+        }
+        None
+    }
+
+    /// Number of clickable ghost slots visible past the last frame:
+    /// fixed affordance count clamped to the visible window.
+    pub fn ghost_count(&self, area: Rect, state: &TimelineState) -> usize {
+        let stride = self.frame_stride();
+        if stride == 0 || area.width <= self.label_col_width {
+            return 0;
+        }
+        let max_vis = (area.width - self.label_col_width) as usize / stride as usize;
+        let real_vis = state
+            .frames
+            .len()
+            .saturating_sub(state.scroll_offset)
+            .min(max_vis);
+        const GHOST_SLOTS: usize = 3;
+        (GHOST_SLOTS).min(max_vis.saturating_sub(real_vis))
+    }
+
+    /// True when `idx` is a ghost slot (at/after the end of `frames`).
+    pub fn is_ghost_idx(&self, idx: usize, state: &TimelineState) -> bool {
+        idx >= state.frames.len()
     }
 }
 
@@ -1140,6 +1215,34 @@ impl StatefulWidget for &AnimationTimeline {
                 }
             }
         }
+        // Ghost slots: dashed `+` affordance past the last frame.
+        let ghosts = self.ghost_count(area, state);
+        for g in 0..ghosts {
+            let vis_i = (f_end - f_start) + g;
+            let col_x = area.x + self.label_col_width + vis_i as u16 * stride;
+            if col_x >= area.x + area.width {
+                break;
+            }
+            if let Some(cell) = buf.cell_mut((col_x, ruler_y)) {
+                cell.set_char('┆');
+                cell.set_style(Style::default().fg(self.theme.ruler));
+            }
+            let ghost_style = Style::default().fg(self.theme.ruler);
+            for ci in 0..self.cell_width {
+                let cx = col_x + 1 + ci;
+                if cx >= area.x + area.width {
+                    break;
+                }
+                if let Some(cell) = buf.cell_mut((cx, ruler_y)) {
+                    cell.set_char(if ci == self.cell_width / 2 {
+                        '+'
+                    } else {
+                        '╌'
+                    });
+                    cell.set_style(ghost_style);
+                }
+            }
+        }
 
         // ── Layer rows ───────────────────────────────────────────────────────
         let max_layer_rows = area.height.saturating_sub(1) as usize;
@@ -1228,6 +1331,31 @@ impl StatefulWidget for &AnimationTimeline {
                     }
                 }
             }
+            // Ghost cells: dashed outline with centered `+`.
+            let ghosts = self.ghost_count(area, state);
+            for g in 0..ghosts {
+                let vis_i = (f_end - f_start) + g;
+                let col_x = area.x + self.label_col_width + vis_i as u16 * stride;
+                if col_x >= area.x + area.width {
+                    break;
+                }
+                if let Some(cell) = buf.cell_mut((col_x, row_y)) {
+                    cell.set_char('┆');
+                    cell.set_style(Style::default().fg(self.theme.ruler));
+                }
+                let marker_offset = self.cell_width / 2;
+                for ci in 0..self.cell_width {
+                    let cx = col_x + 1 + ci;
+                    if cx >= area.x + area.width {
+                        break;
+                    }
+                    if let Some(cell) = buf.cell_mut((cx, row_y)) {
+                        let ch = if ci == marker_offset { '+' } else { '╌' };
+                        cell.set_char(ch);
+                        cell.set_style(Style::default().fg(self.theme.ruler));
+                    }
+                }
+            }
         }
     }
 }
@@ -1298,6 +1426,50 @@ mod tests {
     }
 
     #[test]
+    fn test_fill_ghosts_left_click_clones_plain() {
+        let timeline = make_test_timeline();
+        let mut state = TimelineState {
+            frames: vec![
+                make_frame(vec![vec!['a']], false, "0"),
+                make_frame(vec![vec!['b']], false, "1"),
+            ],
+            ..TimelineState::default()
+        };
+        assert!(timeline.is_ghost_idx(2, &state));
+        let made = state.fill_ghosts_to(4, false);
+        assert_eq!(made, 3);
+        assert_eq!(state.frames.len(), 5);
+        for f in &state.frames[2..] {
+            assert!(!f.has_keyframe, "left-click fills plain snapshots");
+            assert_eq!(f.thumbnail, state.frames[1].thumbnail);
+        }
+    }
+
+    #[test]
+    fn test_fill_ghosts_right_click_stamps_keyframes() {
+        let mut state = TimelineState {
+            frames: vec![make_frame(vec![vec!['a']], false, "0")],
+            ..TimelineState::default()
+        };
+        let made = state.fill_ghosts_to(2, true);
+        assert_eq!(made, 2);
+        for f in &state.frames[1..] {
+            assert!(f.has_keyframe, "right-click stamps keyframes");
+        }
+    }
+
+    #[test]
+    fn test_fill_ghosts_noop_on_real_or_empty() {
+        let mut state = TimelineState {
+            frames: vec![make_frame(vec![], false, "0")],
+            ..TimelineState::default()
+        };
+        assert_eq!(state.fill_ghosts_to(0, false), 0);
+        let mut empty = TimelineState::default();
+        assert_eq!(empty.fill_ghosts_to(3, true), 0);
+    }
+
+    #[test]
     fn test_frame_at_col_maps_grid_columns_to_frame_index() {
         // label_col_width=11, cell_width=3, stride=4
         let timeline = make_test_timeline();
@@ -1330,8 +1502,12 @@ mod tests {
             ..TimelineState::default()
         };
         let area = Rect::new(0, 0, 30, 2);
-        // col 19 -> vis_i=2 -> idx=2, but only frames 0..2 exist.
-        assert_eq!(timeline.frame_at_col(19, area, &state), None);
+        // col 19 -> vis_i=2 -> idx=2: the first ghost slot past the 2
+        // real frames.
+        assert_eq!(timeline.frame_at_col(19, area, &state), Some(2));
+        assert!(timeline.is_ghost_idx(2, &state));
+        // Far past the ghost zone is still None.
+        assert_eq!(timeline.frame_at_col(60, area, &state), None);
     }
 
     #[test]
