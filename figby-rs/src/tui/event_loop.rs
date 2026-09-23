@@ -155,14 +155,6 @@ impl TuiApp {
                 self.dialogs.quit_after_save = false;
                 self.ui.should_quit = true;
             }
-            Some(PendingDocAction::OpenFont) => {
-                let path = self.dialogs.pending_open_path.take();
-                if let Some(path) = path {
-                    self.perform_open_at(path);
-                } else {
-                    self.start_open();
-                }
-            }
             Some(PendingDocAction::NewFileSession) => {
                 self.do_new_file_session(self.ui.session_type);
             }
@@ -285,6 +277,18 @@ impl TuiApp {
                     },
                     AsyncResult::OpenComplete(r) => match r {
                         Ok((font, path)) => {
+                            // The tab was created up front when the open
+                            // started; land there, or a fresh one if the
+                            // user closed it mid-load. Either way nothing
+                            // else is touched.
+                            match self.dialogs.pending_open_tab.take() {
+                                Some(tab) if tab < self.document_count() => {
+                                    self.switch_document(tab);
+                                }
+                                _ => {
+                                    self.new_document(crate::tui::documents::DocumentKind::Font);
+                                }
+                            }
                             // Opening replaces the whole document: drop
                             // stale selection, timeline, playback and
                             // image-editor state along with undo history

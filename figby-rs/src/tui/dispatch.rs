@@ -392,13 +392,6 @@ impl TuiApp {
     pub(crate) fn execute_action(&mut self, action: PendingDocAction) {
         match action {
             PendingDocAction::Quit => self.ui.should_quit = true,
-            PendingDocAction::OpenFont => {
-                let path = self.dialogs.pending_open_path.take();
-                match path {
-                    Some(path) => self.perform_open_at(path),
-                    None => self.start_open(),
-                }
-            }
             PendingDocAction::NewFileSession => self.do_new_file_session(self.ui.session_type),
             PendingDocAction::FontNewBlankSession => self.do_new_file_session(SessionType::Font),
             PendingDocAction::CloseDocument(idx) => {
@@ -409,7 +402,20 @@ impl TuiApp {
 
     /// Fresh blank document for the given session type (welcome "New").
     pub(crate) fn do_new_file_session(&mut self, session_type: SessionType) {
-        self.ui.session_type = session_type;
+        // Fresh-app case (single clean document): reset in place so the
+        // welcome screen doesn't leave an empty tab behind. Otherwise the
+        // new session gets its own tab — never a replace.
+        let pristine =
+            self.document_count() == 1 && !self.editor.unsaved && self.editor.revision == 0;
+        if pristine {
+            self.ui.session_type = session_type;
+        } else {
+            let kind = match session_type {
+                SessionType::Image => crate::tui::documents::DocumentKind::Image,
+                _ => crate::tui::documents::DocumentKind::Font,
+            };
+            self.new_document(kind);
+        }
         self.reset_document(32, 16);
         self.welcome.screen.show = false;
         self.welcome.fx = None;
@@ -441,7 +447,6 @@ impl TuiApp {
                 } else if btns[2].contains((mouse.column, mouse.row).into()) {
                     self.dialogs.quit_confirm_dialog = false;
                     self.dialogs.pending_transition = None;
-                    self.dialogs.pending_open_path = None;
                     self.frame.dirty = true;
                 }
             }
@@ -1316,7 +1321,6 @@ impl TuiApp {
                 KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Esc => {
                     self.dialogs.quit_confirm_dialog = false;
                     self.dialogs.pending_transition = None;
-                    self.dialogs.pending_open_path = None;
                     self.frame.dirty = true;
                 }
                 _ => {}
@@ -1343,6 +1347,7 @@ impl TuiApp {
         if self.dialogs.new_image.active {
             self.dialogs.new_image.handle_key(code);
             if !self.dialogs.new_image.active && self.dialogs.new_image.confirmed {
+                self.new_document(crate::tui::documents::DocumentKind::Image);
                 let w = self.dialogs.new_image.result_width;
                 let h = self.dialogs.new_image.result_height;
                 let pal_name = self.dialogs.new_image.result_palette_name.clone();
@@ -2366,9 +2371,6 @@ impl TuiApp {
     }
 
     pub(crate) fn start_open(&mut self) {
-        if self.ui.mode != AppMode::FontEditor {
-            return;
-        }
         self.dialogs
             .file_ops
             .enter_open(self.dialogs.recent_files.list());
@@ -2382,6 +2384,9 @@ impl TuiApp {
         if self.ctx.throbber.is_active() {
             return;
         }
+        // The file lands in a fresh tab, never over the current document.
+        let tab = self.new_document(crate::tui::documents::DocumentKind::Font);
+        self.dialogs.pending_open_tab = Some(tab);
         let (tx, rx) = mpsc::channel();
         self.ctx.async_rx = Some(rx);
         self.ctx.throbber.start("Loading...");
@@ -2400,13 +2405,9 @@ impl TuiApp {
     }
 
     fn perform_open_figmap(&mut self, path: &std::path::Path) -> Option<AppEvent> {
-        if self.editor.unsaved && self.dialogs.pending_transition.is_none() {
-            self.dialogs.pending_transition = Some(PendingDocAction::OpenFont);
-            self.dialogs.pending_open_path = Some(path.to_path_buf());
-            self.dialogs.quit_confirm_dialog = true;
-            self.frame.dirty = true;
-            return None;
-        }
+        // Figmaps open in a new image tab: no unsaved-changes prompt,
+        // nothing is replaced.
+        self.new_document(crate::tui::documents::DocumentKind::Image);
         match crate::figmap::load_figmap(path) {
             Ok(figmap) => {
                 let (layers, timeline, lights, _palette) = crate::figmap::into_runtime(figmap);
@@ -2439,21 +2440,18 @@ impl TuiApp {
         let target = self.dialogs.file_ops.resolve_open_target();
         match target {
             file_ops::OpenTarget::File(path) => {
-                if self.editor.unsaved && self.dialogs.pending_transition.is_none() {
-                    self.dialogs.pending_transition = Some(PendingDocAction::OpenFont);
-                    self.dialogs.pending_open_path = Some(path);
-                    self.dialogs.quit_confirm_dialog = true;
-                    self.frame.dirty = true;
-                    return;
-                }
+                // Opens land in a new tab: no unsaved-changes prompt,
+                // nothing is replaced.
                 self.perform_open_at(path);
             }
             file_ops::OpenTarget::ZipEntry {
                 zip_path,
                 entry_name,
             } => {
-                // ZIP entries are read straight from the archive; the
-                // unsaved-changes guard applies at OpenComplete below.
+                // ZIP entries are read straight from the archive into a
+                // fresh tab recorded for OpenComplete below.
+                let tab = self.new_document(crate::tui::documents::DocumentKind::Font);
+                self.dialogs.pending_open_tab = Some(tab);
                 let (tx, rx) = mpsc::channel();
                 self.ctx.async_rx = Some(rx);
                 self.ctx.throbber.start("Loading...");
@@ -2607,7 +2605,10 @@ impl TuiApp {
                             // attached to its content.
                             delay: gif_data.frame_delays.get(i).copied().unwrap_or(10),
                             document_state: vec![frame_buf],
-                            layer_keyframes: vec![Some(timeline::LayerKeyframe::default())],
+                            // Plain snapshot: no transform markers.
+                            // (None,None) interpolates to the default
+                            // properties, same as the old Some(default).
+                            layer_keyframes: vec![None],
                         });
                 }
 
@@ -2648,6 +2649,8 @@ impl TuiApp {
     }
 
     fn perform_open_image(&mut self, path: std::path::PathBuf) {
+        // Images open in a new tab, never over the current document.
+        self.new_document(crate::tui::documents::DocumentKind::Image);
         let path_str = path.to_string_lossy().into_owned();
         match self.editor.image_editor.load_from_path(&path_str) {
             Ok(()) => {
@@ -3259,25 +3262,19 @@ impl TuiApp {
             menu::MenuAction::AnimFrameAdd => {
                 let buffer = self.editor.canvas.buffer.clone();
                 let thumbnail = capture_thumbnail(&buffer, 12, 6);
-                let layer_keyframes = self
-                    .editor
-                    .layer_stack
-                    .layers
-                    .iter()
-                    .map(|_| Some(timeline::LayerKeyframe::default()))
-                    .collect();
                 let new_frame = timeline::TimelineFrame {
                     thumbnail,
-                    has_keyframe: true,
+                    has_keyframe: false,
                     label: format!("F{}", self.animation.timeline_state.frames.len()),
                     delay: self.animation.timeline_state.default_delay(),
                     document_state: vec![buffer],
-                    layer_keyframes,
+                    layer_keyframes: vec![None; self.editor.layer_stack.layers.len()],
                 };
                 self.animation
                     .timeline_state
                     .sync_layer_names(&self.editor.layer_stack);
                 self.animation.timeline_state.add_frame(new_frame);
+                self.animation.timeline_visible = true;
                 self.ui.menu_bar_state.reset();
                 self.frame.dirty = true;
             }
@@ -3844,5 +3841,175 @@ mod keybind_collision_tests {
             app.animation.timeline_visible,
             "new animation must show the timeline"
         );
+    }
+}
+
+#[cfg(test)]
+mod timeline_key_wiring_tests {
+    use super::super::AppMode;
+    use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn app_with_visible_timeline() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::ImageEditor;
+        app.animation.timeline_visible = true;
+        app
+    }
+
+    #[test]
+    fn test_a_captures_plain_frame_and_nav_works() {
+        let mut app = app_with_visible_timeline();
+        let none = KeyModifiers::NONE;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), none));
+        assert_eq!(app.animation.timeline_state.frames.len(), 1);
+        let f = &app.animation.timeline_state.frames[0];
+        assert!(!f.has_keyframe, "captured frames must be plain snapshots");
+        assert!(f.layer_keyframes.iter().all(|k| k.is_none()));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), none));
+        assert_eq!(app.animation.timeline_state.frames.len(), 2);
+        // Right navigates (commit-on-leave must not mint keyframes).
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Right, none));
+        assert_eq!(app.animation.timeline_state.current_frame, 1);
+        assert!(!app.animation.timeline_state.frames[0].has_keyframe);
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Left, none));
+        assert_eq!(app.animation.timeline_state.current_frame, 0);
+    }
+
+    #[test]
+    fn test_a_captures_when_hidden_but_nav_needs_visible() {
+        let mut app = app_with_visible_timeline();
+        app.animation.timeline_visible = false;
+        let none = KeyModifiers::NONE;
+        // Capture works hidden (and opens the timeline itself)...
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), none));
+        assert_eq!(app.animation.timeline_state.frames.len(), 1);
+        assert!(app.animation.timeline_visible);
+        // ...but arrows never navigate a hidden panel (two frames so
+        // Right *could* advance if the gate were missing).
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), none));
+        assert_eq!(app.animation.timeline_state.frames.len(), 2);
+        app.animation.timeline_state.current_frame = 0;
+        app.animation.timeline_visible = false;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Right, none));
+        assert_eq!(app.animation.timeline_state.current_frame, 0);
+    }
+}
+
+#[cfg(test)]
+mod open_in_new_tab_tests {
+    use super::super::{AppMode, TuiApp};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn dirty_app() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.editor.mark_dirty();
+        app
+    }
+
+    #[test]
+    fn test_open_figmap_never_prompts_and_keeps_current_doc() {
+        let mut app = dirty_app();
+        let dir = std::env::temp_dir().join("figby-open-tab-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("doc.figmap");
+        crate::figmap::save_figmap(&app.editor.layer_stack, None, &[], &[], &path).unwrap();
+
+        app.perform_open_figmap(&path);
+        assert_eq!(app.document_count(), 2);
+        assert!(!app.dialogs.quit_confirm_dialog, "open must not prompt");
+        assert!(!app.editor.unsaved, "fresh tab loads clean");
+        assert!(app.documents[0].editor.unsaved, "original tab untouched");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn test_open_image_failure_still_uses_new_tab() {
+        let mut app = dirty_app();
+        app.perform_open_image("/nonexistent-figby-test.png".into());
+        assert_eq!(app.document_count(), 2);
+        assert!(
+            !app.dialogs.file_ops.error_message.is_empty(),
+            "load error must surface in the dialog"
+        );
+        // Original dirty document parked untouched in tab 0.
+        assert!(app.documents[0].editor.unsaved);
+    }
+
+    #[test]
+    fn test_open_image_success_loads_into_new_tab() {
+        let mut app = dirty_app();
+        let dir = std::env::temp_dir().join("figby-open-tab-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("tiny.png");
+        let img = image::RgbImage::from_pixel(4, 4, image::Rgb([255, 0, 0]));
+        img.save(&path).unwrap();
+
+        app.perform_open_image(path.clone());
+        assert_eq!(app.document_count(), 2);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        assert!(app.dialogs.file_ops.error_message.is_empty());
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn test_font_open_lands_in_recorded_tab() {
+        let mut app = dirty_app();
+        let path = std::path::PathBuf::from("assets/fonts/standard.flf");
+        assert!(path.exists(), "font fixture must exist under crate dir");
+        app.perform_open_at(path);
+        // Tab + recording happen synchronously, before the loader thread.
+        assert_eq!(app.document_count(), 2);
+        assert_eq!(app.dialogs.pending_open_tab, Some(1));
+        // Drain the loader thread (bounded wait).
+        for _ in 0..200 {
+            app.check_async_completion();
+            if app.editor.font_editor.font.is_some() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(
+            app.editor.font_editor.font.is_some(),
+            "async font load must land in the new tab"
+        );
+        assert!(app.documents[0].editor.unsaved, "original tab untouched");
+        assert_eq!(app.dialogs.pending_open_tab, None, "recording consumed");
+    }
+
+    #[test]
+    fn test_start_open_reachable_outside_font_mode() {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::ImageEditor;
+        app.handle_menu_action(crate::tui::menu::MenuAction::FileOpen);
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Open
+        );
+    }
+
+    #[test]
+    fn test_new_session_reuses_pristine_doc_but_tabs_otherwise() {
+        let mut fresh = TuiApp::new();
+        fresh.welcome.screen.show = false;
+        fresh.do_new_file_session(crate::tui::app_state::SessionType::Image);
+        assert_eq!(fresh.document_count(), 1, "pristine doc reused");
+
+        let mut used = dirty_app();
+        used.do_new_file_session(crate::tui::app_state::SessionType::Image);
+        assert_eq!(used.document_count(), 2, "dirty doc gets a new tab");
+        assert_eq!(used.ui.mode, AppMode::ImageEditor);
+    }
+
+    #[test]
+    fn test_ctrl_n_opens_tab_not_replace() {
+        let mut app = dirty_app();
+        // Ctrl+N opens the New Image dialog instead of replacing.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL));
+        assert!(app.dialogs.new_image.active);
+        assert_eq!(app.document_count(), 1, "dialog first, tab on confirm");
     }
 }

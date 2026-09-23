@@ -1096,7 +1096,9 @@ impl AnimationState {
             let frame = &mut self.timeline_state.frames[cf];
             frame.document_state = document_state;
             frame.thumbnail = thumbnail;
-            frame.has_keyframe = true;
+            // NOTE: deliberately not touching has_keyframe — committing
+            // pixels must not mint transform markers. Keyframes are
+            // opt-in via the tween editor (set_keyframe derives the flag).
         }
     }
 
@@ -1120,6 +1122,29 @@ impl AnimationState {
         editor: &mut EditorState,
         dirty: &mut bool,
     ) -> bool {
+        // Frame capture: the first captured frame opens the timeline
+        // itself, so the animation system is discoverable from a blank
+        // canvas. Frames are plain snapshots — keyframes (transform
+        // markers) are opt-in via the tween editor, not stamped at
+        // capture. Navigation below stays visibility-gated so arrows
+        // keep driving the canvas cursor when the panel is hidden.
+        if code == KeyCode::Char('A') {
+            let buffer = editor.layer_stack.composite();
+            let thumbnail = capture_thumbnail(&buffer, 8, 3);
+            let frame = timeline::TimelineFrame {
+                thumbnail,
+                has_keyframe: false,
+                label: format!("F{}", self.timeline_state.frames.len()),
+                delay: self.timeline_state.default_delay(),
+                document_state: vec![buffer],
+                layer_keyframes: vec![None; editor.layer_stack.layers.len()],
+            };
+            self.timeline_state.sync_layer_names(&editor.layer_stack);
+            self.timeline_state.add_frame(frame);
+            self.timeline_visible = true;
+            *dirty = true;
+            return true;
+        }
         // Timeline frame navigation (visible only)
         if self.timeline_visible {
             match code {
@@ -1148,28 +1173,6 @@ impl AnimationState {
                     }
                     self.load_current_timeline_frame(editor);
                     editor.sync_canvas_to_font_char();
-                    *dirty = true;
-                    return true;
-                }
-                KeyCode::Char('A') => {
-                    let buffer = editor.layer_stack.composite();
-                    let thumbnail = capture_thumbnail(&buffer, 8, 3);
-                    let layer_keyframes = editor
-                        .layer_stack
-                        .layers
-                        .iter()
-                        .map(|_| Some(timeline::LayerKeyframe::default()))
-                        .collect();
-                    let frame = timeline::TimelineFrame {
-                        thumbnail,
-                        has_keyframe: true,
-                        label: format!("F{}", self.timeline_state.frames.len()),
-                        delay: self.timeline_state.default_delay(),
-                        document_state: vec![buffer],
-                        layer_keyframes,
-                    };
-                    self.timeline_state.sync_layer_names(&editor.layer_stack);
-                    self.timeline_state.add_frame(frame);
                     *dirty = true;
                     return true;
                 }
@@ -1255,7 +1258,6 @@ impl AnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PendingDocAction {
     Quit,
-    OpenFont,
     NewFileSession,
     FontNewBlankSession,
     /// Close a document tab (8.5.3): armed when the tab has unsaved
@@ -1286,8 +1288,11 @@ pub struct DialogState {
     pub pending_save_revision: Option<u64>,
     /// The transition awaiting confirmation in the unsaved-changes dialog.
     pub pending_transition: Option<PendingDocAction>,
-    /// Resolved path for an open that is waiting behind a confirmation.
-    pub pending_open_path: Option<std::path::PathBuf>,
+    /// Document tab a pending async font open should land in. Set when
+    /// the open starts (which creates the tab up front); taken by the
+    /// OpenComplete handler, which falls back to a fresh tab if the user
+    /// closed it mid-load.
+    pub pending_open_tab: Option<usize>,
 }
 
 /// Welcome/startup effects state.
@@ -1494,7 +1499,7 @@ impl TuiApp {
                 quit_after_save: false,
                 pending_save_revision: None,
                 pending_transition: None,
-                pending_open_path: None,
+                pending_open_tab: None,
             },
             interaction: InteractionState {
                 selection_drag_origin: None,
