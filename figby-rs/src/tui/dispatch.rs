@@ -1361,9 +1361,9 @@ impl TuiApp {
                 self.editor.layer_panel.theme = self.ctx.theme.clone();
                 self.editor.layer_panel.icons = self.ctx.icons.clone();
                 if !pal_swatches.is_empty() {
-                    self.palette_editor.open = true;
-                    self.palette_editor.name_buffer = pal_name;
-                    self.palette_editor.swatches = pal_swatches;
+                    self.palette_editor
+                        .open_with_swatches(pal_name, pal_swatches);
+                    self.palette_editor.available_palettes(None);
                 }
                 self.editor.recomposite_canvas();
                 self.welcome.screen.show = false;
@@ -1487,19 +1487,19 @@ impl TuiApp {
             return None;
         }
 
-        // Palette editor: dispatch all keys when open
-        if self.palette_editor.open {
-            if self.palette_editor.handle_key(code) {
-                if self.palette_editor.modified {
-                    self.palette_editor
-                        .apply_to_palette(&mut self.editor.palette);
-                    self.palette_editor.modified = false;
-                    if self.lighting.scene.is_some() {
-                        self.rebuild_lighting_from_palette();
-                    }
+        // Palette editor: dispatch all keys when open. Unhandled keys
+        // fall through so globals (Ctrl+N/O/S, Ctrl+Shift+P toggle,
+        // menus) keep working while open.
+        if self.palette_editor.open && self.palette_editor.handle_key(code) {
+            if self.palette_editor.modified {
+                self.palette_editor
+                    .apply_to_palette(&mut self.editor.palette);
+                self.palette_editor.modified = false;
+                if self.lighting.scene.is_some() {
+                    self.rebuild_lighting_from_palette();
                 }
-                self.frame.dirty = true;
             }
+            self.frame.dirty = true;
             return None;
         }
 
@@ -3179,9 +3179,9 @@ impl TuiApp {
             menu::MenuAction::ViewLoadBuiltinPalette(name) => {
                 let palettes = crate::palette_import::builtin_palettes();
                 if let Some((_, swatches)) = palettes.into_iter().find(|(n, _)| *n == name) {
-                    self.palette_editor.swatches = swatches;
-                    self.palette_editor.name_buffer = name.to_string();
-                    self.palette_editor.open = true;
+                    self.palette_editor
+                        .open_with_swatches(name.to_string(), swatches);
+                    self.palette_editor.available_palettes(None);
                 }
                 self.ui.menu_bar_state.reset();
                 self.frame.dirty = true;

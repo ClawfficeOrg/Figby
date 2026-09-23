@@ -95,6 +95,25 @@ impl PaletteEditor {
         self.init_lighting_from_swatches();
     }
 
+    /// Reset transient open-state when showing a fresh swatch list (new
+    /// image, builtin load): cursor home, Idle mode, no stale message,
+    /// file browser home, lighting backfill so later saves keep values.
+    pub fn open_with_swatches(&mut self, name: String, swatches: Vec<Swatch>) {
+        self.open = true;
+        self.name_buffer = name;
+        self.swatches = swatches;
+        self.selected = 0;
+        self.mode = PanelMode::Idle;
+        self.file_scroll = 0;
+        self.message = None;
+        self.import_format = None;
+        self.format_index = 0;
+        self.naming_is_rename = false;
+        self.editing_lighting_field = None;
+        self.lighting_hex_buffer.clear();
+        self.init_lighting_from_swatches();
+        self.modified = true;
+    }
     fn palettes_dir() -> Option<PathBuf> {
         let base = if let Ok(val) = std::env::var("XDG_CONFIG_HOME") {
             PathBuf::from(val)
@@ -820,11 +839,8 @@ impl PaletteEditor {
                         true
                     }
                     KeyCode::Char('e') | KeyCode::Char('E') => {
-                        if !self.swatches.is_empty() {
-                            let hex = self.swatches[self.selected]
-                                .hex
-                                .trim_start_matches('#')
-                                .to_string();
+                        if let Some(swatch) = self.swatches.get(self.selected) {
+                            let hex = swatch.hex.trim_start_matches('#').to_string();
                             self.mode = PanelMode::EditingHex;
                             self.lighting_hex_buffer = hex;
                             self.message = None;
@@ -832,9 +848,9 @@ impl PaletteEditor {
                         true
                     }
                     KeyCode::Char('n') | KeyCode::Char('N') => {
-                        if !self.swatches.is_empty() {
+                        if let Some(swatch) = self.swatches.get(self.selected) {
                             self.mode = PanelMode::EditingName;
-                            self.name_buffer = self.swatches[self.selected].name.clone();
+                            self.name_buffer = swatch.name.clone();
                             self.message = None;
                         }
                         true
@@ -863,70 +879,76 @@ impl PaletteEditor {
                             KeyCode::Char('L') => {
                                 // Edit lit color for selected swatch
                                 self.ensure_lighting_defaults(self.selected);
-                                self.editing_lighting_field = Some("lit");
-                                let hex = self.swatches[self.selected]
-                                    .lit_hex
-                                    .as_deref()
-                                    .unwrap_or(&self.swatches[self.selected].hex)
-                                    .trim_start_matches('#')
-                                    .to_string();
-                                self.lighting_hex_buffer = hex;
+                                if let Some(swatch) = self.swatches.get(self.selected) {
+                                    let hex = swatch
+                                        .lit_hex
+                                        .as_deref()
+                                        .unwrap_or(&swatch.hex)
+                                        .trim_start_matches('#')
+                                        .to_string();
+                                    self.editing_lighting_field = Some("lit");
+                                    self.lighting_hex_buffer = hex;
+                                }
                                 true
                             }
                             KeyCode::Char('l') => {
                                 // Toggle specular for selected swatch
                                 self.ensure_lighting_defaults(self.selected);
-                                let swatch = &mut self.swatches[self.selected];
-                                let current = swatch.specular.unwrap_or(false);
-                                swatch.specular = Some(!current);
-                                self.modified = true;
+                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                                    let current = swatch.specular.unwrap_or(false);
+                                    swatch.specular = Some(!current);
+                                    self.modified = true;
+                                }
                                 true
                             }
                             KeyCode::Char('S') => {
                                 // Edit shadow color for selected swatch
                                 self.ensure_lighting_defaults(self.selected);
-                                self.editing_lighting_field = Some("shadow");
-                                let hex = self.swatches[self.selected]
-                                    .shadow_hex
-                                    .as_deref()
-                                    .unwrap_or(&Swatch::default_shadow_hex(
-                                        &self.swatches[self.selected].hex,
-                                    ))
-                                    .trim_start_matches('#')
-                                    .to_string();
-                                self.lighting_hex_buffer = hex;
+                                if let Some(swatch) = self.swatches.get(self.selected) {
+                                    let hex = swatch
+                                        .shadow_hex
+                                        .as_deref()
+                                        .unwrap_or(&Swatch::default_shadow_hex(&swatch.hex))
+                                        .trim_start_matches('#')
+                                        .to_string();
+                                    self.editing_lighting_field = Some("shadow");
+                                    self.lighting_hex_buffer = hex;
+                                }
                                 true
                             }
                             KeyCode::Char('s') => {
                                 // Cycle shininess for selected swatch
                                 self.ensure_lighting_defaults(self.selected);
-                                let swatch = &mut self.swatches[self.selected];
-                                let current = swatch.shininess.unwrap_or(32.0);
-                                let new_val = if current >= 128.0 {
-                                    4.0
-                                } else {
-                                    (current * 2.0).min(256.0)
-                                };
-                                swatch.shininess = Some(new_val);
-                                self.modified = true;
+                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                                    let current = swatch.shininess.unwrap_or(32.0);
+                                    let new_val = if current >= 128.0 {
+                                        4.0
+                                    } else {
+                                        (current * 2.0).min(256.0)
+                                    };
+                                    swatch.shininess = Some(new_val);
+                                    self.modified = true;
+                                }
                                 true
                             }
                             KeyCode::Char('[') => {
                                 // Decrease shininess
                                 self.ensure_lighting_defaults(self.selected);
-                                let swatch = &mut self.swatches[self.selected];
-                                let current = swatch.shininess.unwrap_or(32.0);
-                                swatch.shininess = Some((current / 2.0).max(1.0));
-                                self.modified = true;
+                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                                    let current = swatch.shininess.unwrap_or(32.0);
+                                    swatch.shininess = Some((current / 2.0).max(1.0));
+                                    self.modified = true;
+                                }
                                 true
                             }
                             KeyCode::Char(']') => {
                                 // Increase shininess
                                 self.ensure_lighting_defaults(self.selected);
-                                let swatch = &mut self.swatches[self.selected];
-                                let current = swatch.shininess.unwrap_or(32.0);
-                                swatch.shininess = Some((current * 2.0).min(256.0));
-                                self.modified = true;
+                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                                    let current = swatch.shininess.unwrap_or(32.0);
+                                    swatch.shininess = Some((current * 2.0).min(256.0));
+                                    self.modified = true;
+                                }
                                 true
                             }
                             _ => false,
@@ -1152,5 +1174,23 @@ mod tests {
         assert!(editor.save().is_err());
         editor.name_buffer = "".to_string();
         assert!(editor.save().is_err());
+    }
+
+    #[test]
+    fn test_open_with_swatches_resets_stale_cursor() {
+        let mut editor = PaletteEditor::new();
+        // Simulate a stale oversized cursor from a larger palette.
+        editor.selected = 15;
+        editor.open_with_swatches(
+            "Grayscale".to_string(),
+            vec![Swatch::new("A".to_string(), "#000000".to_string())],
+        );
+        assert!(editor.open);
+        assert_eq!(editor.selected, 0);
+        assert!(editor.modified, "live palette must sync on next dispatch");
+        // E/N arms on a 1-swatch list must not panic or leave Idle.
+        assert!(editor.handle_key(KeyCode::Char('e')));
+        editor.handle_key(KeyCode::Esc);
+        assert!(editor.handle_key(KeyCode::Char('n')));
     }
 }
