@@ -1,5 +1,27 @@
 # Changelog
-## [6.0.42] - 2026-09-23
+## [6.0.43] - 2026-09-23
+
+### Added
+- E2E art suite: tribute sprites (plumber/quest/invader), castle layers
+  backdrop, animated FIGBY banner finale under `assets/e2e-art/` with
+  `scripts/gen-e2e-art.py` generator. Headless contract
+  (`figby-rs/tests/e2e_art.rs`, 4 tests) plus non-headless PTY suite
+  (`scripts/e2e-art-tmux.sh`, 15 checks: real Open dialog, tool keys,
+  timeline/export dialogs, `--play --loop`). Narrated demo recording:
+  `assets/e2e-art/recordings/e2e-art.cast` + `.gif`
+  (`scripts/demo-e2e-art.sh`, `scripts/preview-figmap.py`).
+- Manual E2E plan: `docs/e2e-tui-art-tests.md` (tools → layers →
+  animation → lighting/banner → file-ops sweep).
+
+### Fixed
+- Open dialog: typed/pasted full paths now open on Enter (FontEditor
+  Overview search no longer swallows `/`, `.`, letters; dialog dispatches
+  first when open). Recent-file digits 1-9 only fire on an empty Path;
+  stale (deleted) recents filtered at dialog entry.
+- Export dialog: Esc on an empty path closes without firing a doomed
+  async "no path specified" export that reopened the dialog.
+- Figmap open now recomposites layers to the canvas (was blank with only
+  layer names visible).
 
 ### Fixed
 - File dialogs: SaveAs Enter on an existing target now arms an

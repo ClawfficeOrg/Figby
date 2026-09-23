@@ -1746,3 +1746,38 @@ Three bugs found in phase merge review:
   takes ~25s due to GIF encoding. The GIF encoder's color quantization is the
   bottleneck, not the particle simulation. For faster tests, reduce frame count
   or use simpler color palettes.
+
+- **TUI tool keys are mode-gated, not global**: canvas tool catch-all in
+  `dispatch.rs` only runs in AsciiPreview/ImageEditor paths — FontEditor
+  and Lighting modes swallow `b/u/r/v/l/c/p/g/i/e/a` before they arrive.
+  Probe tools in ImageEditor mode, not the default FontEditor landing.
+- **Same key, different tool per mode**: `d` = Eyedropper (ImageEditor) vs
+  palette-extended toggle (AsciiPreview); `c` = Circle vs image-color;
+  `k` = Braille vs contrast/keyframe-editor. Read `handle_image_editor_key`
+  + palette + layer-panel handlers before asserting keymap-table behavior.
+- **Export dialog is a key sink**: `handle_key` char arm appends *every*
+  printable incl. Ctrl-combo letters; `Enter` on empty path fires async
+  export whose error reopens the dialog. E2E scripts must avoid Ctrl keys
+  while export open, or seed Path first.
+- **Figmap round-trip needs no TUI**: `save_figmap`/`load_figmap` +
+  `into_runtime` + `composite()` cover the art-scene contract headless;
+  reserve tmux `--play --loop` for one animated smoke test (needs PTY).
+- **Deterministic art beats RNG**: coordinate-hash starfields/twinkle
+  (`(x*31+y*17+x*y)%23`) keep figmaps byte-stable across regenerations,
+  so checked-in scenes double as baselines without snapshot churn.
+
+- **E2E scripts must type full paths, not browse**: tmux `send-keys -l`
+  bypasses bracketed-paste (no `Event::Paste`), so every char hits
+  `handle_key_browse` typed-path rules — design the dialog for that:
+  disarmed-Enter finalizes buffers naming an existing explicit path,
+  digits stay literal once Path is non-empty.
+- **Overlay order != dispatch order is a bug farm**: the Open dialog
+  rendered on top while FontEditor search consumed its keystrokes.
+  Modal dialogs must dispatch above every mode-specific handler;
+  assert with a live tmux probe, not by reading render code.
+- **Progress-bar assertions need polling**: `--play` renders frames
+  immediately but the `1/6` progress row appears seconds later;
+  single-shot `capture-pane` flakes — poll up to ~12s.
+- **Stale XDG recents poison E2E**: `~/.config/figby/recent_files.json`
+  referenced a deleted `fonts/standard.flf`; filter recents by
+  `exists()` at dialog entry or ghosts concatenate with typed text.

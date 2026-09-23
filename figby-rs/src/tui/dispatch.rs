@@ -1473,7 +1473,9 @@ impl TuiApp {
             return None;
         }
 
-        // File ops dialog active: dispatch all keys to it
+        // File ops dialog active: dispatch all keys to it. This sits above
+        // the FontEditor search (which would otherwise swallow typed paths —
+        // `/`, `.`, letters all start glyph searches in Overview).
         if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
             let prev_mode = self.dialogs.file_ops.mode;
             self.dialogs.file_ops.handle_key(code);
@@ -1486,7 +1488,10 @@ impl TuiApp {
         // Export dialog active: dispatch all keys to it
         if self.dialogs.export_dialog.active {
             let prev_format = self.dialogs.export_dialog.format;
+            let prev_len = self.dialogs.export_dialog.path_buffer.len();
             self.dialogs.export_dialog.handle_key(code);
+            let closed_by_esc =
+                code == KeyCode::Esc && self.dialogs.export_dialog.path_buffer.len() < prev_len;
             // If format changed to an animated format and timeline has frames,
             // populate timeline data. Skip this if frame_delays already
             // matches the frame count — that means timing is already sitting
@@ -1509,7 +1514,11 @@ impl TuiApp {
                 self.launch_player_from_export();
                 return None;
             }
-            if !self.dialogs.export_dialog.active {
+            // Esc closes via `close()` (clears the path) while Enter confirms
+            // with the typed path intact — only Enter may kick off the async
+            // export. An Esc-close must never fire a doomed "no path
+            // specified" job that reopens the dialog with an error.
+            if !self.dialogs.export_dialog.active && !closed_by_esc {
                 self.perform_export();
             }
             return None;
@@ -1654,7 +1663,21 @@ impl TuiApp {
             }
         }
 
-        // Font Editor mode: dispatch to font_editor before canvas/tools
+        // Font Editor mode: dispatch to font_editor before canvas/tools.
+        // The Open dialog sits above the Overview search: typed paths
+        // (`/`, `.`, letters) must reach the dialog, not start a search.
+        if self.dialogs.file_ops.mode == file_ops::FileOpsMode::Open
+            && self.ui.mode == AppMode::FontEditor
+            && !modifiers.contains(KeyModifiers::CONTROL)
+            && !modifiers.contains(KeyModifiers::ALT)
+        {
+            let prev_mode = self.dialogs.file_ops.mode;
+            self.dialogs.file_ops.handle_key(code);
+            if self.dialogs.file_ops.mode == file_ops::FileOpsMode::Idle {
+                return self.complete_file_ops_dialog(prev_mode);
+            }
+            return None;
+        }
         if self.ui.mode == AppMode::FontEditor {
             if let Some(ev) = self.handle_font_editor_key(key) {
                 return Some(ev);
@@ -2486,6 +2509,10 @@ impl TuiApp {
                 if !lights.is_empty() {
                     self.lighting.scene = Some(crate::tui::lighting::Scene { lights });
                 }
+                // The fresh tab's canvas still shows the blank placeholder:
+                // composite the loaded layers into it (E2E: figmap opened to
+                // an empty canvas with only the layer names visible).
+                self.editor.recomposite_canvas();
                 self.editor.unsaved = false;
                 self.frame.dirty = true;
                 self.frame.force_full_redraw = true;

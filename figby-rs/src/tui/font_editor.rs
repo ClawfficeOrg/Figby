@@ -1490,8 +1490,10 @@ impl FontEditor {
                     && !matches!(c, 'q' | 'Q' | '?')
                     // Brush adjustment shortcuts
                     && !matches!(c, '[' | ']' | ';' | '\'' | '\\')
-                    // Canvas/zoom controls and paint trigger
-                    && !matches!(c, '+' | '-' | '=' | '_' | ' ') =>
+                    // Canvas/zoom controls, paint trigger, and path
+                    // separators (typed/pasted file paths must reach the
+                    // Open dialog instead of starting a glyph search)
+                    && !matches!(c, '+' | '-' | '=' | '_' | ' ' | '/' | '.' | '~') =>
             {
                 self.search_active = true;
                 self.search_query.push(c);

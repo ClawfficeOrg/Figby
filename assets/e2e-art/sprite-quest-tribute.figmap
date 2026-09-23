@@ -1,0 +1,9730 @@
+{
+ "version": 1,
+ "kind": "Image",
+ "width": 40,
+ "height": 20,
+ "layers": [
+  {
+   "buffer": {
+    "cells": [
+     [
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "*",
+       "fg": "#FFFFAA",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2591",
+       "fg": "#1A3A6B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3A4A70",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#2A5A8B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\u2592",
+       "fg": "#2A6A3A",
+       "bg": null,
+       "height": null
+      }
+     ]
+    ],
+    "width": 40,
+    "height": 20
+   },
+   "name": "Background",
+   "visible": true,
+   "locked": false,
+   "opacity": 255,
+   "blend_mode": "Normal",
+   "mask": null,
+   "group": null,
+   "link": null,
+   "accepts_lighting": true,
+   "casts_shadow": true
+  },
+  {
+   "buffer": {
+    "cells": [
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "+",
+       "fg": "#FFFF00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "+",
+       "fg": "#FFFF00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "F",
+       "fg": "#FFCC99",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "F",
+       "fg": "#FFCC99",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "F",
+       "fg": "#FFCC99",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "F",
+       "fg": "#FFCC99",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "G",
+       "fg": "#00AA00",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "T",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "S",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "S",
+       "fg": "#8B5A2B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "L",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "L",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "S",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "L",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "L",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "L",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "L",
+       "fg": "#663300",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#FFFFFF",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#FFFFFF",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": null,
+       "height": null
+      }
+     ]
+    ],
+    "width": 40,
+    "height": 20
+   },
+   "name": "Hero",
+   "visible": true,
+   "locked": false,
+   "opacity": 255,
+   "blend_mode": "Normal",
+   "mask": null,
+   "group": null,
+   "link": null,
+   "accepts_lighting": true,
+   "casts_shadow": true
+  }
+ ],
+ "groups": [],
+ "links": [],
+ "active_layer": 1,
+ "timeline": null,
+ "palette": [],
+ "lights": []
+}

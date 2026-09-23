@@ -209,10 +209,17 @@ impl FileOpsDialog {
         self.path_armed = false;
         self.selected_entry = 0;
         self.error_message.clear();
-        self.recent_files_for_display = recent
+        // Stale recents (deleted/moved since last save) must never seed the
+        // Path: `remove_missing` runs on load, and entries are re-checked
+        // here, so a ghost like `fonts/standard.flf` can't concatenate with
+        // typed text (E2E: typed `assets/...` became
+        // `fonts/standard.flfassets/...`).
+        let live: Vec<String> = recent
             .iter()
+            .filter(|p| p.exists())
             .map(|p| p.to_string_lossy().to_string())
             .collect();
+        self.recent_files_for_display = live;
         self.refresh_directory();
     }
 
@@ -314,7 +321,13 @@ impl FileOpsDialog {
             return;
         }
         self.path_buffer.push_str(text);
-        self.path_armed = false;
+        // A pasted path is an explicit target: arm it when it names an
+        // existing file, so Enter finalizes instead of navigating the
+        // highlight (typed paths stay disarmed — Tab arms those). This is
+        // what makes scripted/pasted absolute paths work in E2E.
+        let trimmed = self.path_buffer.trim().to_string();
+        self.path_armed = PathBuf::from(&trimmed).is_file();
+        self.selected_entry = 0;
         self.error_message.clear();
         self.refresh_directory_keep_selection();
     }
@@ -723,12 +736,15 @@ impl FileOpsDialog {
     /// line always shows which target Enter will take.
     fn handle_key_browse(&mut self, code: KeyCode) -> bool {
         match code {
-            // Recent-file shortcuts (1-9) are an Open-mode-only feature;
-            // other modes fall through and type the digit normally. Keys
-            // index the first nine of the recents (most recent first),
-            // matching the displayed 1-9 slice (defect 4).
+            // Recent-file shortcuts (1-9): Open-mode-only, and only on an
+            // empty Path — once the user is typing, digits are path text
+            // (E2E: typing `assets/e2e-art/` armed a stale recent on a digit
+            // and replaced the buffer). Other modes type digits normally.
             KeyCode::Char(c)
-                if self.mode == FileOpsMode::Open && c.is_ascii_digit() && c != '0' =>
+                if self.mode == FileOpsMode::Open
+                    && c.is_ascii_digit()
+                    && c != '0'
+                    && self.path_buffer.is_empty() =>
             {
                 if self.browsing_zip {
                     self.browsing_zip = false;
@@ -750,8 +766,8 @@ impl FileOpsDialog {
                 }
                 self.path_buffer.push(c);
                 self.path_armed = false;
+                self.selected_entry = 0;
                 self.error_message.clear();
-                self.refresh_directory_keep_selection();
                 true
             }
             KeyCode::Backspace => {
@@ -843,9 +859,37 @@ impl FileOpsDialog {
                     self.refresh_directory_keep_selection();
                     return true;
                 }
-                // Disarmed Enter never finalizes from a stale typed
-                // buffer — it navigates the highlight only. (Armed paths
-                // were handled above.)
+                // Disarmed Enter with a buffer that already names an existing
+                // file via an explicit path (contains a separator or is
+                // absolute) finalizes it — covers typed/pasted full paths.
+                // Bare filenames stay highlight-driven (defect 2): they may
+                // name a file in some other directory, and Enter must keep
+                // meaning "arm the highlight" there.
+                let trimmed = self.path_buffer.trim().to_string();
+                let candidate = PathBuf::from(&trimmed);
+                let explicit =
+                    trimmed.contains('/') || trimmed.contains('\\') || candidate.is_absolute();
+                if !self.browsing_zip && !trimmed.is_empty() && explicit && candidate.is_file() {
+                    let lower = self.path_buffer.to_lowercase();
+                    if lower.ends_with(".zip")
+                        && matches!(self.mode, FileOpsMode::Open | FileOpsMode::ImportFont)
+                    {
+                        self.current_zip_path = candidate;
+                        self.browsing_zip = true;
+                        self.selected_entry = 0;
+                        self.error_message.clear();
+                        self.refresh_directory();
+                    } else if self.mode == FileOpsMode::Open {
+                        // Open accepts any existing file outright — a bad
+                        // FIGfont surfaces as an async parse error.
+                        self.mode = FileOpsMode::Idle;
+                    } else if self.mode_matches_extension(&lower) {
+                        self.mode = FileOpsMode::Idle;
+                    } else {
+                        self.error_message = self.mode_extension_error().to_string();
+                    }
+                    return true;
+                }
                 if self.directory_entries.is_empty() {
                     return true;
                 }
@@ -2079,17 +2123,22 @@ mod tests {
 
     #[test]
     fn test_open_dialog_recent_file_by_digit() {
-        let mut dialog = FileOpsDialog::new();
+        let dir = make_test_dir("recent-digit");
+        for name in ["first.flf", "second.flf", "third.flf"] {
+            std::fs::write(dir.join(name), "x").unwrap();
+        }
         let recent = vec![
-            PathBuf::from("/first.flf"),
-            PathBuf::from("/second.flf"),
-            PathBuf::from("/third.flf"),
+            dir.join("first.flf"),
+            dir.join("second.flf"),
+            dir.join("third.flf"),
         ];
+        let mut dialog = FileOpsDialog::new();
         dialog.enter_open(&recent);
 
         // Press '2' to select second recent file
         dialog.handle_key(KeyCode::Char('2'));
-        assert_eq!(dialog.path_buffer, "/second.flf");
+        assert_eq!(dialog.path_buffer, dir.join("second.flf").to_string_lossy());
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
@@ -2125,15 +2174,24 @@ mod tests {
         // 12 recents: keys 1-9 must hit recents[0..9] (the display
         // slice), not recents[3..12] (the old last-9 render slice that
         // made labels and keys disagree — defect 4).
-        let mut dialog = FileOpsDialog::new();
+        let dir = make_test_dir("recent-slice");
         let recent: Vec<PathBuf> = (0..12)
-            .map(|i| PathBuf::from(format!("/r{i:02}.flf")))
+            .map(|i| {
+                let p = dir.join(format!("r{i:02}.flf"));
+                std::fs::write(&p, "x").unwrap();
+                p
+            })
             .collect();
+        let mut dialog = FileOpsDialog::new();
         dialog.enter_open(&recent);
         dialog.handle_key(KeyCode::Char('1'));
-        assert_eq!(dialog.path_buffer, "/r00.flf");
+        assert_eq!(dialog.path_buffer, recent[0].to_string_lossy());
+        // '9' now types a digit (Path non-empty after '1'), so reset the
+        // dialog to press it cleanly.
+        dialog.enter_open(&recent);
         dialog.handle_key(KeyCode::Char('9'));
-        assert_eq!(dialog.path_buffer, "/r08.flf");
+        assert_eq!(dialog.path_buffer, recent[8].to_string_lossy());
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     // --- Part Twah 8.1: navigation / mouse / zip-in-ImportFont tests ---

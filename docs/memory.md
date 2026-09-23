@@ -3119,3 +3119,40 @@ global — no per-frame capture/restore. Plan: add `LightKeyframe` struct to
 `TimelineFrame`, snapshot scene in `commit_current_timeline_frame`, restore in
 `load_current_timeline_frame`, interpolate between keyframes during playback.
 Files to modify: timeline.rs, app_state.rs, mod.rs, lighting.rs, dispatch.rs.
+
+### E2E art scenes + TUI probe (2026-09-23)
+
+E2E art set at `assets/e2e-art/*.figmap` via `scripts/gen-e2e-art.py`
+(deterministic, no RNG): 3 sprite tributes 40x20 (plumber/quest/invader,
+Background+Hero), castle 64x20 (Sky/Castle/Hero), banner finale 64x24
+(real `fonts/big` FIGBY gold + halo, 6 frames, ambient + sweeping point
+light, fps 8 loop). Suite `figby-rs/tests/e2e_art.rs` (4 tests) pins
+dims/layers/frames/gold-cells/lights. `--play banner --loop` verified in
+tmuxpty; static figmaps correctly refuse with no-frames exit 1.
+Manual plan + 7 live-probe issues at `docs/e2e-tui-art-tests.md`.
+Key dispatch facts: tool keys only live in AsciiPreview/ImageEditor (Font
+Lighting modes swallow them); `d`/`c`/`k`/`r` shadowed per mode; `m`
+Emitter and `n` Lighting have no canvas key path (mouse/menu only);
+export dialog claims all keys incl. Ctrl-combos into Path; layer-panel
+keys need drawer open on Layers tab; `Ctrl+O` in ImageEditor opens the
+*image* dialog (figmap open via menu/FontEditor mode); welcome `Enter`
+does not dismiss (Esc only); `e2e-tmux-test.sh` tests 2-7 stale.
+
+### PTY e2e + dialog fixes (2026-09-23, pm)
+
+`scripts/e2e-art-tmux.sh` (15 checks, green): 4 scene opens via real
+Open-dialog typing + disarmed-Enter, 8 tool keys via status bar in
+AsciiPreview, timeline/export open+close, `--play --loop` progress poll
+(needs ~12s: bar row renders late). Headless `tests/e2e_art.rs` stays as
+structural pin only. Live probing found + fixed 4 real bugs:
+(1) typed full paths never opened — FontEditor Overview search swallowed
+`/`/`.`/letters before the dialog saw them (dialog now dispatches first
+in FontEditor+Open); (2) digits mid-path armed stale XDG recents and
+replaced the buffer — recent 1-9 only fires on empty Path now
+(`file_ops.rs` + 2 test updates for ghost-path filtering);
+(3) Esc on empty export dialog fired async "no path specified" that
+reopened it — dispatch now skips `perform_export` on Esc-close;
+(4) figmap open left a blank canvas — `perform_open_figmap` now calls
+`recomposite_canvas()`. Stray `export.txte` (Enter-with-path probe
+artifact) removed. `font_editor.rs` Overview search now also excludes
+`/`, `.`, `~` so paths fall through.
