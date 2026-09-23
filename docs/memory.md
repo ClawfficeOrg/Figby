@@ -3156,3 +3156,12 @@ reopened it — dispatch now skips `perform_export` on Esc-close;
 `recomposite_canvas()`. Stray `export.txte` (Enter-with-path probe
 artifact) removed. `font_editor.rs` Overview search now also excludes
 `/`, `.`, `~` so paths fall through.
+
+### --play still display (2026-09-23)
+
+User call: static figmaps should display, not error. `main.rs` figmap
+branch now prints `layers.composite()` via `export_cells_to_ansi` when
+the timeline is missing/empty (plain stdout, no clear/raw mode =
+inline by default); animated path untouched. `--play` help updated.
+PTY suite 19/19 green (4 new still checks, ANSI stripped before grep).
+v6.0.44 (`0a0d79b`).

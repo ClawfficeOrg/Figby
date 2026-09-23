@@ -44,28 +44,29 @@ cargo test --manifest-path figby-rs/Cargo.toml --test e2e_art 2>&1 | tail -6
 pause "4/4 green — now the art itself" 1.5
 
 clear
-echo "Scene 1/5 — plumber tribute (night gradient, hills, sparkles)"
+echo "Stills first — --play on a static figmap prints it inline:"
 sleep 1
-run $PV $ART/sprite-plumber-tribute.figmap --hold 3
-pause "cap, face, overalls, boots — drawn freehand-style on the Hero layer" 1
+type_out "$BIN --play $ART/sprite-plumber-tribute.figmap"
+run $BIN --play $ART/sprite-plumber-tribute.figmap
+pause "no TUI, no screen clear — stdout straight to the terminal" 2
 
 clear
 echo "Scene 2/5 — quest tribute (day gradient, sword arm raised)"
 sleep 1
-run $PV $ART/sprite-quest-tribute.figmap --hold 3
-pause "hood, tunic, sword — an homage, not a copy" 1
+run $BIN --play $ART/sprite-quest-tribute.figmap
+pause "hood, tunic, sword — an homage, not a copy" 2
 
 clear
 echo "Scene 3/5 — invader tribute (symmetric bug, antennae + claws)"
 sleep 1
-run $PV $ART/sprite-invader-tribute.figmap --hold 3
-pause "the arcade silhouette, re-drawn from scratch" 1
+run $BIN --play $ART/sprite-invader-tribute.figmap
+pause "the arcade silhouette, re-drawn from scratch" 2
 
 clear
 echo "Scene 4/5 — castle backdrop: Sky / Castle / Hero layers"
 sleep 1
-run $PV $ART/layers-castle-tribute.figmap --hold 4
-pause "keep + twin towers + brick ground, hero visiting from scene 1" 1.5
+run $BIN --play $ART/layers-castle-tribute.figmap
+pause "keep + twin towers + brick ground, hero visiting from scene 1" 2.5
 
 clear
 echo "Scene 5/5 — FIGBY banner finale: real fonts/big glyphs, gold + halo"
