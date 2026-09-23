@@ -1,4 +1,15 @@
 # Changelog
+## [6.0.42] - 2026-09-23
+
+### Fixed
+- File dialogs: SaveAs Enter on an existing target now arms an
+  overwrite confirm (second Enter proceeds, any edit disarms).
+- Open/browse dialogs: typing edits Path without hijacking the
+  highlight; Tab arms the highlight as the Enter target; disarmed
+  Enter navigates instead of opening; hint line names the target.
+- Recent list shows keys 1-9's actual slice (first nine, most recent
+  first); figmap saves wear "Save Figmap As" chrome; SaveAs hides
+  zips and Up/Down mirror the highlight into the filename field.
 
 ## [6.0.41] - 2026-09-22
 

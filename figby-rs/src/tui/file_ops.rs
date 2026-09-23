@@ -152,9 +152,24 @@ pub struct FileOpsDialog {
     /// other mode.
     pub filename_buffer: String,
     pub save_focus: SaveFocus,
+    /// Browse-mode targeting (defects 1+2): typing always edits Path
+    /// (and disarms it); the directory list is a live filter/navigation
+    /// surface that never captures keystrokes. Tab copies the highlight
+    /// into Path and arms it; Enter acts on an armed Path or navigates
+    /// the highlight when disarmed. The hint line names the target.
+    pub path_armed: bool,
+    /// Default extension for the Save dialog (`flf` vs `figmap`, defect
+    /// 7): drives the title and empty-list text so figmap saves don't
+    /// wear font chrome.
+    pub save_ext: String,
     pub directory_entries: Vec<String>,
     pub selected_entry: usize,
     pub error_message: String,
+    /// SaveAs overwrite guard (defect 5): first Enter on an existing
+    /// target arms this with that exact path instead of finalizing; only
+    /// a second Enter on the same path proceeds. Any buffer change
+    /// naturally mismatches on the next Enter and re-arms.
+    pub overwrite_armed: Option<PathBuf>,
     pub hide_dotfiles: bool,
     pub browsing_zip: bool,
     pub current_zip_path: PathBuf,
@@ -173,6 +188,8 @@ impl FileOpsDialog {
             path_buffer: String::new(),
             filename_buffer: String::new(),
             save_focus: SaveFocus::Filename,
+            path_armed: false,
+            save_ext: String::from("flf"),
             directory_entries: Vec::new(),
             selected_entry: 0,
             error_message: String::new(),
@@ -182,12 +199,14 @@ impl FileOpsDialog {
             theme: Theme::default(),
             recent_files_for_display: Vec::new(),
             entry_rects: Vec::new(),
+            overwrite_armed: None,
         }
     }
 
     pub fn enter_open(&mut self, recent: &[PathBuf]) {
         self.mode = FileOpsMode::Open;
         self.path_buffer.clear();
+        self.path_armed = false;
         self.selected_entry = 0;
         self.error_message.clear();
         self.recent_files_for_display = recent
@@ -200,6 +219,7 @@ impl FileOpsDialog {
     pub fn enter_import_font(&mut self) {
         self.mode = FileOpsMode::ImportFont;
         self.path_buffer.clear();
+        self.path_armed = false;
         self.selected_entry = 0;
         self.error_message.clear();
         self.recent_files_for_display.clear();
@@ -211,6 +231,7 @@ impl FileOpsDialog {
     pub fn enter_import_gif(&mut self) {
         self.mode = FileOpsMode::ImportGif;
         self.path_buffer.clear();
+        self.path_armed = false;
         self.selected_entry = 0;
         self.error_message.clear();
         self.recent_files_for_display.clear();
@@ -222,6 +243,7 @@ impl FileOpsDialog {
     pub fn enter_open_image(&mut self) {
         self.mode = FileOpsMode::OpenImage;
         self.path_buffer.clear();
+        self.path_armed = false;
         self.selected_entry = 0;
         self.error_message.clear();
         self.recent_files_for_display.clear();
@@ -266,8 +288,10 @@ impl FileOpsDialog {
             }
         }
         self.save_focus = SaveFocus::Filename;
+        self.save_ext = ext.to_string();
         self.selected_entry = 0;
         self.error_message.clear();
+        self.overwrite_armed = None;
         self.refresh_directory();
     }
 
@@ -275,9 +299,11 @@ impl FileOpsDialog {
         self.mode = FileOpsMode::Idle;
         self.path_buffer.clear();
         self.filename_buffer.clear();
+        self.path_armed = false;
         self.directory_entries.clear();
         self.selected_entry = 0;
         self.error_message.clear();
+        self.overwrite_armed = None;
         self.recent_files_for_display.clear();
         self.browsing_zip = false;
         self.current_zip_path.clear();
@@ -288,9 +314,9 @@ impl FileOpsDialog {
             return;
         }
         self.path_buffer.push_str(text);
+        self.path_armed = false;
         self.error_message.clear();
-        self.selected_entry = 0;
-        self.refresh_directory();
+        self.refresh_directory_keep_selection();
     }
 
     fn refresh_directory(&mut self) {
@@ -347,6 +373,24 @@ impl FileOpsDialog {
         }
         self.directory_entries = entries;
     }
+    /// Re-list like `refresh_directory` but preserve the highlight when
+    /// the previously-selected entry still exists (defect 1): typing
+    /// filters the list without yanking the cursor back to `..` on every
+    /// keystroke. Falls back to 0 when the entry vanished; clamps when
+    /// the list shrank.
+    fn refresh_directory_keep_selection(&mut self) {
+        let prev = self.directory_entries.get(self.selected_entry).cloned();
+        self.refresh_directory();
+        if let Some(name) = prev {
+            if let Some(idx) = self.directory_entries.iter().position(|e| *e == name) {
+                self.selected_entry = idx;
+                return;
+            }
+        }
+        if self.selected_entry >= self.directory_entries.len() {
+            self.selected_entry = self.directory_entries.len().saturating_sub(1);
+        }
+    }
 
     /// Directory currently being browsed, derived from `path_buffer`
     /// (which may hold a bare directory or a file path within it).
@@ -358,9 +402,14 @@ impl FileOpsDialog {
             if p.is_dir() {
                 p
             } else {
-                p.parent()
-                    .map(|pp| pp.to_path_buf())
-                    .unwrap_or_else(|| PathBuf::from("."))
+                match p.parent() {
+                    // Bare filename being typed ("x") or other parentless
+                    // partial: keep listing the cwd, not an empty path
+                    // (which read_dir rejects with a blank error).
+                    None => PathBuf::from("."),
+                    Some(pp) if pp.as_os_str().is_empty() => PathBuf::from("."),
+                    Some(pp) => pp.to_path_buf(),
+                }
             }
         }
     }
@@ -378,11 +427,17 @@ impl FileOpsDialog {
             FileOpsMode::ImportFont => {
                 lower.ends_with(".ttf") || lower.ends_with(".otf") || lower.ends_with(".zip")
             }
-            FileOpsMode::Open | FileOpsMode::SaveAs => {
+            FileOpsMode::Open => {
                 lower.ends_with(".flf")
                     || lower.ends_with(".tlf")
                     || lower.ends_with(".zip")
                     || lower.ends_with(".figmap")
+            }
+            // SaveAs (defect 8): zips stay hidden — saving into an
+            // archive is broken downstream, and browsing one from a
+            // save dialog has no valid target.
+            FileOpsMode::SaveAs => {
+                lower.ends_with(".flf") || lower.ends_with(".tlf") || lower.ends_with(".figmap")
             }
             FileOpsMode::Idle => false,
         }
@@ -410,6 +465,32 @@ impl FileOpsDialog {
             FileOpsMode::OpenImage => "Select a .png/.jpg/.bmp/.webp/.gif file",
             FileOpsMode::Open | FileOpsMode::SaveAs | FileOpsMode::Idle => "",
         }
+    }
+
+    /// Hint line naming the exact Enter target (defect 2): an armed Path
+    /// opens it, otherwise Enter navigates the highlight. No hidden
+    /// precedence — the line always says which one wins.
+    fn enter_hint(&self) -> String {
+        if self.browsing_zip {
+            return " Enter/click: open highlighted ZIP entry  Esc: cancel  ↑↓: select".to_string();
+        }
+        if self.path_armed && !self.path_buffer.trim().is_empty() {
+            return format!(
+                " Enter: open {}  (type to edit, Tab re-arms highlight)  Esc: cancel",
+                self.path_buffer.trim()
+            );
+        }
+        let highlight = self
+            .directory_entries
+            .get(self.selected_entry)
+            .cloned()
+            .unwrap_or_default();
+        if highlight.is_empty() {
+            return " Type a path + Tab to arm it, or ↑↓ + Tab to pick  Esc: cancel".to_string();
+        }
+        format!(
+            " Enter: browse {highlight}  (Tab arms it as the open target)  Esc: cancel  1-9: recent  ↑↓: select"
+        )
     }
 
     /// Whether a listed entry is a valid target for Enter/click to act on:
@@ -491,9 +572,28 @@ impl FileOpsDialog {
         p
     }
 
+    /// Mirror the highlighted file into the Save filename field (defect
+    /// 6): Up/Down now show what Enter will overwrite, matching Right's
+    /// existing file-select behavior. Directories and ".." only move the
+    /// highlight — the filename keeps its typed value.
+    fn sync_save_filename_to_highlight(&mut self) {
+        let Some(entry) = self.directory_entries.get(self.selected_entry).cloned() else {
+            return;
+        };
+        if entry == ".." {
+            return;
+        }
+        let parent = self.current_parent_dir();
+        if parent.join(&entry).is_dir() {
+            return;
+        }
+        self.filename_buffer = entry;
+        self.overwrite_armed = None;
+        self.error_message.clear();
+    }
+
     fn select_entry(&mut self) {
         let entry = self.directory_entries[self.selected_entry].clone();
-
         if self.browsing_zip {
             if entry == ".." {
                 self.go_to_parent();
@@ -511,6 +611,7 @@ impl FileOpsDialog {
             self.current_zip_path = parent.join(&entry);
             self.browsing_zip = true;
             self.selected_entry = 0;
+            self.path_armed = false;
             self.error_message.clear();
             self.refresh_directory();
             return;
@@ -523,12 +624,15 @@ impl FileOpsDialog {
             // folding it into path_buffer, which must stay a pure
             // directory for the split path/filename fields.
             self.filename_buffer = entry;
+            self.overwrite_armed = None;
             self.error_message.clear();
             return;
         }
         let abs = parent.join(&entry);
         self.path_buffer = abs.to_string_lossy().to_string();
         self.selected_entry = 0;
+        self.path_armed = false;
+        self.overwrite_armed = None;
         self.error_message.clear();
         self.refresh_directory();
     }
@@ -546,6 +650,8 @@ impl FileOpsDialog {
                 .unwrap_or_default();
             self.current_zip_path.clear();
             self.selected_entry = 0;
+            self.path_armed = false;
+            self.overwrite_armed = None;
             self.error_message.clear();
             self.refresh_directory();
             return;
@@ -553,6 +659,8 @@ impl FileOpsDialog {
         if let Some(parent) = self.current_parent_dir().parent() {
             self.path_buffer = parent.to_string_lossy().to_string();
             self.selected_entry = 0;
+            self.path_armed = false;
+            self.overwrite_armed = None;
             self.error_message.clear();
             self.refresh_directory();
         }
@@ -604,10 +712,21 @@ impl FileOpsDialog {
     /// (Open/ImportFont/ImportGif/OpenImage) — these differed only in which
     /// file extensions they accept, now centralized in `allowed()` /
     /// `mode_matches_extension()` / `mode_extension_error()`.
+    ///
+    /// Targeting model (defects 1+2): the Path field is the single source
+    /// of truth for what Enter acts on. Typing always edits Path (and
+    /// disarms it); the directory list is a live filter/navigation
+    /// surface that never captures keystrokes and never hijacks the
+    /// highlight on re-list. Tab copies the highlight into Path and arms
+    /// it; Enter acts on an armed Path (open/navigate/error) or, when
+    /// disarmed, navigates the highlight instead of finalizing. The hint
+    /// line always shows which target Enter will take.
     fn handle_key_browse(&mut self, code: KeyCode) -> bool {
         match code {
             // Recent-file shortcuts (1-9) are an Open-mode-only feature;
-            // other modes fall through and type the digit normally.
+            // other modes fall through and type the digit normally. Keys
+            // index the first nine of the recents (most recent first),
+            // matching the displayed 1-9 slice (defect 4).
             KeyCode::Char(c)
                 if self.mode == FileOpsMode::Open && c.is_ascii_digit() && c != '0' =>
             {
@@ -618,6 +737,7 @@ impl FileOpsDialog {
                 let idx = (c as u8 - b'1') as usize;
                 if idx < self.recent_files_for_display.len() {
                     self.path_buffer = self.recent_files_for_display[idx].clone();
+                    self.path_armed = true;
                     self.selected_entry = 0;
                     self.error_message.clear();
                     self.refresh_directory();
@@ -629,9 +749,9 @@ impl FileOpsDialog {
                     return true;
                 }
                 self.path_buffer.push(c);
+                self.path_armed = false;
                 self.error_message.clear();
-                self.selected_entry = 0;
-                self.refresh_directory();
+                self.refresh_directory_keep_selection();
                 true
             }
             KeyCode::Backspace => {
@@ -640,9 +760,9 @@ impl FileOpsDialog {
                     return true;
                 }
                 self.path_buffer.pop();
+                self.path_armed = false;
                 self.error_message.clear();
-                self.selected_entry = 0;
-                self.refresh_directory();
+                self.refresh_directory_keep_selection();
                 true
             }
             KeyCode::Up => {
@@ -659,20 +779,41 @@ impl FileOpsDialog {
                 }
                 true
             }
-            // Right descends into a directory/zip, same as Tab — distinct
-            // from Enter, which additionally finalizes on a selectable file.
-            KeyCode::Tab | KeyCode::Right => {
+            // Tab arms the highlight as the Enter target: copy it into
+            // Path so the user sees exactly what Enter will take. Right
+            // navigates without arming (pure browse).
+            KeyCode::Tab => {
+                if self.directory_entries.is_empty() {
+                    return true;
+                }
+                let entry = self.directory_entries[self.selected_entry].clone();
+                if entry == ".." {
+                    self.select_entry();
+                    self.path_armed = false;
+                    return true;
+                }
+                let parent = self.current_parent_dir();
+                let candidate = parent.join(&entry);
+                self.path_buffer = candidate.to_string_lossy().to_string();
+                self.path_armed = true;
+                self.error_message.clear();
+                self.refresh_directory_keep_selection();
+                true
+            }
+            KeyCode::Right => {
                 if !self.directory_entries.is_empty() {
                     self.select_entry();
                 }
+                self.path_armed = false;
                 true
             }
             KeyCode::Left => {
                 self.go_to_parent();
+                self.path_armed = false;
                 true
             }
             KeyCode::Enter => {
-                if !self.browsing_zip && !self.path_buffer.trim().is_empty() {
+                if self.path_armed && !self.browsing_zip && !self.path_buffer.trim().is_empty() {
                     let p = PathBuf::from(self.path_buffer.trim());
                     if p.is_file() {
                         let lower = self.path_buffer.to_lowercase();
@@ -696,12 +837,39 @@ impl FileOpsDialog {
                         }
                         return true;
                     }
+                    // Armed path that isn't a file: navigate the listing
+                    // to it (directory drill-down) rather than finalizing.
+                    self.path_armed = false;
+                    self.refresh_directory_keep_selection();
+                    return true;
                 }
+                // Disarmed Enter never finalizes from a stale typed
+                // buffer — it navigates the highlight only. (Armed paths
+                // were handled above.)
                 if self.directory_entries.is_empty() {
                     return true;
                 }
                 let entry = self.directory_entries[self.selected_entry].clone();
-                self.select_and_maybe_finalize(&entry);
+                if self.browsing_zip || entry == ".." {
+                    self.select_and_maybe_finalize(&entry);
+                    self.path_armed = false;
+                    return true;
+                }
+                let lower = entry.to_lowercase();
+                let is_navigable =
+                    lower.ends_with(".zip") || self.current_parent_dir().join(&entry).is_dir();
+                if is_navigable {
+                    self.select_and_maybe_finalize(&entry);
+                    self.path_armed = false;
+                    return true;
+                }
+                // Highlight is a file: arm it as the Path (visible in the
+                // Path field) instead of opening — second Enter opens.
+                let parent = self.current_parent_dir();
+                self.path_buffer = parent.join(&entry).to_string_lossy().to_string();
+                self.path_armed = true;
+                self.error_message.clear();
+                self.refresh_directory_keep_selection();
                 true
             }
             KeyCode::Esc => {
@@ -732,17 +900,20 @@ impl FileOpsDialog {
             }
             KeyCode::Char(c) if self.save_focus == SaveFocus::Filename => {
                 self.filename_buffer.push(c);
+                self.overwrite_armed = None;
                 self.error_message.clear();
                 true
             }
             KeyCode::Backspace if self.save_focus == SaveFocus::Filename => {
                 self.filename_buffer.pop();
+                self.overwrite_armed = None;
                 self.error_message.clear();
                 true
             }
             KeyCode::Up => {
                 if !self.directory_entries.is_empty() && self.selected_entry > 0 {
                     self.selected_entry -= 1;
+                    self.sync_save_filename_to_highlight();
                 }
                 true
             }
@@ -751,6 +922,7 @@ impl FileOpsDialog {
                     && self.selected_entry < self.directory_entries.len() - 1
                 {
                     self.selected_entry += 1;
+                    self.sync_save_filename_to_highlight();
                 }
                 true
             }
@@ -765,9 +937,21 @@ impl FileOpsDialog {
                 true
             }
             KeyCode::Enter => {
-                // Finalize save — path/filename are in path_buffer/
-                // filename_buffer, combined by selected_path() for the
-                // caller.
+                // Overwrite guard: a stray Enter on the default
+                // `untitled.flf` (or any existing target) arms a
+                // confirm instead of saving. A second Enter on the
+                // unchanged path proceeds; any edit that changes the
+                // target re-arms (or saves directly when new).
+                let target = self.save_target_path();
+                if target.exists() && self.overwrite_armed.as_ref() != Some(&target) {
+                    self.overwrite_armed = Some(target.clone());
+                    self.error_message = format!(
+                        "File exists: {} — Enter again to overwrite, Esc to cancel",
+                        target.display()
+                    );
+                    return true;
+                }
+                self.overwrite_armed = None;
                 self.mode = FileOpsMode::Idle;
                 true
             }
@@ -805,6 +989,9 @@ impl FileOpsDialog {
                         self.select_entry();
                     }
                 } else {
+                    // Single click opens (deliberate, defect 9): keyboard
+                    // users get the arm-then-confirm flow via Enter, mouse
+                    // users get immediate open.
                     self.select_and_maybe_finalize(&entry);
                 }
                 true
@@ -961,14 +1148,13 @@ impl FileOpsDialog {
                 Style::default().add_modifier(Modifier::BOLD),
             )));
             let max_recent = 9.min(self.recent_files_for_display.len());
-            let recent_start = if self.recent_files_for_display.len() > 9 {
-                self.recent_files_for_display.len() - 9
-            } else {
-                0
-            };
-            for i in recent_start..recent_start + max_recent {
-                let display = &self.recent_files_for_display[i];
-                let num = i + 1;
+            for (slot, display) in self
+                .recent_files_for_display
+                .iter()
+                .take(max_recent)
+                .enumerate()
+            {
+                let num = slot + 1;
                 let text = format!("  {num}. {display}");
                 lines.push(Line::from(Span::styled(
                     text,
@@ -979,7 +1165,7 @@ impl FileOpsDialog {
 
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
-            " \u{2190}\u{2192}/Tab: navigate  Enter/click: open  Esc: cancel  1-9: recent  \u{2191}\u{2193}: select",
+            self.enter_hint(),
             Style::default().fg(self.theme.dialog.meta),
         )));
 
@@ -1188,8 +1374,13 @@ impl FileOpsDialog {
 
     fn render_save_as(&mut self, frame: &mut Frame, area: Rect) {
         frame.render_widget(Clear, area);
+        let title = if self.save_ext == "figmap" {
+            " Save Figmap As "
+        } else {
+            " Save Font As "
+        };
         let block = Block::default()
-            .title(" Save Font As ")
+            .title(title)
             .borders(Borders::ALL)
             .style(Style::default().fg(self.theme.dialog.highlight));
         let inner = block.inner(area);
@@ -1220,6 +1411,15 @@ impl FileOpsDialog {
             dir_style,
         )));
 
+        if let Some(armed) = &self.overwrite_armed {
+            lines.push(Line::from(Span::styled(
+                format!(
+                    " Overwrite? {} exists — Enter again to confirm, Esc to cancel",
+                    armed.display()
+                ),
+                Style::default().fg(self.theme.dialog.error),
+            )));
+        }
         let name_style = if self.save_focus == SaveFocus::Filename {
             Style::default().add_modifier(Modifier::REVERSED)
         } else {
@@ -1240,8 +1440,13 @@ impl FileOpsDialog {
         lines.push(Line::from(""));
 
         if self.directory_entries.is_empty() {
+            let msg = if self.save_ext == "figmap" {
+                " (no .figmap files in directory)"
+            } else {
+                " (no .flf/.tlf files in directory)"
+            };
             lines.push(Line::from(Span::styled(
-                " (no .flf/.tlf files in directory)",
+                msg,
                 Style::default().fg(self.theme.dialog.meta),
             )));
         } else {
@@ -1390,11 +1595,34 @@ mod tests {
         dialog.enter_save_as_with_extension(None, "untitled", "figmap");
         assert_eq!(dialog.mode, FileOpsMode::SaveAs);
         assert_eq!(dialog.filename_buffer, "untitled.figmap");
+        assert_eq!(dialog.save_ext, "figmap", "chrome follows the save kind");
         // Extension present → perform_save takes the .figmap branch.
         assert_eq!(
             dialog.selected_path().extension().and_then(|e| e.to_str()),
             Some("figmap")
         );
+    }
+    #[test]
+    fn test_save_as_up_down_syncs_filename_to_highlight() {
+        let dir = make_test_dir("saveas-sync");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::SaveAs;
+        dialog.path_buffer = dir.to_str().unwrap().to_string();
+        dialog.filename_buffer = "typed.flf".to_string();
+        dialog.refresh_directory();
+        let file_idx = dialog
+            .directory_entries
+            .iter()
+            .position(|e| e == "target.flf")
+            .expect("seeded target.flf should be listed");
+        dialog.selected_entry = file_idx.saturating_sub(1);
+        dialog.handle_key(KeyCode::Down);
+        // Moving onto a file mirrors it into the filename field so the
+        // highlight always shows what Enter will overwrite (defect 6).
+        if dialog.directory_entries[dialog.selected_entry] == "target.flf" {
+            assert_eq!(dialog.filename_buffer, "target.flf");
+        }
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
@@ -1477,6 +1705,58 @@ mod tests {
         dialog.handle_key(KeyCode::Tab);
         assert_eq!(dialog.save_focus, SaveFocus::Filename);
     }
+    #[test]
+    fn test_save_as_enter_on_existing_target_arms_overwrite() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let target = dir.path().join("exists.flf");
+        std::fs::write(&target, b"old").expect("seed existing file");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::SaveAs;
+        dialog.path_buffer = dir.path().to_string_lossy().to_string();
+        dialog.filename_buffer = "exists.flf".to_string();
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(
+            dialog.mode,
+            FileOpsMode::SaveAs,
+            "first Enter arms, not saves"
+        );
+        assert_eq!(dialog.overwrite_armed.as_ref(), Some(&target));
+        assert!(!dialog.error_message.is_empty());
+        // Second Enter on the unchanged target finalizes.
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.mode, FileOpsMode::Idle);
+        assert!(dialog.overwrite_armed.is_none());
+    }
+
+    #[test]
+    fn test_save_as_enter_on_new_target_saves_immediately() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::SaveAs;
+        dialog.path_buffer = dir.path().to_string_lossy().to_string();
+        dialog.filename_buffer = "fresh.flf".to_string();
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.mode, FileOpsMode::Idle);
+        assert!(dialog.overwrite_armed.is_none());
+    }
+
+    #[test]
+    fn test_save_as_typing_disarms_overwrite_guard() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let seeded = dir.path().join("exists.flf");
+        std::fs::write(&seeded, b"old").expect("seed existing file");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::SaveAs;
+        dialog.path_buffer = dir.path().to_string_lossy().to_string();
+        dialog.filename_buffer = "exists.flf".to_string();
+        dialog.handle_key(KeyCode::Enter);
+        assert!(dialog.overwrite_armed.is_some());
+        // Typing changes the target, so the stale arm must drop — the
+        // first Enter on the now-different name is a re-arm path, and the
+        // guard must never silently proceed on a target the user edited.
+        dialog.handle_key(KeyCode::Char('x'));
+        assert!(dialog.overwrite_armed.is_none());
+    }
 
     #[test]
     fn test_typing_only_affects_filename_when_directory_focused() {
@@ -1525,6 +1805,7 @@ mod tests {
         dialog.handle_key(KeyCode::Char('l'));
         dialog.handle_key(KeyCode::Char('f'));
         assert_eq!(dialog.path_buffer, "my.flf");
+        assert!(!dialog.path_armed, "typing disarms the Path");
     }
 
     #[test]
@@ -1552,8 +1833,12 @@ mod tests {
         // Enter with empty path stays Open (no file selected)
         dialog.handle_key(KeyCode::Enter);
         assert_eq!(dialog.mode, FileOpsMode::Open);
-        // Enter with a non-existent path also stays Open (file must exist on disk)
+        // A typed-but-disarmed path never finalizes either — Enter
+        // navigates the highlight instead (defect 2). Arm it with Tab
+        // first; then a non-existent armed path still stays Open (file
+        // must exist on disk).
         dialog.path_buffer = "/tmp/figby_test_nonexistent.flf".to_string();
+        dialog.path_armed = false;
         dialog.handle_key(KeyCode::Enter);
         assert_eq!(dialog.mode, FileOpsMode::Open);
         // Esc closes the dialog
@@ -1569,6 +1854,105 @@ mod tests {
         // Backspace on empty buffer is a no-op
         dialog.handle_key(KeyCode::Backspace);
         assert!(dialog.path_buffer.is_empty());
+    }
+    #[test]
+    fn test_typing_bare_filename_keeps_cwd_listing() {
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::Open;
+        dialog.refresh_directory();
+        let baseline = dialog.directory_entries.clone();
+        assert!(!baseline.is_empty(), "cwd should list something");
+        // Bare partial ("x") has no parent — the listing must stay on
+        // the cwd, not collapse into "Cannot read directory: ".
+        dialog.handle_key(KeyCode::Char('x'));
+        assert_eq!(dialog.path_buffer, "x");
+        assert_eq!(dialog.directory_entries, baseline);
+        assert!(
+            !dialog.error_message.starts_with("Cannot read directory"),
+            "got: {}",
+            dialog.error_message
+        );
+    }
+
+    #[test]
+    fn test_typing_preserves_highlight_selection() {
+        let dir = make_test_dir("keep-selection");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::Open;
+        dialog.path_buffer = dir.to_str().unwrap().to_string();
+        dialog.refresh_directory();
+        assert!(
+            dialog.directory_entries.len() >= 2,
+            "need entries to select"
+        );
+        // Highlight "child", then simulate a no-op re-list cycle that
+        // keeps the same directory: keep-selection must restore the same
+        // entry instead of resetting to ".." (defect 1).
+        let child_idx = dialog
+            .directory_entries
+            .iter()
+            .position(|e| e == "child")
+            .expect("seeded child dir should be listed");
+        dialog.selected_entry = child_idx;
+        dialog.refresh_directory_keep_selection();
+        assert_eq!(
+            dialog.directory_entries.get(dialog.selected_entry),
+            Some(&"child".to_string()),
+            "highlight should survive a re-list when the entry persists"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn test_disarmed_enter_arms_highlight_instead_of_opening() {
+        let dir = make_test_dir("arm-highlight");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::Open;
+        dialog.path_buffer = dir.to_str().unwrap().to_string();
+        dialog.refresh_directory();
+        let file_idx = dialog
+            .directory_entries
+            .iter()
+            .position(|e| e == "target.flf")
+            .expect("seeded target.flf should be listed");
+        dialog.selected_entry = file_idx;
+        dialog.path_armed = false;
+        // First Enter on a highlighted file arms it as the Path —
+        // visible in the field — instead of opening (defect 2).
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(
+            dialog.mode,
+            FileOpsMode::Open,
+            "first Enter arms, not opens"
+        );
+        assert!(dialog.path_armed);
+        assert_eq!(PathBuf::from(&dialog.path_buffer), dir.join("target.flf"));
+        // Second Enter on the now-armed Path opens.
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.mode, FileOpsMode::Idle);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn test_tab_arms_highlight_as_enter_target() {
+        let dir = make_test_dir("tab-arm");
+        let mut dialog = FileOpsDialog::new();
+        dialog.mode = FileOpsMode::Open;
+        dialog.path_buffer = dir.to_str().unwrap().to_string();
+        dialog.refresh_directory();
+        let file_idx = dialog
+            .directory_entries
+            .iter()
+            .position(|e| e == "target.flf")
+            .expect("seeded target.flf should be listed");
+        dialog.selected_entry = file_idx;
+        dialog.path_armed = false;
+        dialog.handle_key(KeyCode::Tab);
+        assert!(dialog.path_armed, "Tab arms the highlight");
+        assert_eq!(PathBuf::from(&dialog.path_buffer), dir.join("target.flf"));
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.mode, FileOpsMode::Idle, "armed Enter opens");
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     // --- Recent files tests ---
@@ -1709,6 +2093,24 @@ mod tests {
     }
 
     #[test]
+    fn test_save_as_hides_zip_entries() {
+        let dialog = FileOpsDialog {
+            mode: FileOpsMode::SaveAs,
+            ..FileOpsDialog::new()
+        };
+        assert!(
+            !dialog.allowed("bundle.zip", false),
+            "SaveAs must not list zips (defect 8)"
+        );
+        assert!(dialog.allowed("font.flf", false));
+        let open = FileOpsDialog {
+            mode: FileOpsMode::Open,
+            ..FileOpsDialog::new()
+        };
+        assert!(open.allowed("bundle.zip", false), "Open keeps zip browse");
+    }
+
+    #[test]
     fn test_open_dialog_recent_digit_out_of_range() {
         let mut dialog = FileOpsDialog::new();
         let recent = vec![PathBuf::from("/first.flf")];
@@ -1718,6 +2120,21 @@ mod tests {
         dialog.handle_key(KeyCode::Char('9'));
         assert!(dialog.path_buffer.is_empty());
     }
+    #[test]
+    fn test_recent_digit_indexes_first_nine_not_last_nine() {
+        // 12 recents: keys 1-9 must hit recents[0..9] (the display
+        // slice), not recents[3..12] (the old last-9 render slice that
+        // made labels and keys disagree — defect 4).
+        let mut dialog = FileOpsDialog::new();
+        let recent: Vec<PathBuf> = (0..12)
+            .map(|i| PathBuf::from(format!("/r{i:02}.flf")))
+            .collect();
+        dialog.enter_open(&recent);
+        dialog.handle_key(KeyCode::Char('1'));
+        assert_eq!(dialog.path_buffer, "/r00.flf");
+        dialog.handle_key(KeyCode::Char('9'));
+        assert_eq!(dialog.path_buffer, "/r08.flf");
+    }
 
     // --- Part Twah 8.1: navigation / mouse / zip-in-ImportFont tests ---
 
@@ -1726,6 +2143,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("child")).unwrap();
         std::fs::write(dir.join("font.flf"), "test").unwrap();
+        std::fs::write(dir.join("target.flf"), "test").unwrap();
         dir
     }
 
