@@ -27,6 +27,18 @@ if [ ! -x "$BIN" ]; then
     echo "Building figby..."
     cargo build --manifest-path figby-rs/Cargo.toml || exit 1
 fi
+check_still() { # $1=file (basename) $2=marker-grep $3=label
+    # Still-display path (no TUI needed): --play prints the composite to
+    # stdout inline. Strip ANSI before grepping — color codes interleave
+    # glyphs on one line.
+    if ./$BIN --play "$ART/$1" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | grep -aq "$2"; then
+        echo "  [PASS] $3"
+        PASS=$((PASS+1))
+    else
+        echo "  [FAIL] $3 (marker '$2' missing)"
+        FAIL=$((FAIL+1))
+    fi
+}
 check_scene() { # $1=file (basename) $2=marker-grep $3=label
     local S="figby-art-$RANDOM"
     tmux new-session -d -s "$S" -x 120 -y 40
@@ -122,6 +134,12 @@ check_banner_play() {
     tmux send-keys -t "$S" x; sleep 1  # any key exits --loop
     tmux kill-session -t "$S" 2>/dev/null || true
 }
+echo "-- still display (--play on static figmap, stdout) --"
+check_still "sprite-plumber-tribute.figmap" "RRRR" "plumber still displays, hero visible"
+check_still "sprite-quest-tribute.figmap" "TTTT" "quest still displays, hero visible"
+check_still "sprite-invader-tribute.figmap" "WWWWWWWW" "invader still displays, hero visible"
+check_still "layers-castle-tribute.figmap" "____" "castle still displays, keep visible"
+echo ""
 echo "-- scene opens (real Open dialog) --"
 check_scene "sprite-plumber-tribute.figmap" "RRRR" "plumber tribute opens, hero visible"
 check_scene "sprite-quest-tribute.figmap" "TTTT" "quest tribute opens, hero visible"

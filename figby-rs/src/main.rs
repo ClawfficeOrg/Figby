@@ -354,7 +354,7 @@ struct CliArgs {
     tui_render_mode: Option<String>,
     #[arg(
         long = "play",
-        help = "Play an animated GIF fullscreen in the terminal, then exit"
+        help = "Play an animated GIF or figmap in the terminal (static figmaps display inline); then exit"
     )]
     play_path: Option<String>,
     #[arg(
@@ -1228,14 +1228,26 @@ fn main() {
                 }
             };
             let (layers, timeline, lights, _palette) = figby::figmap::into_runtime(figmap);
+            // Static figmap (kind=Image, no timeline frames): not an error —
+            // display the still. Plain stdout print via the ANSI exporter:
+            // no screen clear, no raw mode, cursor stays put, so this is
+            // inline by default.
             let timeline = match timeline {
                 Some(t) if !t.frames.is_empty() => t,
                 _ => {
-                    eprintln!("Figmap '{path}' has no animation frames to play");
-                    process::exit(1);
+                    let composite = layers.composite();
+                    let (w, h) = (composite.width(), composite.height());
+                    let cells: Vec<Vec<figby::CanvasCell>> = (0..h)
+                        .map(|y| {
+                            (0..w)
+                                .map(|x| composite.get(x, y).copied().unwrap_or_default())
+                                .collect()
+                        })
+                        .collect();
+                    print!("{}", figby::output::export_cells_to_ansi(&cells));
+                    return;
                 }
             };
-
             let w = layers
                 .layers
                 .first()
