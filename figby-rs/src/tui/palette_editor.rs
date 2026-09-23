@@ -244,7 +244,7 @@ impl PaletteEditor {
     }
 
     /// Initialize lighting defaults for all swatches (shadow = fg * 0.3).
-    fn init_lighting_from_swatches(&mut self) {
+    pub fn init_lighting_from_swatches(&mut self) {
         for swatch in &mut self.swatches {
             if swatch.lit_hex.is_none() {
                 swatch.lit_hex = Some(swatch.hex.clone());
@@ -593,6 +593,24 @@ impl PaletteEditor {
                 .borders(Borders::ALL),
         );
         frame.render_widget(paragraph, rect);
+    }
+
+    /// Mouse click while the editor overlay is open: clicks outside the
+    /// overlay rect dismiss it (Esc-equivalent); clicks inside are
+    /// swallowed for future swatch-row handling. Either way returns
+    /// true so the canvas underneath never paints through.
+    pub fn handle_overlay_click(&mut self, col: u16, row: u16, area: Rect) -> bool {
+        if !self.open {
+            return false;
+        }
+        let rect = super::layout::palette_editor_overlay(area);
+        if col < rect.x || col >= rect.x + rect.width || row < rect.y || row >= rect.y + rect.height
+        {
+            // Click outside the overlay dismisses it (no paint-through).
+            self.open = false;
+            return true;
+        }
+        true
     }
 
     pub fn handle_key(&mut self, code: KeyCode) -> bool {
@@ -1027,7 +1045,7 @@ fn ansi_to_rgb(index: u8) -> (u8, u8, u8) {
     }
 }
 
-fn hex_to_rgb_tuple(hex: &str) -> (u8, u8, u8) {
+pub fn hex_to_rgb_tuple(hex: &str) -> (u8, u8, u8) {
     super::theme::parse_hex_rgb(hex)
         .map(|rgb| (rgb[0], rgb[1], rgb[2]))
         .unwrap_or((0, 0, 0))
@@ -1192,5 +1210,29 @@ mod tests {
         assert!(editor.handle_key(KeyCode::Char('e')));
         editor.handle_key(KeyCode::Esc);
         assert!(editor.handle_key(KeyCode::Char('n')));
+    }
+
+    #[test]
+    fn test_overlay_click_outside_closes() {
+        use ratatui::layout::Rect;
+        let mut editor = PaletteEditor::new();
+        editor.open = true;
+        let area = Rect::new(0, 0, 100, 40);
+        // Far corner is outside the centered 42-col overlay.
+        assert!(editor.handle_overlay_click(0, 0, area));
+        assert!(!editor.open, "outside click dismisses");
+    }
+
+    #[test]
+    fn test_overlay_click_inside_consumes() {
+        use ratatui::layout::Rect;
+        let mut editor = PaletteEditor::new();
+        editor.open = true;
+        let area = Rect::new(0, 0, 100, 40);
+        let overlay = crate::tui::layout::palette_editor_overlay(area);
+        let cx = overlay.x + overlay.width / 2;
+        let cy = overlay.y + overlay.height / 2;
+        assert!(editor.handle_overlay_click(cx, cy, area));
+        assert!(editor.open, "inside click stays open but consumed");
     }
 }

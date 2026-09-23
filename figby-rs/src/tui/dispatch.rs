@@ -802,7 +802,23 @@ impl TuiApp {
             }
         }
 
-        // Palette panel click (left column, below toolbox)
+        // Palette editor overlay open: swallow ALL mouse button clicks
+        // so the canvas underneath never paints (no pixels, no undo
+        // entry). Outside clicks dismiss the overlay; inside clicks
+        // are consumed for future swatch handling.
+        if self.palette_editor.open
+            && matches!(
+                mouse.kind,
+                MouseEventKind::Down(_) | MouseEventKind::Drag(_) | MouseEventKind::Up(_)
+            )
+        {
+            let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
+            let full = Rect::new(0, 0, cols, rows);
+            self.palette_editor
+                .handle_overlay_click(mouse.column, mouse.row, full);
+            self.frame.dirty = true;
+            return;
+        }
         if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
             if let Some(palette_rect) = mouse_fl.palette {
                 if !self.dialogs.settings.settings_open
@@ -1403,9 +1419,17 @@ impl TuiApp {
                 self.editor.layer_panel.theme = self.ctx.theme.clone();
                 self.editor.layer_panel.icons = self.ctx.icons.clone();
                 if !pal_swatches.is_empty() {
+                    // Apply the chosen palette silently to the live
+                    // palette — no editor overlay. The swatches were
+                    // previewed in the dialog itself; Ctrl+Shift+P
+                    // reopens the editor on demand.
+                    self.palette_editor.swatches = pal_swatches;
+                    self.palette_editor.name_buffer = pal_name;
+                    self.palette_editor.selected = 0;
+                    self.palette_editor.init_lighting_from_swatches();
                     self.palette_editor
-                        .open_with_swatches(pal_name, pal_swatches);
-                    self.palette_editor.available_palettes(None);
+                        .apply_to_palette(&mut self.editor.palette);
+                    self.palette_editor.open = false;
                 }
                 self.editor.recomposite_canvas();
                 self.welcome.screen.show = false;

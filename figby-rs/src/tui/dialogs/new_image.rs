@@ -300,13 +300,31 @@ pub fn render_new_image_dialog(dialog: &NewImageDialog, frame: &mut Frame, area:
             format!(" [{}]  ", dialog.palette_label()),
             dialog.field_style(Field::Palette),
         ),
-        Span::styled(
-            "(\u{2190}\u{2192} cycle)",
-            Style::default().fg(dialog.theme.dialog.meta),
-        ),
+        Span::styled("(←→ cycle)", Style::default().fg(dialog.theme.dialog.meta)),
     ]));
-
-    lines.push(Line::from(""));
+    // Swatch preview for the highlighted palette: colored blocks so the
+    // choice is visible before confirming (no post-confirm editor).
+    {
+        let palettes = builtin_palettes();
+        let idx = dialog
+            .selected_palette
+            .min(dialog.palette_names.len().saturating_sub(1));
+        if let Some((_, swatches)) = palettes.get(idx) {
+            let spans: Vec<Span> = swatches
+                .iter()
+                .map(|s| {
+                    let (r, g, b) = crate::tui::palette_editor::hex_to_rgb_tuple(&s.hex);
+                    Span::styled(
+                        "██",
+                        Style::default().fg(ratatui::style::Color::Rgb(r, g, b)),
+                    )
+                })
+                .collect();
+            let mut line_spans = vec![Span::raw(" Preview: ")];
+            line_spans.extend(spans);
+            lines.push(Line::from(line_spans));
+        }
+    }
 
     if !dialog.error_message.is_empty() {
         lines.push(Line::from(Span::styled(
