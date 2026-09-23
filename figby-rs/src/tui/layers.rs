@@ -1363,7 +1363,16 @@ impl LayerPanel {
     }
 
     /// Map screen (col, row) within the content area to a layer index.
-    fn layer_at_pos(&self, col: u16, row: u16, area: Rect, stack: &LayerStack) -> Option<usize> {
+    /// Returns the index plus which attr-row icon zone (if any) was hit:
+    /// `Some(0)` = visibility icon, `Some(1)` = lock icon, `None` = the
+    /// row body (select). Name rows never carry icons.
+    fn layer_at_pos(
+        &self,
+        col: u16,
+        row: u16,
+        area: Rect,
+        stack: &LayerStack,
+    ) -> Option<(usize, Option<usize>)> {
         let inner = Block::default().borders(Borders::ALL).inner(area);
         let offset = 1usize;
         if row < inner.y + offset as u16 || col < inner.x {
@@ -1397,8 +1406,29 @@ impl LayerPanel {
                 }
             }
 
-            if effective >= display_row && effective < display_row + 2 {
-                return Some(real_idx);
+            if effective == display_row {
+                // Name row: no icons.
+                return Some((real_idx, None));
+            }
+            if effective == display_row + 1 {
+                // Attr row: icon zones follow the rendered label layout
+                // `{indent}{vis}  {lock}  …` (narrow: `{indent}{V}{L} …`).
+                let indent_w = if layer.group.is_some() { 2 } else { 0 };
+                let rel = col.saturating_sub(inner.x) as usize;
+                let zone = if inner.width >= 8 {
+                    if rel == indent_w {
+                        Some(0)
+                    } else if rel == indent_w + 3 {
+                        Some(1)
+                    } else {
+                        None
+                    }
+                } else if rel == indent_w || rel == indent_w + 1 {
+                    Some(rel - indent_w)
+                } else {
+                    None
+                };
+                return Some((real_idx, zone));
             }
             display_row += 2;
         }
@@ -1445,22 +1475,36 @@ impl LayerPanel {
                     }
                     return true;
                 }
-                if let Some(idx) = self.layer_at_pos(col, row, area, stack) {
-                    if col <= inner.x + 1 {
-                        self.drag_state = Some((idx, idx));
-                        self.drag_hover_row = None;
-                        return true;
+                if let Some((idx, zone)) = self.layer_at_pos(col, row, area, stack) {
+                    // Attr-row icon clicks toggle instead of selecting:
+                    // eye flips visibility, lock flips locked. Anything
+                    // else (name row, row body) selects — gutter clicks
+                    // also arm a drag.
+                    match zone {
+                        Some(0) => {
+                            stack.toggle_visibility(idx);
+                            return true;
+                        }
+                        Some(1) => {
+                            stack.toggle_lock(idx);
+                            return true;
+                        }
+                        _ => {}
                     }
                     if stack.active != idx {
                         stack.set_active(idx);
-                        return true;
                     }
+                    if col <= inner.x + 1 {
+                        self.drag_state = Some((idx, idx));
+                        self.drag_hover_row = None;
+                    }
+                    return true;
                 }
                 false
             }
             MouseEventKind::Drag(MouseButton::Left) => {
                 if let Some((from, _to)) = self.drag_state {
-                    if let Some(idx) = self.layer_at_pos(col, row, area, stack) {
+                    if let Some((idx, _)) = self.layer_at_pos(col, row, area, stack) {
                         self.drag_hover_row = Some(idx);
                         if idx != from {
                             self.drag_state = Some((from, idx));
@@ -1481,6 +1525,17 @@ impl LayerPanel {
                     return false;
                 }
                 false
+            }
+            MouseEventKind::ScrollUp => {
+                if self.scroll > 0 {
+                    self.scroll -= 1;
+                    return true;
+                }
+                false
+            }
+            MouseEventKind::ScrollDown => {
+                self.scroll = self.scroll.saturating_add(1);
+                true
             }
             _ => false,
         }
@@ -2167,6 +2222,71 @@ mod tests {
             stack.active, 1,
             "clicking the first visible row should select the topmost layer (index 1), not be off by the tab-bar offset"
         );
+    }
+    #[test]
+    fn test_handle_mouse_attr_icons_toggle() {
+        use crossterm::event::{MouseButton, MouseEventKind};
+
+        let mut stack = make_stack(10, 10);
+        stack.add(10, 10);
+        let mut panel = LayerPanel::new();
+        let area = Rect::new(0, 5, 20, 10);
+        // First visible layer name row = 7, attr row = 8; inner.x = 1,
+        // ungrouped so indent 0: vis icon col 1, lock icon col 4.
+        let top = stack.layers.len() - 1;
+        assert!(panel.handle_mouse(
+            1,
+            8,
+            MouseEventKind::Down(MouseButton::Left),
+            area,
+            &mut stack
+        ));
+        assert!(!stack.layers[top].visible, "eye click toggles visibility");
+        assert!(panel.handle_mouse(
+            4,
+            8,
+            MouseEventKind::Down(MouseButton::Left),
+            area,
+            &mut stack
+        ));
+        assert!(stack.layers[top].locked, "lock click toggles locked");
+    }
+
+    #[test]
+    fn test_handle_mouse_gutter_click_selects() {
+        use crossterm::event::{MouseButton, MouseEventKind};
+
+        let mut stack = make_stack(10, 10);
+        stack.add(10, 10);
+        stack.active = 0;
+        let mut panel = LayerPanel::new();
+        let area = Rect::new(0, 5, 20, 10);
+        // Gutter col (inner.x = 1) on the name row must select, not
+        // just arm a drag that a plain click abandons.
+        assert!(panel.handle_mouse(
+            1,
+            7,
+            MouseEventKind::Down(MouseButton::Left),
+            area,
+            &mut stack
+        ));
+        assert_eq!(stack.active, 1);
+    }
+
+    #[test]
+    fn test_handle_mouse_wheel_scrolls_without_dirty() {
+        use crossterm::event::MouseEventKind;
+
+        let mut stack = make_stack(10, 10);
+        let mut panel = LayerPanel::new();
+        let area = Rect::new(0, 5, 20, 10);
+        assert!(panel.handle_mouse(5, 7, MouseEventKind::ScrollDown, area, &mut stack));
+        assert_eq!(panel.scroll, 1);
+        assert!(panel.handle_mouse(5, 7, MouseEventKind::ScrollUp, area, &mut stack));
+        assert_eq!(panel.scroll, 0);
+        // ScrollUp at top is a no-op (returns false so other handlers
+        // may try the event).
+        assert!(!panel.handle_mouse(5, 7, MouseEventKind::ScrollUp, area, &mut stack));
     }
 
     #[test]

@@ -607,7 +607,7 @@ impl TuiApp {
             }
         }
 
-        // Layer panel: click/drag on layer rows
+        // Layer panel: click/drag/scroll on layer rows
         if let Some(rp) = mouse_fl.right_panel {
             if self.side_panel.open
                 && self.side_panel.active_tab == TabId::Layers
@@ -619,8 +619,14 @@ impl TuiApp {
                     &mut self.editor.layer_stack,
                 )
             {
-                self.editor.recomposite_canvas();
-                self.editor.mark_dirty();
+                // Wheel scroll only changes the view, not the document.
+                if !matches!(
+                    mouse.kind,
+                    MouseEventKind::ScrollUp | MouseEventKind::ScrollDown
+                ) {
+                    self.editor.recomposite_canvas();
+                    self.editor.mark_dirty();
+                }
                 self.frame.dirty = true;
                 return;
             }
