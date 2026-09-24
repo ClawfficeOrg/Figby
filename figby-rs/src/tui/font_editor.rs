@@ -1484,9 +1484,12 @@ impl FontEditor {
                     && !self.search_active
                     // Font editor action keys (handled by explicit arms below)
                     && !matches!(c, 'H' | 'S' | 'T' | 'A' | 'D' | 'C')
-                    // Global tool shortcuts (lowercase and uppercase)
-                    && !matches!(c.to_ascii_lowercase(), 'b' | 'v' | 'l' | 'c' | 'p' | 'g' | 'i' | 'e' | 'd' | 'a' | 't' | 'k')
-                    // Global app commands
+                    // Global tool shortcuts (lowercase and uppercase).
+                    // m/n select Emitter/Lighting via the tool catch-all
+                    // below — they must not start a glyph search (live:
+                    // pressing m in FontEditor searched instead of
+                    // selecting the tool).
+                    && !matches!(c.to_ascii_lowercase(), 'b' | 'v' | 'l' | 'c' | 'p' | 'g' | 'i' | 'e' | 'd' | 'a' | 't' | 'k' | 'm' | 'n')
                     && !matches!(c, 'q' | 'Q' | '?')
                     // Brush adjustment shortcuts
                     && !matches!(c, '[' | ']' | ';' | '\'' | '\\')

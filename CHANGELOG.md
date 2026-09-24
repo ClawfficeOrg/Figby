@@ -1,5 +1,5 @@
 # Changelog
-## [6.0.45] - 2026-09-24
+## [6.0.46] - 2026-09-24
 
 ### Added
 - TUI draw-along recording: `assets/e2e-art/recordings/tui-draw.cast` +
@@ -14,7 +14,9 @@
 - Export dialog select-all: first key replaces the `export.png`
   suggestion (was: appended, `export.png/m/hand-ain.ng`); pasted paths
   replace wholesale via `handle_paste_event`.
-
+- FontEditor Overview search no longer swallows `m`/`n`: Emitter and
+  Lighting tool keys reach the toolbox catch-all (was: glyph search
+  started instead of selecting the tool).
 ### Added
 - E2E art suite: tribute sprites (plumber/quest/invader), castle layers
   backdrop, animated FIGBY banner finale under `assets/e2e-art/` with
