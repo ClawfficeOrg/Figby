@@ -2195,7 +2195,8 @@ fn test_export_dialog_path_entry() {
     dialog.enter_export(figby::tui::ExportMode::Png);
     assert_eq!(dialog.path_buffer, "export.png");
 
-    // Type additional path chars (avoid 't','l','p' which toggle format/layers/alpha)
+    // Type additional path chars (avoid 't','l','p' which toggle format/layers/alpha).
+    // Select-all: the first key replaces the "export.png" suggestion.
     dialog.handle_key(KeyCode::Char('/'));
     dialog.handle_key(KeyCode::Char('o'));
     dialog.handle_key(KeyCode::Char('u'));
@@ -2205,12 +2206,11 @@ fn test_export_dialog_path_entry() {
     dialog.handle_key(KeyCode::Char('i'));
     dialog.handle_key(KeyCode::Char('e'));
     dialog.handle_key(KeyCode::Char('s'));
-    assert_eq!(dialog.path_buffer, "export.png/our/fies");
+    assert_eq!(dialog.path_buffer, "/our/fies");
 
     // Backspace
     dialog.handle_key(KeyCode::Backspace);
-    assert_eq!(dialog.path_buffer, "export.png/our/fie");
-
+    assert_eq!(dialog.path_buffer, "/our/fie");
     // Esc closes dialog
     dialog.handle_key(KeyCode::Esc);
     assert!(!dialog.active, "Esc should close export dialog");
@@ -2735,7 +2735,8 @@ fn test_text_tool_cancel_text() {
     app.editor.text_tool.text_buffer.push('b');
     assert_eq!(app.editor.text_tool.text_buffer, "ab");
 
-    // Press Esc to cancel editing
+    // Press Esc to cancel editing (also exits the Text tool to Brush —
+    // Esc-trap fix: an empty, unedited Text tool must not swallow keys).
     app.handle_key_event(KeyCode::Esc);
 
     // Should be cancelled: not editing, buffer empty, no blocks
@@ -2750,6 +2751,11 @@ fn test_text_tool_cancel_text() {
     assert!(
         app.editor.text_tool.blocks.is_empty(),
         "no blocks after cancel"
+    );
+    assert_eq!(
+        app.editor.toolbox.selected,
+        figby::tui::Tool::Brush,
+        "Esc on empty Text tool exits to Brush"
     );
 }
 

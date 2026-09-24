@@ -1693,8 +1693,18 @@ impl TuiApp {
 
         // Text tool dispatch
         if self.editor.toolbox.selected == Tool::Text {
-            // Auto-activate editing when side panel Text tab is open
-            if !self.editor.text_tool.editing
+            // Auto-activate editing when side panel Text tab is open.
+            // Esc must reach the tool's own handler (it clears the buffer
+            // there) — pre-clearing editing here makes the tool see
+            // not-editing and skip its Esc arm, leaking the buffer.
+            // Alt+arrows (drawer tab cycle) still clear editing so the
+            // capture can't re-arm mid-cycle and trap the user.
+            if modifiers.contains(KeyModifiers::ALT)
+                && matches!(code, KeyCode::Left | KeyCode::Right)
+            {
+                self.editor.text_tool.editing = false;
+            } else if code != KeyCode::Esc
+                && !self.editor.text_tool.editing
                 && self.side_panel.open
                 && self.side_panel.active_tab == TabId::Text
             {
@@ -1706,10 +1716,24 @@ impl TuiApp {
                     self.editor.push_undo_snapshot(undo_label);
                     self.editor.mark_dirty();
                 }
+                // Esc while editing cancels (buffer cleared by the tool
+                // itself) AND exits the Text tool to Brush: otherwise every
+                // later keystroke is swallowed by the editing capture with
+                // no visible state (the trap). No buffer check — Esc means
+                // cancel regardless of what the tool did with the text.
+                if code == KeyCode::Esc && self.editor.text_tool.selected_block.is_none() {
+                    self.editor.toolbox.selected = Tool::Brush;
+                }
+                return None;
+            }
+            // Esc fell through (empty buffer + no block + not editing):
+            // handle_key returns None for it, so exit the tool here —
+            // same trap, no visible state, no other way out.
+            if code == KeyCode::Esc {
+                self.editor.toolbox.selected = Tool::Brush;
                 return None;
             }
         }
-
         // Editor state dispatch (rotate, selection, move tool, polygon select,
         // deselect, keyboard painting)
         if self
@@ -2456,6 +2480,12 @@ impl TuiApp {
     pub(crate) fn handle_paste_event(&mut self, text: String) {
         if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
             self.dialogs.file_ops.handle_paste(&text);
+        } else if self.dialogs.export_dialog.active {
+            // tmux send-keys -l lands here as bracketed paste: replace the
+            // suggested path wholesale (select-all semantics), so pasted
+            // absolute paths work instead of appending to "export.png".
+            self.dialogs.export_dialog.path_buffer = text;
+            self.dialogs.export_dialog.path_selected = false;
         }
     }
 

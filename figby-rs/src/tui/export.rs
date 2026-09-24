@@ -78,6 +78,12 @@ pub struct ExportDialog {
     pub active: bool,
     pub format: ExportMode,
     pub path_buffer: String,
+    /// Select-all: set on open; the first printable key or Backspace
+    /// replaces/clears the suggested path instead of appending to it.
+    /// Without this, typed paths append to "export.png" (E2E showed
+    /// "export.png/m/hand-ain.ng") and Backspace-as-key never arrives
+    /// over tmux to fix it.
+    pub path_selected: bool,
     pub font_size: u8,
     pub export_layers: bool,
     pub use_transparency: bool,
@@ -107,6 +113,7 @@ impl ExportDialog {
             active: false,
             format: ExportMode::Png,
             path_buffer: String::new(),
+            path_selected: false,
             font_size: 2,
             export_layers: false,
             use_transparency: false,
@@ -130,6 +137,7 @@ impl ExportDialog {
         self.active = true;
         self.format = mode;
         self.path_buffer = format!("export{}", mode.extension());
+        self.path_selected = true;
         self.error_message.clear();
         self.selected_entry = 0;
         // Deliberately does NOT clear_timeline() here: a GIF import may have
@@ -340,17 +348,25 @@ impl ExportDialog {
         match code {
             KeyCode::Char('T') | KeyCode::Char('t') => {
                 self.format = self.format.cycle();
+                self.path_selected = false;
                 true
             }
             KeyCode::Char('L') | KeyCode::Char('l') if self.format != ExportMode::Ansi => {
                 self.export_layers = !self.export_layers;
+                self.path_selected = false;
                 true
             }
             KeyCode::Char('P') | KeyCode::Char('p') if self.format != ExportMode::Ansi => {
                 self.use_transparency = !self.use_transparency;
+                self.path_selected = false;
                 true
             }
             KeyCode::Char(c) if !c.is_control() => {
+                // Select-all: first printable key replaces the suggestion.
+                if self.path_selected {
+                    self.path_buffer.clear();
+                    self.path_selected = false;
+                }
                 self.path_buffer.push(c);
                 self.error_message.clear();
                 self.selected_entry = 0;
@@ -358,7 +374,13 @@ impl ExportDialog {
                 true
             }
             KeyCode::Backspace => {
-                self.path_buffer.pop();
+                // Select-all: Backspace clears the suggestion fully.
+                if self.path_selected {
+                    self.path_buffer.clear();
+                    self.path_selected = false;
+                } else {
+                    self.path_buffer.pop();
+                }
                 self.error_message.clear();
                 self.selected_entry = 0;
                 self.refresh_directory();
@@ -415,6 +437,7 @@ impl ExportDialog {
         };
         let abs = parent.join(entry);
         self.path_buffer = abs.to_string_lossy().to_string();
+        self.path_selected = false;
         self.selected_entry = 0;
         self.error_message.clear();
         self.refresh_directory();
@@ -958,7 +981,8 @@ mod tests {
         dialog.handle_key(KeyCode::Char('m'));
         dialog.handle_key(KeyCode::Char('y'));
         dialog.handle_key(KeyCode::Char('f'));
-        assert_eq!(dialog.path_buffer, "export.pngmyf");
+        // Select-all: first key replaces the "export.png" suggestion.
+        assert_eq!(dialog.path_buffer, "myf");
     }
 
     #[test]
@@ -986,7 +1010,9 @@ mod tests {
         dialog.handle_key(KeyCode::Char('a'));
         dialog.handle_key(KeyCode::Char('b'));
         dialog.handle_key(KeyCode::Backspace);
-        assert_eq!(dialog.path_buffer, "export.pnga");
+        // Select-all: 'a' replaced the suggestion, 'b' appended, then
+        // Backspace pops one char.
+        assert_eq!(dialog.path_buffer, "a");
     }
 
     #[test]

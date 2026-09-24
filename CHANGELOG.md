@@ -1,5 +1,19 @@
 # Changelog
-## [6.0.44] - 2026-09-23
+## [6.0.45] - 2026-09-24
+
+### Added
+- TUI draw-along recording: `assets/e2e-art/recordings/tui-draw.cast` +
+  `.gif` — scripted hand-drawing in the real TUI (brush stamps, eraser
+  carve, fill, undo/redo, PNG export), driven by
+  `scripts/demo-tui-draw.sh` + `scripts/make-tui-draw-cast.py`.
+
+### Fixed
+- Text tool no longer traps all keys: `Esc` exits to Brush (was: every
+  keystroke swallowed with no visible editing state); Alt+arrows cycle
+  the drawer without re-arming the capture.
+- Export dialog select-all: first key replaces the `export.png`
+  suggestion (was: appended, `export.png/m/hand-ain.ng`); pasted paths
+  replace wholesale via `handle_paste_event`.
 
 ### Added
 - E2E art suite: tribute sprites (plumber/quest/invader), castle layers
