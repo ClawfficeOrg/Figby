@@ -3165,3 +3165,18 @@ the timeline is missing/empty (plain stdout, no clear/raw mode =
 inline by default); animated path untouched. `--play` help updated.
 PTY suite 19/19 green (4 new still checks, ANSI stripped before grep).
 v6.0.44 (`0a0d79b`).
+
+### Issue audit fixes (2026-09-24)
+
+Hand-drove the TUI over tmux (`figbyrev` socket) auditing all 7 e2e
+doc issues + 4 new findings. Fixed: FontEditor search swallowing m/n
+(`font_editor.rs` guard, v6.0.46 `a85bfea`). Earlier session fixes
+(text-trap Esc exit, export select-all) verified live. Pre-existing,
+NOT fixed (verified on stashed pristine build): Space/Enter strokes
+register in undo but render nothing on the live canvas — unit tests
+pass headless, TestBackend render shows the stroke, so the gap is
+tmux/crossterm delivery or live render path, not dispatch. tmux
+swallows: Ctrl+N (plain n), Backspace key (literal text), Ctrl+H
+(plain h), mouse (no SGR). Status bar drops the tool name at 120 cols
+(width truncation, not a tool bug — check toolbox highlight instead).
+E2E doc table updated with per-issue re-audit rows (#1-11).
