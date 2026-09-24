@@ -3180,3 +3180,20 @@ swallows: Ctrl+N (plain n), Backspace key (literal text), Ctrl+H
 (plain h), mouse (no SGR). Status bar drops the tool name at 120 cols
 (width truncation, not a tool bug — check toolbox highlight instead).
 E2E doc table updated with per-issue re-audit rows (#1-11).
+
+### Hand-drive key-audit findings (2026-09-24, pm)
+
+Drove the live TUI over tmux (`figbyrev` socket) key by key. m/n/k
+Emitter/Lighting/Braille selection WORKS — earlier "maps to Brush"
+readings were a stale-binary artifact (rebuilt mid-probe) compounded
+by status-bar width truncation dropping the tool name at 120 cols;
+toolbox highlight row is the reliable signal. Space-paint strokes
+register server-side (undo depth grows, `Untitled•` dot, cursor rewinds
+on undo) but render nothing over tmux; identical on stashed pristine
+build, unit + TestBackend render fine — tmux/crossterm delivery or
+live render path, not dispatch. Ctrl+N/Backspace/Ctrl+H/mouse all
+swallowed or flattened by tmux (plain n, literal text, plain h, no
+SGR); menu paths (`Alt+F, Enter`) and select-all + paste-replace are
+the scripted workarounds. Ctrl+E/Ctrl+O verified live; export
+select-all replace verified live (`X` alone); full-path paste still
+appends (bracketed-paste never fires via `send-keys -l`).

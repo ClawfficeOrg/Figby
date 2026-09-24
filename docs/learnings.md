@@ -1781,3 +1781,18 @@ Three bugs found in phase merge review:
 - **Stale XDG recents poison E2E**: `~/.config/figby/recent_files.json`
   referenced a deleted `fonts/standard.flf`; filter recents by
   `exists()` at dialog entry or ghosts concatenate with typed text.
+
+- **Status bar lies by omission at narrow widths**: droppable items
+  (tool name) vanish at 120 cols via width truncation — a `Brush`
+  reading after pressing `m` means "dropped", not "wrong tool". Assert
+  tool selection from the toolbox highlight row or headless
+  `handle_key_event`, never the status bar over tmux.
+- **Rebuild-then-reprobe, same session**: tmux keeps serving the old
+  binary after `cargo build`; live findings flip meaning mid-probe
+  (m/n/k "broken" vs "working"). Kill the session and start a fresh
+  one after every rebuild before trusting a reading.
+- **Space-paint gap is delivery/render, not dispatch**: undo depth +
+  dirty dot prove the stroke lands server-side while the canvas stays
+  blank — identical on pristine builds, fine headless and in
+  TestBackend. Don't chase it through `dispatch.rs`; look at the live
+  render path or crossterm key delivery under tmux.

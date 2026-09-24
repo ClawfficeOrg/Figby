@@ -6,6 +6,19 @@
   `.gif` — scripted hand-drawing in the real TUI (brush stamps, eraser
   carve, fill, undo/redo, PNG export), driven by
   `scripts/demo-tui-draw.sh` + `scripts/make-tui-draw-cast.py`.
+- E2E art suite: tribute sprites (plumber/quest/invader), castle layers
+  backdrop, animated FIGBY banner finale under `assets/e2e-art/` with
+  `scripts/gen-e2e-art.py` generator. Headless contract
+  (`figby-rs/tests/e2e_art.rs`, 4 tests) plus non-headless PTY suite
+  (`scripts/e2e-art-tmux.sh`, 19 checks: `--play` still display, real
+  Open dialog, tool keys, timeline/export dialogs, `--play --loop`).
+  Narrated demo recording: `assets/e2e-art/recordings/e2e-art.cast` +
+  `.gif` (`scripts/demo-e2e-art.sh`, `scripts/preview-figmap.py`).
+- Manual E2E plan: `docs/e2e-tui-art-tests.md` (tools → layers →
+  animation → lighting/banner → file-ops sweep, issues #1–11 audited).
+- `--play` on a static figmap (no timeline frames) now displays the
+  still inline via stdout (no screen clear, no raw mode) instead of
+  erroring; animated figmaps play as before.
 
 ### Fixed
 - Text tool no longer traps all keys: `Esc` exits to Brush (was: every
@@ -17,22 +30,6 @@
 - FontEditor Overview search no longer swallows `m`/`n`: Emitter and
   Lighting tool keys reach the toolbox catch-all (was: glyph search
   started instead of selecting the tool).
-### Added
-- E2E art suite: tribute sprites (plumber/quest/invader), castle layers
-  backdrop, animated FIGBY banner finale under `assets/e2e-art/` with
-  `scripts/gen-e2e-art.py` generator. Headless contract
-  (`figby-rs/tests/e2e_art.rs`, 4 tests) plus non-headless PTY suite
-  (`scripts/e2e-art-tmux.sh`, 19 checks: `--play` still display, real
-  Open dialog, tool keys, timeline/export dialogs, `--play --loop`).
-  Narrated demo recording: `assets/e2e-art/recordings/e2e-art.cast` +
-  `.gif` (`scripts/demo-e2e-art.sh`, `scripts/preview-figmap.py`).
-- Manual E2E plan: `docs/e2e-tui-art-tests.md` (tools → layers →
-  animation → lighting/banner → file-ops sweep).
-- `--play` on a static figmap (no timeline frames) now displays the
-  still inline via stdout (no screen clear, no raw mode) instead of
-  erroring; animated figmaps play as before.
-
-### Fixed
 - Open dialog: typed/pasted full paths now open on Enter (FontEditor
   Overview search no longer swallows `/`, `.`, letters; dialog dispatches
   first when open). Recent-file digits 1-9 only fire on an empty Path;
@@ -41,16 +38,6 @@
   async "no path specified" export that reopened the dialog.
 - Figmap open now recomposites layers to the canvas (was blank with only
   layer names visible).
-
-### Fixed
-- File dialogs: SaveAs Enter on an existing target now arms an
-  overwrite confirm (second Enter proceeds, any edit disarms).
-- Open/browse dialogs: typing edits Path without hijacking the
-  highlight; Tab arms the highlight as the Enter target; disarmed
-  Enter navigates instead of opening; hint line names the target.
-- Recent list shows keys 1-9's actual slice (first nine, most recent
-  first); figmap saves wear "Save Figmap As" chrome; SaveAs hides
-  zips and Up/Down mirror the highlight into the filename field.
 
 ## [6.0.41] - 2026-09-22
 
