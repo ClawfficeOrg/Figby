@@ -1,5 +1,13 @@
 # Figby — Learnings
 
+## Local Figby TUI MCP driver (2026-09-24)
+
+- tmux `capture-pane` only outputs terminal text. To provide model-readable visual inspection, MCP `snapshot` also returns PNG image content; keep text snapshot for assertions/search.
+- Launch the app process directly as the tmux window command and set window size manual. Starting a shell and typing command later risks startup/size race and split captures.
+- MCP stdio uses one JSON-RPC message per line; `Content-Length` framing is for LSP, not MCP stdio.
+- tmux forwards keyboard/control sequences unevenly. Verify mode in snapshot before sending mode-dependent keys; mouse/paste support should be tested separately from key support.
+- Recording guard must check both `.cast` and paired `.gif` before starting and again at stop; never assume generated outputs can be overwritten safely.
+
 ## 6.0.39 — Figmap + Light Keyframing
 
 - **CanvasBuffer serde needs manual impl**: private fields (`cells`, `width`,

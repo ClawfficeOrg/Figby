@@ -1,0 +1,9296 @@
+{
+ "version": 1,
+ "kind": "Image",
+ "width": 64,
+ "height": 24,
+ "layers": [
+  {
+   "buffer": {
+    "cells": [
+     [
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ")",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "<",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ")",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "_",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#F8C66B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "/",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "|",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "\\",
+       "fg": "#76D39B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "#",
+       "fg": "#67C9E8",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": ".",
+       "fg": "#3B5278",
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      },
+      {
+       "ch": " ",
+       "fg": null,
+       "bg": "#070B18",
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "=",
+       "fg": "#36516B",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "~",
+       "fg": "#1D344A",
+       "bg": null,
+       "height": null
+      }
+     ],
+     [
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      },
+      {
+       "ch": "-",
+       "fg": "#13283C",
+       "bg": null,
+       "height": null
+      }
+     ]
+    ],
+    "width": 64,
+    "height": 24
+   },
+   "name": "FIGBY garden",
+   "visible": true,
+   "locked": false,
+   "opacity": 255,
+   "blend_mode": "Normal",
+   "mask": null,
+   "group": null,
+   "link": null,
+   "accepts_lighting": true,
+   "casts_shadow": true
+  }
+ ],
+ "groups": [],
+ "links": [],
+ "active_layer": 0,
+ "timeline": null,
+ "palette": [],
+ "lights": []
+}

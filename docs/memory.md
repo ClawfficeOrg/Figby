@@ -3197,3 +3197,15 @@ SGR); menu paths (`Alt+F, Enter`) and select-all + paste-replace are
 the scripted workarounds. Ctrl+E/Ctrl+O verified live; export
 select-all replace verified live (`X` alone); full-path paste still
 appends (bracketed-paste never fires via `send-keys -l`).
+
+### Local Figby TUI MCP driver (2026-09-24)
+
+`scripts/figby-mcp.py` is a local stdio MCP server configured in the user's
+OpenCode config. It owns an isolated tmux server/session per process; launch
+runs Figby directly in a fixed-size PTY, snapshots capture both plain text and
+PNG, and recording names refuse existing `.cast` or `.gif` outputs. Existing
+approved `e2e-art.cast`/`.gif` restored from HEAD after a later recording
+attempt overwrote them. MCP probes verified launch, figmap-open, resize,
+snapshot, timeline playback, recording, and clean stop. Key events over tmux
+remain unreliable for canvas painting; prefer MCP screenshot feedback and
+verify each action, or later move control inside the app event loop.
