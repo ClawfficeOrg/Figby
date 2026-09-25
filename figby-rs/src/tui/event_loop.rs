@@ -225,7 +225,10 @@ impl TuiApp {
             }
             AppEvent::ModeChanged => self.frame.dirty = true,
             AppEvent::RenderModeChanged => self.frame.dirty = true,
-            AppEvent::SaveAsRequested => self.perform_save(),
+            // SaveAs completion already ran perform_save with the captured
+            // dialog path; re-running here would resolve a stale Idle-mode
+            // path (bare directory + ".flf") and double-save fonts.
+            AppEvent::SaveAsRequested => {}
             AppEvent::OpenRequested => self.perform_open(),
             AppEvent::ExportRequested(_) => self.perform_export(),
             AppEvent::Menu(action) => self.handle_menu_action(action.clone()),

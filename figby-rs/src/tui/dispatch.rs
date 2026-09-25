@@ -1684,8 +1684,15 @@ impl TuiApp {
             }
         }
 
-        // Image Editor mode: dispatch to image_editor before canvas/tools
-        if self.ui.mode == AppMode::ImageEditor {
+        // Image Editor mode: dispatch to image_editor before canvas/tools.
+        // Skip while the Text tool is actively editing: its single-char
+        // typing (F/I/G/B/Y...) collides with image adjustment keys
+        // (invert/brightness/braille/threshold), which would toggle filters
+        // and resync the canvas mid-word. Text editing wins; image keys
+        // resume once the block is committed/cancelled.
+        if self.ui.mode == AppMode::ImageEditor
+            && !(self.editor.toolbox.selected == Tool::Text && self.editor.text_tool.editing)
+        {
             if let Some(ev) = self.handle_image_editor_key(code) {
                 return Some(ev);
             }
@@ -2316,9 +2323,16 @@ impl TuiApp {
     /// (Enter) or mouse (click). `prev_mode` is the mode the dialog was in
     /// just before it closed.
     fn complete_file_ops_dialog(&mut self, prev_mode: file_ops::FileOpsMode) -> Option<AppEvent> {
+        // Capture the dialog's target path BEFORE perform_save runs: the
+        // dialog is already Idle here, and selected_path() keys off the
+        // live mode — reading it late resolves the SaveAs split
+        // dir/filename fields as a bare directory + ".flf", silently
+        // dropping .figmap saves (font branch no-ops without a font).
+        let save_path = (prev_mode == file_ops::FileOpsMode::SaveAs)
+            .then(|| self.dialogs.file_ops.save_target_path());
         match prev_mode {
             file_ops::FileOpsMode::SaveAs => {
-                self.perform_save();
+                self.perform_save(save_path);
                 Some(AppEvent::SaveAsRequested)
             }
             file_ops::FileOpsMode::Open => {
@@ -2399,11 +2413,11 @@ impl TuiApp {
         }
     }
 
-    pub(crate) fn perform_save(&mut self) {
+    pub(crate) fn perform_save(&mut self, save_path: Option<std::path::PathBuf>) {
         if self.ctx.throbber.is_active() {
             return;
         }
-        let path = self.dialogs.file_ops.selected_path();
+        let path = save_path.unwrap_or_else(|| self.dialogs.file_ops.selected_path());
 
         // Handle .figmap save
         if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
@@ -2529,7 +2543,7 @@ impl TuiApp {
         self.new_document(crate::tui::documents::DocumentKind::Image);
         match crate::figmap::load_figmap(path) {
             Ok(figmap) => {
-                let (layers, timeline, lights, _palette) = crate::figmap::into_runtime(figmap);
+                let (layers, timeline, lights, palette) = crate::figmap::into_runtime(figmap);
                 self.editor.layer_stack = layers;
                 if let Some(tl) = timeline {
                     self.animation.timeline_state.frames = tl.frames;
@@ -2539,7 +2553,27 @@ impl TuiApp {
                 if !lights.is_empty() {
                     self.lighting.scene = Some(crate::tui::lighting::Scene { lights });
                 }
-                // The fresh tab's canvas still shows the blank placeholder:
+                // Restore the saved palette swatches into the palette
+                // editor: the lighting LUT/shading path is built from this
+                // list, and an empty one shades every cell through swatch 0
+                // of a 1-entry default LUT (wrong colors at best, OOB crash
+                // at worst). Saved entries may lack lit_hex (older saves);
+                // backfill lighting defaults so the LUT ramp is complete.
+                if !palette.is_empty() {
+                    let mut swatches = palette;
+                    for s in &mut swatches {
+                        if s.lit_hex.is_none() {
+                            s.lit_hex = Some(s.hex.clone());
+                        }
+                    }
+                    self.palette_editor.swatches = swatches;
+                    self.palette_editor.name_buffer = "figmap".to_string();
+                    self.palette_editor.selected = 0;
+                    self.palette_editor.init_lighting_from_swatches();
+                    self.palette_editor
+                        .apply_to_palette(&mut self.editor.palette);
+                    self.rebuild_lighting_from_palette();
+                }
                 // composite the loaded layers into it (E2E: figmap opened to
                 // an empty canvas with only the layer names visible).
                 self.editor.recomposite_canvas();

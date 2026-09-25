@@ -570,7 +570,7 @@ impl FileOpsDialog {
     /// `go_to_parent`, all of which already guarantee it's a directory
     /// (possibly one that doesn't exist yet, which is fine for a save
     /// target).
-    fn save_target_path(&self) -> PathBuf {
+    pub fn save_target_path(&self) -> PathBuf {
         let dir = if self.path_buffer.is_empty() {
             PathBuf::from(".")
         } else {

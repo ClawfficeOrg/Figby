@@ -583,11 +583,27 @@ impl LightingLut {
     }
 
     /// Get entry for a given swatch at a given luminance.
+    /// Defensive: `swatch_data` (drives `swatch_idx` via nearest-match)
+    /// and the LUT's baked `swatch_count` can disagree — e.g. a figmap
+    /// whose saved palette is richer than the live palette-editor list
+    /// that built the LUT. Clamp to the actual entries instead of
+    /// indexing out of bounds (crash seen opening a figmap then enabling
+    /// lighting: `len 0, index 128`).
     pub fn get_swatched(&self, luminance: f32, swatch_idx: usize) -> &LutEntry {
+        if self.entries.is_empty() {
+            static FALLBACK: LutEntry = LutEntry {
+                fg_color: (255, 255, 255),
+                bg_color: None,
+                ch: '█',
+            };
+            return &FALLBACK;
+        }
+        let per = ENTRIES_PER_SWATCH.max(1);
+        let max_base = self.entries.len().saturating_sub(1) / per * per;
         let swatch_idx = swatch_idx.min(self.swatch_count.saturating_sub(1));
-        let base = swatch_idx * ENTRIES_PER_SWATCH;
-        let idx = ((luminance.clamp(0.0, 1.0)) * (ENTRIES_PER_SWATCH - 1) as f32).round() as usize;
-        &self.entries[base + idx.min(ENTRIES_PER_SWATCH - 1)]
+        let base = (swatch_idx * per).min(max_base);
+        let idx = ((luminance.clamp(0.0, 1.0)) * (per - 1) as f32).round() as usize;
+        &self.entries[(base + idx.min(per - 1)).min(self.entries.len() - 1)]
     }
 
     /// Convenience: get entry for swatch 0.

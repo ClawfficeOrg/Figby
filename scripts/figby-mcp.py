@@ -167,7 +167,7 @@ def capture_screen():
 def launch(args):
     global server, COLS, ROWS
     if server is not None:
-        stop({})
+        do_tool("stop", {})
     if not BIN.is_file():
         raise RuntimeError("Figby binary missing; build with cargo build --manifest-path figby-rs/Cargo.toml")
     COLS = max(80, min(240, int(args.get("cols", 140))))
