@@ -155,12 +155,10 @@ def snapshot_image():
 
 def capture_screen():
     require_session()
-    colored = tmux("capture-pane", "-p", "-e", "-t", SERVER_NAME).stdout.rstrip("\n")
     plain = tmux("capture-pane", "-p", "-t", SERVER_NAME).stdout.rstrip("\n")
-    if server.get("recording"):
-        record = server["recording"]
-        now = time.monotonic() - record["started"]
-        record["events"].append([round(now, 3), "o", "\x1b[2J\x1b[H" + colored + "\n"])
+    # Recording is handled by asciinema rec (started/stopped in record_start/stop).
+    # We no longer snapshot panes into the cast — that approach produced
+    # ANSI output that agg misrenders (box-drawing/PUA chars break layout).
     return plain
 
 
@@ -294,8 +292,15 @@ def do_tool(name, args):
         if cast_path.exists() or gif_path.exists():
             raise FileExistsError(f"refusing to overwrite {name}.cast or {name}.gif; choose another name")
         RECORDINGS.mkdir(parents=True, exist_ok=True)
-        server["recording"] = {"name": name, "started": time.monotonic(), "events": []}
-        capture_screen()
+        # Start asciinema rec inside the tmux session. It captures the real
+        # PTY output stream, which agg renders correctly (unlike tmux pane
+        # snapshots with ANSI codes that break box-drawing/PUA layout).
+        tmux("send-keys", "-t", SERVER_NAME,
+             f"asciinema rec --overwrite --cols {COLS} --rows {ROWS} {cast_path}")
+        time.sleep(0.3)
+        tmux("send-keys", "-t", SERVER_NAME, "Enter")
+        time.sleep(1.0)
+        server["recording"] = {"name": name, "cast_path": cast_path}
         return {"recording": name, "cols": COLS, "rows": ROWS}
     if name == "record_stop":
         return stop_recording(bool(args.get("make_gif", True)))
@@ -306,27 +311,23 @@ def stop_recording(make_gif):
     record = server.get("recording") if server else None
     if record is None:
         raise RuntimeError("no recording is active")
-    capture_screen()
-    path = RECORDINGS / f"{record['name']}.cast"
-    gif_path = path.with_suffix(".gif")
-    if path.exists() or gif_path.exists():
-        server["recording"] = record
-        raise FileExistsError(f"refusing to overwrite {path.name} or {gif_path.name}")
+    # Stop asciinema rec by sending EOF (Ctrl+D) to its shell
+    tmux("send-keys", "-t", SERVER_NAME, "C-d")
+    time.sleep(1.5)
+    # Now we're back at the regular shell; restart figby so the session is usable
+    tmux("send-keys", "-t", SERVER_NAME, f"{BIN} --tui")
+    time.sleep(0.3)
+    tmux("send-keys", "-t", SERVER_NAME, "Enter")
+    time.sleep(2.0)
     server["recording"] = None
-    header = {"version": 3, "term": {"cols": COLS, "rows": ROWS},
-              "timestamp": int(time.time()), "duration": round(time.monotonic() - record["started"], 3),
-              "command": f"Figby TUI ({server['cols']}x{server['rows']})",
-              "env": {"TERM": "xterm-256color"}}
-    with path.open("w", encoding="utf-8") as cast:
-        cast.write(json.dumps(header) + "\n")
-        for timestamp, event_type, data in record["events"]:
-            cast.write(json.dumps([timestamp, event_type, data], ensure_ascii=True) + "\n")
+    path = record["cast_path"]
     gif_path = path.with_suffix(".gif")
+    if not path.exists():
+        raise FileNotFoundError(f"asciinema did not produce {path}")
     if make_gif and shutil.which("agg"):
         subprocess.run(["agg", "--quiet", "--fps-cap", "24", "--idle-time-limit", "1",
                         str(path), str(gif_path)], cwd=ROOT, check=True)
     return {"cast": str(path.relative_to(ROOT)), "gif": str(gif_path.relative_to(ROOT)) if gif_path.exists() else None,
-            "events": len(record["events"]), "duration_seconds": header["duration"],
             "dimensions": f"{COLS}x{ROWS}"}
 
 

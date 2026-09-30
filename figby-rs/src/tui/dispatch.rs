@@ -1697,7 +1697,12 @@ impl TuiApp {
 
         // Text tool dispatch
         if self.editor.toolbox.selected == Tool::Text {
-            // Auto-activate editing when side panel Text tab is open.
+            // Auto-activate editing when side panel Text tab is open,
+            // OR when the user types a printable character that isn't
+            // a tool shortcut — otherwise selecting the Text tool and
+            // typing does nothing unless the side panel happens to be
+            // on the Text tab. Tool shortcuts (b/e/g/…) still switch
+            // tools so the user can leave the Text tool by keyboard.
             // Esc must reach the tool's own handler (it clears the buffer
             // there) — pre-clearing editing here makes the tool see
             // not-editing and skip its Esc arm, leaking the buffer.
@@ -1709,8 +1714,8 @@ impl TuiApp {
                 self.editor.text_tool.editing = false;
             } else if code != KeyCode::Esc
                 && !self.editor.text_tool.editing
-                && self.side_panel.open
-                && self.side_panel.active_tab == TabId::Text
+                && (self.side_panel.open && self.side_panel.active_tab == TabId::Text
+                    || matches!(code, KeyCode::Char(c) if !Tool::all().iter().any(|t| t.key_shortcut() == KeyCode::Char(c.to_ascii_lowercase()))))
             {
                 self.editor.text_tool.editing = true;
             }
@@ -1984,7 +1989,11 @@ impl TuiApp {
         // Palette color selection (inline from old PaletteComponent).
         // Skipped while any text-entry field is live (is_typing guard):
         // x/f/h/z/arrows/Enter/Esc all collide with typed characters.
-        if !self.is_typing() {
+        // Exception: when the palette itself is in hex-entry mode
+        // (custom_mode), still route keys to it so Enter/Escape can
+        // confirm/cancel and reset the mode. Without this, the palette
+        // deadlocks — is_typing() blocks the very keys that exit it.
+        if !self.is_typing() || self.editor.palette.is_typing() {
             use crate::tui::events::PaletteEvent;
             let handled = match code {
                 KeyCode::Char('x')
@@ -4058,7 +4067,7 @@ mod timeline_key_wiring_tests {
 
 #[cfg(test)]
 mod open_in_new_tab_tests {
-    use super::super::{AppMode, TuiApp};
+    use super::super::{AppMode, Tool, TuiApp};
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     fn dirty_app() -> TuiApp {
@@ -4170,5 +4179,212 @@ mod open_in_new_tab_tests {
         let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL));
         assert!(app.dialogs.new_image.active);
         assert_eq!(app.document_count(), 1, "dialog first, tab on confirm");
+    }
+
+    #[test]
+    fn test_palette_hex_mode_exits_on_escape() {
+        // Regression: 'h' enters custom hex mode, but is_typing() then
+        // blocked Enter/Escape from reaching palette.handle_key(), so
+        // custom_mode could never reset — user was stuck until restart.
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        // Enter hex mode.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+        assert!(app.editor.palette.is_typing(), "h should enter hex mode");
+        // Escape must exit hex mode.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(
+            !app.editor.palette.is_typing(),
+            "Escape should exit hex mode"
+        );
+    }
+
+    #[test]
+    fn test_palette_hex_mode_exits_on_enter() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+        assert!(app.editor.palette.is_typing(), "h should enter hex mode");
+        // Enter confirms and exits hex mode.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(
+            !app.editor.palette.is_typing(),
+            "Enter should confirm and exit hex mode"
+        );
+    }
+
+    #[test]
+    fn test_palette_hex_mode_accepts_hex_digits() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+        assert!(app.editor.palette.is_typing(), "h should enter hex mode");
+        // Typing hex digits should be accepted (not blocked by is_typing guard).
+        for ch in ['0', '7', '0', 'B', '1', '8'] {
+            let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE));
+        }
+        assert!(
+            app.editor.palette.is_typing(),
+            "still in hex mode after digits"
+        );
+        // Escape cancels.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(!app.editor.palette.is_typing(), "Escape cancels hex input");
+    }
+
+    #[test]
+    fn test_space_paints_with_brush() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Brush;
+        let (cx, cy) = app.editor.canvas.cursor();
+        let before = app
+            .editor
+            .layer_stack
+            .active_layer()
+            .buffer
+            .get(cx as usize, cy as usize)
+            .copied();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+        let after = app
+            .editor
+            .layer_stack
+            .active_layer()
+            .buffer
+            .get(cx as usize, cy as usize)
+            .copied();
+        assert_ne!(before, after, "Space should paint a dot with Brush");
+    }
+
+    #[test]
+    fn test_space_paints_with_fill() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Fill;
+        let (cx, cy) = app.editor.canvas.cursor();
+        let before = app
+            .editor
+            .layer_stack
+            .active_layer()
+            .buffer
+            .get(cx as usize, cy as usize)
+            .copied();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+        let after = app
+            .editor
+            .layer_stack
+            .active_layer()
+            .buffer
+            .get(cx as usize, cy as usize)
+            .copied();
+        assert_ne!(before, after, "Space should paint with Fill");
+    }
+
+    #[test]
+    fn test_b_selects_brush() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Fill;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('b'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.toolbox.selected,
+            Tool::Brush,
+            "b should select Brush"
+        );
+    }
+
+    #[test]
+    fn test_g_selects_fill() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Brush;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.toolbox.selected,
+            Tool::Fill,
+            "g should select Fill"
+        );
+    }
+
+    #[test]
+    fn test_e_selects_eraser() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Brush;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.toolbox.selected,
+            Tool::Eraser,
+            "e should select Eraser"
+        );
+    }
+
+    #[test]
+    fn test_text_tool_type_and_commit() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Text;
+        app.editor.text_tool.editing = true;
+
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('H'), KeyModifiers::NONE));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE));
+        assert_eq!(app.editor.text_tool.text_buffer, "Hi");
+
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(app.editor.text_tool.blocks.len(), 1, "should have 1 block");
+        assert!(
+            !app.editor.text_tool.editing,
+            "editing should be false after commit"
+        );
+    }
+
+    #[test]
+    fn test_text_tool_commit_rasterizes_to_canvas() {
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Text;
+        app.editor.text_tool.editing = true;
+
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('H'), KeyModifiers::NONE));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(app.editor.text_tool.blocks.len(), 1);
+
+        // Rasterize the committed block onto the canvas
+        use crate::tui::props_panel::PropAction;
+        app.dispatch_props_action(PropAction::RasterizeBlock);
+
+        let buf = &app.editor.layer_stack.active_layer().buffer;
+        let non_space: usize = (0..buf.height())
+            .flat_map(|y| (0..buf.width()).map(move |x| (x, y)))
+            .filter(|&(x, y)| buf.get(x, y).map(|c| c.ch != ' ').unwrap_or(false))
+            .count();
+        assert!(
+            non_space > 0,
+            "rasterized text should appear on canvas, got {non_space} non-space cells"
+        );
+    }
+
+    #[test]
+    fn test_text_tool_auto_activates_on_typing() {
+        // Regression: selecting Text tool and typing did nothing unless
+        // the side panel Text tab was open. Now a printable character
+        // auto-activates editing mode.
+        let mut app = dirty_app();
+        app.ui.mode = AppMode::ImageEditor;
+        app.editor.toolbox.selected = Tool::Text;
+        // editing is false — do NOT set it manually
+        assert!(!app.editor.text_tool.editing, "editing starts false");
+
+        // Type a printable character — should auto-activate editing
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('H'), KeyModifiers::NONE));
+        assert!(
+            app.editor.text_tool.editing,
+            "editing should auto-activate on printable char"
+        );
+        assert_eq!(
+            app.editor.text_tool.text_buffer, "H",
+            "character should be captured"
+        );
     }
 }

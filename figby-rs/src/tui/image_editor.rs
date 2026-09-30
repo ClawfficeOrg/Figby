@@ -334,6 +334,30 @@ impl ImageEditor {
                 self.error_message = None;
                 true
             }
+            // Adjustment keys only apply when an image is loaded.
+            // Without this guard, 'b' (Brightness) intercepts the key
+            // before the tool-shortcut handler can select Brush, and
+            // 'k'/'t'/'i'/'d'/'y'/'r' similarly shadow tool shortcuts.
+            KeyCode::Char('b')
+            | KeyCode::Char('k')
+            | KeyCode::Char('t')
+            | KeyCode::Char('w')
+            | KeyCode::Char('i')
+            | KeyCode::Char('I')
+            | KeyCode::Char('d')
+            | KeyCode::Char('D')
+            | KeyCode::Char('y')
+            | KeyCode::Char('Y')
+            | KeyCode::Char('r')
+            | KeyCode::Char('R')
+            | KeyCode::Char('+')
+            | KeyCode::Char('=')
+            | KeyCode::Char('-')
+            | KeyCode::Char('_')
+                if !self.has_cells() =>
+            {
+                false
+            }
             KeyCode::Char('c') | KeyCode::Char('C') => {
                 self.toggle_mode();
                 true
@@ -827,6 +851,9 @@ mod tests {
     #[test]
     fn test_image_editor_key_adjustment_mode_selectors() {
         let mut editor = ImageEditor::new();
+        // Adjustment keys require a loaded image — without one they
+        // return false so tool shortcuts (b=Brush, k, t, etc.) work.
+        editor.load_from_path(TEST_PNG).expect("failed to load PNG");
 
         assert_eq!(editor.adjustment_mode(), AdjustmentMode::None);
 

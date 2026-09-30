@@ -274,6 +274,26 @@ FIGlet flag semantics preserved exactly.
 - `generate_figfont_header()` now uses `font.print_direction` field value instead
   of hardcoded `-1`, making headers reflect the actual struct state.
 
+## Known Issues / Bugs (discovered 2026-09-30)
+
+- **Palette hex-mode deadlock**: `h` sets `palette.custom_mode = true`, but
+  `is_typing()` in `dispatch.rs:1987` then blocks ALL keys (including
+  Enter/Escape) from reaching `palette.handle_key()`. The palette's own
+  `handle_key` has Enter/Escape handlers that reset `custom_mode`, but they
+  are never reached because the `is_typing()` guard prevents the call.
+  Mouse `handle_click()` also doesn't reset `custom_mode`. Only fix: restart
+  the app. Severity: high — any user pressing `h` in the palette gets stuck.
+- **Keyboard Space/Enter doesn't paint in Image Editor**: mouse clicks on the
+  canvas do paint, but the Space→paint path in `dispatch.rs` never fires.
+  The `demo-tui-draw.sh` script claims `T " "` works — needs re-verification.
+- **Palette mouse clicks don't select colors**: `handle_click()` is wired in
+  `dispatch.rs:822` but clicking swatches never sets `selected_color`.
+- **Text tool produced no visible output**: typed text on canvas with Text
+  tool active; nothing rendered. Needs investigation.
+- **Bare-letter tool shortcuts inconsistent**: `b` never selected Brush via
+  keyboard despite `toolbox.rs:75` mapping `b`→Brush. Menu path (Alt+T →
+  Enter) works reliably.
+
 ## Task History
 ### 1.1.1 — Create `figby` crate in workspace
 

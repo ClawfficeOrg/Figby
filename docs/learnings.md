@@ -8,6 +8,43 @@
 - tmux forwards keyboard/control sequences unevenly. Verify mode in snapshot before sending mode-dependent keys; mouse/paste support should be tested separately from key support.
 - Recording guard must check both `.cast` and paired `.gif` before starting and again at stop; never assume generated outputs can be overwritten safely.
 
+## TUI recording & live driving (2026-09-30)
+
+- **`agg` misrenders tmux `capture-pane -e` output**: PUA (nerd-font) characters
+  like `󰛖` have no Unicode width — `agg` renders them as zero-width, shifting
+  every subsequent column left. Box-drawing chars (`┌─┐│`) are East Asian
+  Ambiguous — `agg` renders them as double-width, causing lines to wrap at
+  half-width. Result: GIF is split down the middle. **Fix**: use `asciinema rec`
+  to capture the real PTY output stream, not tmux pane snapshots.
+- **`asciinema rec` must wrap the entire session**: it must be the outer command
+  in tmux (`asciinema rec ... && figby`), not started inside an already-running
+  Figby process. Starting it mid-session sends keystrokes to Figby's input
+  fields instead of a shell.
+- **Palette hex-mode deadlock** (bug): `h` sets `palette.custom_mode = true`,
+  but `is_typing()` in `dispatch.rs:1987` then blocks ALL keys (including
+  Enter/Escape) from reaching `palette.handle_key()`. The palette's own
+  `handle_key` has Enter/Escape handlers that reset `custom_mode`, but they
+  are never reached. Only fix: restart the app. The `handle_click()` mouse
+  path also doesn't reset `custom_mode`.
+- **Keyboard Space/Enter doesn't paint in Image Editor**: mouse clicks on the
+  canvas do paint, but the Space→paint path in `dispatch.rs` never fires.
+  The `demo-tui-draw.sh` script claims `T " "` works — re-verify before
+  relying on it.
+- **Bare-letter tool shortcuts inconsistent**: `g` selected Fill once, but `b`
+  never selected Brush despite `toolbox.rs` mapping `b`→Brush. Workaround:
+  Alt+T → navigate → Enter (menu path works reliably).
+- **Palette mouse clicks don't select colors**: `handle_click()` is wired in
+  dispatch.rs:822 but clicking swatches never sets `selected_color`. Couldn't
+  get any non-default color without hex mode (which deadlocks).
+- **Text tool produced no visible output**: typed FIGBY on canvas with Text
+  tool active; nothing rendered. Needs investigation.
+- **MCP server `keypress` tool limitations**: supports Space, single printable
+  chars, `C-[a-z]`, and named keys (Enter/Escape/Tab/arrows/F1-F12). Does NOT
+  support `M-f` (Alt+key) — use tmux directly for Alt combos.
+- **New Image dialog dimensions**: `BSpace` clears characters, digits append.
+  No "select all + retype" — must backspace each character individually.
+  `Up`/`Down` navigate fields but don't increment/decrement values.
+
 ## 6.0.39 — Figmap + Light Keyframing
 
 - **CanvasBuffer serde needs manual impl**: private fields (`cells`, `width`,

@@ -436,6 +436,14 @@ impl EditorState {
         modifiers: KeyModifiers,
         dirty: &mut bool,
     ) -> bool {
+        // When the palette is in hex-entry mode, don't intercept any keys.
+        // Enter/Escape/Backspace must reach the palette handler in dispatch
+        // to confirm/cancel/edit the hex value. Without this, keyboard
+        // painting and other editor actions steal Enter before the palette
+        // sees it, leaving custom_mode stuck true.
+        if self.palette.is_typing() {
+            return false;
+        }
         // Rotate tool: Left/Right step 90°
         if self.toolbox.selected == Tool::Rotate {
             match code {
@@ -1461,7 +1469,10 @@ impl TuiApp {
                     palette,
                     font_editor,
                     image_editor: image_editor::ImageEditor::new(),
-                    text_tool: tools::text::TextToolState::new("fonts"),
+                    text_tool: tools::text::TextToolState::new(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../fonts"
+                    )),
                     // Config-supplied limits are clamped: a hostile config with a huge
                     // undo_limit would pre-allocate unbounded history capacity
                     // (GPT review F-23).

@@ -703,6 +703,7 @@ impl Default for Palette {
 
 #[cfg(test)]
 mod tests {
+    use super::ColorTarget;
     use super::Palette;
     use super::CHAR_GROUPS;
     use ratatui::layout::Rect;
@@ -1176,6 +1177,33 @@ mod tests {
             cps.len(),
             563,
             "should have 563 unique deluxe codepoints (3 dithered are subset of blocks)"
+        );
+    }
+
+    #[test]
+    fn test_palette_handle_click_selects_color() {
+        use ratatui::layout::Rect;
+
+        let mut p = Palette::new();
+        // Palette area: x=0, y=22, width=16, height=20
+        let area = Rect::new(0, 22, 16, 20);
+
+        // Click on BG target (row 0 of inner = terminal row 23, cols 6-10)
+        let handled = p.handle_click(8, 23, area);
+        assert!(handled, "BG target click should be handled");
+        assert_eq!(p.target, ColorTarget::Background, "target should be BG");
+
+        // Click on FG target (row 0, cols 0-4 of inner = terminal cols 1-5)
+        let handled = p.handle_click(2, 23, area);
+        assert!(handled, "FG target click should be handled");
+        assert_eq!(p.target, ColorTarget::Foreground, "target should be FG");
+
+        // Click on a Neutrals swatch (inner row 2 = terminal row 25)
+        let handled = p.handle_click(2, 25, area);
+        assert!(handled, "swatch click should be handled");
+        assert!(
+            p.selected_color.is_some(),
+            "swatch click should select a color"
         );
     }
 }
