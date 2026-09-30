@@ -70,6 +70,15 @@ impl PaletteEditor {
         }
     }
 
+    /// Returns `true` when the palette editor is in any text-input mode:
+    /// naming, hex editing, swatch name editing, new-color entry, or
+    /// lighting-field hex editing. Used by the `is_typing()` guard to
+    /// suppress bare-letter tool/palette shortcuts while text input is
+    /// active.
+    pub fn is_typing(&self) -> bool {
+        !matches!(self.mode, PanelMode::Idle) || self.editing_lighting_field.is_some()
+    }
+
     pub fn load_current_from_palette(&mut self, palette: &Palette) {
         self.swatches.clear();
         self.name_buffer.clear();

@@ -13,7 +13,7 @@ use super::{
     brush, canvas, capture_thumbnail, dialogs, documents, export, file_ops, font_editor, fx,
     image_editor, layers, layout, light_panel, lighting, palette, palette_editor, particles,
     player, status, theme, timeline, toolbox, tools, undo, undo_panel, welcome, LightPanel,
-    MenuBar, MenuBarState, PropsPanel, RenderMode, SidePanel, ThrobberState, Tool,
+    MenuBar, MenuBarState, PropsPanel, PropsPanelMode, RenderMode, SidePanel, ThrobberState, Tool,
 };
 use crate::config;
 
@@ -1599,6 +1599,23 @@ impl TuiApp {
             .toolbox
             .required_width(self.editor.brush.required_outer_width());
         term_width >= toolbox_width + layout::DRAWER_WIDTH + MIN_CANVAS_WIDTH
+    }
+
+    /// Returns `true` when any text-entry field is live across the
+    /// application. Used to suppress bare-letter tool-select, palette
+    /// color, and image-editor shortcuts that would collide with typed
+    /// characters.
+    pub(crate) fn is_typing(&self) -> bool {
+        self.editor.text_tool.editing
+            || self.editor.image_editor.entering_path()
+            || self.editor.palette.is_typing()
+            || self.editor.layer_panel.renaming.is_some()
+            || self.editor.font_editor.search_active
+            || self.editor.font_editor.code_input_active
+            || self.props_panel.mode != PropsPanelMode::Idle
+            || self.animation.emitter_panel.editing
+            || self.palette_editor.is_typing()
+            || self.animation.timeline_state.keyframe_editor.edit_mode
     }
 }
 

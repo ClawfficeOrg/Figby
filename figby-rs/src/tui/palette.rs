@@ -272,6 +272,13 @@ impl Palette {
         }
     }
 
+    /// Returns `true` when the palette is in hex-entry mode (user typing
+    /// a `#RRGGBB` value). Used by the `is_typing()` guard to suppress
+    /// bare-letter tool/palette shortcuts while text input is active.
+    pub fn is_typing(&self) -> bool {
+        self.custom_mode
+    }
+
     pub fn set_custom_hex(&mut self, hex: &str) -> bool {
         self.custom_hex.clear();
         self.custom_hex.push_str(hex);

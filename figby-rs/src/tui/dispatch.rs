@@ -1685,14 +1685,11 @@ impl TuiApp {
         }
 
         // Image Editor mode: dispatch to image_editor before canvas/tools.
-        // Skip while the Text tool is actively editing: its single-char
-        // typing (F/I/G/B/Y...) collides with image adjustment keys
-        // (invert/brightness/braille/threshold), which would toggle filters
-        // and resync the canvas mid-word. Text editing wins; image keys
-        // resume once the block is committed/cancelled.
-        if self.ui.mode == AppMode::ImageEditor
-            && !(self.editor.toolbox.selected == Tool::Text && self.editor.text_tool.editing)
-        {
+        // Skip while any text-entry field is live (is_typing guard):
+        // single-char typing (F/I/G/B/Y...) collides with image
+        // adjustment keys (invert/brightness/braille/threshold), which
+        // would toggle filters and resync the canvas mid-word.
+        if self.ui.mode == AppMode::ImageEditor && !self.is_typing() {
             if let Some(ev) = self.handle_image_editor_key(code) {
                 return Some(ev);
             }
@@ -1952,7 +1949,10 @@ impl TuiApp {
                     Some(AppEvent::Toolbox(ToolboxEvent::BrushChanged))
                 }
                 KeyCode::Char(c)
-                    if !modifiers.contains(KeyModifiers::CONTROL) && c != 'T' && c != 'S' =>
+                    if !modifiers.contains(KeyModifiers::CONTROL)
+                        && c != 'T'
+                        && c != 'S'
+                        && !self.is_typing() =>
                 {
                     let lower = c.to_ascii_lowercase();
                     let mut found = None;
@@ -1981,8 +1981,10 @@ impl TuiApp {
             }
         }
 
-        // Palette color selection (inline from old PaletteComponent)
-        {
+        // Palette color selection (inline from old PaletteComponent).
+        // Skipped while any text-entry field is live (is_typing guard):
+        // x/f/h/z/arrows/Enter/Esc all collide with typed characters.
+        if !self.is_typing() {
             use crate::tui::events::PaletteEvent;
             let handled = match code {
                 KeyCode::Char('x')
