@@ -2964,9 +2964,10 @@ fn test_f8_starts_playback_and_toggles_pause() {
     use figby::tui::timeline::TimelineFrame;
     use figby::tui::TuiApp;
 
-    // F8 is the dedicated play key now that Space paints only. Same
-    // behaviour as the transport-bar Play button: start when idle,
-    // pause/resume when already playing.
+    // F8 is the dedicated play key now that Space paints only. With no
+    // player yet, F8 reaches GA::PlayAnimation and starts playback. While
+    // playing, the inline-player intercept forwards F8 to
+    // AnimationPlayer::handle_key, which toggles pause.
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.animation.timeline_state.add_frame(TimelineFrame {
@@ -2991,6 +2992,7 @@ fn test_f8_starts_playback_and_toggles_pause() {
         .as_ref()
         .map(|p| p.is_playing())
         .unwrap_or(false);
+    assert!(was_playing, "player should be running after first F8");
     app.handle_key_event(KeyCode::F(8));
     let now_playing = app
         .animation
@@ -2998,9 +3000,17 @@ fn test_f8_starts_playback_and_toggles_pause() {
         .as_ref()
         .map(|p| p.is_playing())
         .unwrap_or(false);
-    assert_ne!(
-        was_playing, now_playing,
-        "F8 while playing should toggle pause"
+    assert!(!now_playing, "F8 while playing should pause");
+
+    // Third F8 resumes.
+    app.handle_key_event(KeyCode::F(8));
+    assert!(
+        app.animation
+            .inline_player
+            .as_ref()
+            .map(|p| p.is_playing())
+            .unwrap_or(false),
+        "F8 while paused should resume"
     );
 }
 

@@ -235,6 +235,14 @@ impl AnimationPlayer {
                 self.toggle_play();
                 true
             }
+            // F8 toggles play/pause, same as Space. Lives here (not only in
+            // the TUI dispatch) so fullscreen playback (`play_fullscreen` /
+            // `play_raw`, which route every key through this method) gets it
+            // too — one key contract, not two.
+            KeyCode::F(8) => {
+                self.toggle_play();
+                true
+            }
             KeyCode::Left => {
                 let cur = self.current_frame.get();
                 self.seek(cur.saturating_sub(1));
@@ -1278,6 +1286,27 @@ mod tests {
 
         player.handle_key(KeyCode::Char(' '));
         assert!(!player.is_playing());
+    }
+
+    #[test]
+    fn test_player_handle_key_f8_toggles_play_pause() {
+        // F8 is the dedicated playback key now that Space paints. It must
+        // live in AnimationPlayer::handle_key so fullscreen playback
+        // (play_fullscreen / play_raw) gets it too — not just the TUI
+        // inline-player intercept.
+        let frames = make_test_frames(10, 3, 2);
+        let player = AnimationPlayer::new(frames, 10);
+        assert!(!player.is_playing());
+
+        let consumed = player.handle_key(KeyCode::F(8));
+        assert!(consumed, "F8 should be consumed by the player");
+        assert!(player.is_playing(), "F8 should start playback");
+
+        player.handle_key(KeyCode::F(8));
+        assert!(!player.is_playing(), "F8 should pause playback");
+
+        player.handle_key(KeyCode::F(8));
+        assert!(player.is_playing(), "F8 should resume playback");
     }
 
     #[test]

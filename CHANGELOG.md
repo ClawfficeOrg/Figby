@@ -3,10 +3,11 @@
 
 ### Added
 - **F8 starts animation playback.** New global `PlayAnimation` action: starts
-  in-canvas playback from the current frame, or toggles pause when the inline
-  player is already running. Same entry as the transport-bar Play button and
-  Animation > Play. No-op when the timeline is empty. Listed in the keybindings
-  overlay.
+  in-canvas playback from the current frame. While the inline player is
+  running, F8 toggles pause via `AnimationPlayer::handle_key` — the same
+  method fullscreen playback (`play_fullscreen` / `play_raw`) routes every
+  key through, so F8 works there too. No-op when the timeline is empty.
+  Listed in the keybindings overlay.
 
 ### Fixed
 - **Space is paint-only.** Removed the Space→timeline-playback binding in
