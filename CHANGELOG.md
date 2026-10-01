@@ -1,6 +1,13 @@
 # Changelog
 ## [6.0.47] - 2026-10-01
 
+### Added
+- **F8 starts animation playback.** New global `PlayAnimation` action: starts
+  in-canvas playback from the current frame, or toggles pause when the inline
+  player is already running. Same entry as the transport-bar Play button and
+  Animation > Play. No-op when the timeline is empty. Listed in the keybindings
+  overlay.
+
 ### Fixed
 - **Space is paint-only.** Removed the Space→timeline-playback binding in
   `dispatch.rs` (it stole Space whenever frames existed, so live sessions

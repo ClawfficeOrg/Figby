@@ -1389,16 +1389,21 @@ impl TuiApp {
         // In-canvas animation playback: intercept all keys, mirroring the
         // controls already implemented on AnimationPlayer::handle_key
         // (space=pause, arrows=seek, +/-=speed, l/L=loop toggle). Esc/q
-        // dismiss playback and return to normal editing.
+        // dismiss playback and return to normal editing. F8 is yielded so
+        // the global PlayAnimation arm can toggle pause while playing.
         if let Some(player) = self.animation.inline_player.as_ref() {
-            let consumed = player.handle_key(code);
-            let should_dismiss =
-                consumed && matches!(code, KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q'));
-            self.frame.dirty = true;
-            if should_dismiss {
-                self.stop_inline_playback();
+            if code == KeyCode::F(8) {
+                // Fall through to dispatch_global → GA::PlayAnimation.
+            } else {
+                let consumed = player.handle_key(code);
+                let should_dismiss = consumed
+                    && matches!(code, KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q'));
+                self.frame.dirty = true;
+                if should_dismiss {
+                    self.stop_inline_playback();
+                }
+                return None;
             }
-            return None;
         }
 
         // New image dialog active
@@ -2196,6 +2201,17 @@ impl TuiApp {
             }
             GA::OpenTweenPanel => {
                 self.animation.timeline_state.open_tween();
+                self.frame.dirty = true;
+                None
+            }
+            GA::PlayAnimation => {
+                // Same entry as the transport-bar Play button and
+                // Animation > Play. No-op when the timeline is empty.
+                if let Some(player) = self.animation.inline_player.as_ref() {
+                    player.toggle_play();
+                } else {
+                    self.start_inline_playback_from_timeline();
+                }
                 self.frame.dirty = true;
                 None
             }

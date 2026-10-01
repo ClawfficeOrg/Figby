@@ -17,6 +17,7 @@ pub enum GlobalAction {
     ToggleKeybindings,
     ToggleTimeline,
     OpenTweenPanel,
+    PlayAnimation,
     CycleTabPrev,
     CycleTabNext,
     DocNext,
@@ -119,6 +120,12 @@ pub static GLOBAL_DISPATCH: &[KeyDispatch] = &[
         modifiers: KeyModifiers::SHIFT,
         key_code: KeyCode::Char('T'),
         action: GlobalAction::OpenTweenPanel,
+    },
+    // Playback — Space paints, so F8 is the dedicated play key.
+    KeyDispatch {
+        modifiers: KeyModifiers::NONE,
+        key_code: KeyCode::F(8),
+        action: GlobalAction::PlayAnimation,
     },
     // Side-panel tab cycling (Alt+arrows)
     KeyDispatch {
@@ -335,6 +342,11 @@ pub const KEYMAP: &[KeyBinding] = &[
         keys: "T",
         scope: Scope::Global,
         description: "Toggle animation timeline",
+    },
+    KeyBinding {
+        keys: "F8",
+        scope: Scope::Global,
+        description: "Play animation from current frame",
     },
     KeyBinding {
         keys: "Ctrl+K",

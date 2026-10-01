@@ -80,7 +80,7 @@
 - **Eraser + mouse clicks works for drawing**: unlike keyboard Space, mouse
   clicks with Eraser tool reliably erase cells. This is the most dependable
   method for "drawing" during live tmux-driven sessions. (Space now paints
-  reliably too after the 6.0.47 fix.)
+  reliably too after the 6.0.47 fix; F8 is the dedicated playback key.)
 - **Tools menu navigation is order-dependent**: Alt+T opens the menu, Down
   navigates, Enter selects. Item order: Brush(1), Eraser(2), Line(3), Fill(4),
   Marquee(5), Lasso(6), Circle Select(7), Polygon Select(8), Eyedropper(9),

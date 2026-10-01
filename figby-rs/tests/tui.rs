@@ -2959,6 +2959,52 @@ fn test_welcome_screen_font_and_image_import_keys_do_not_collide() {
 }
 
 #[test]
+fn test_f8_starts_playback_and_toggles_pause() {
+    use crossterm::event::KeyCode;
+    use figby::tui::timeline::TimelineFrame;
+    use figby::tui::TuiApp;
+
+    // F8 is the dedicated play key now that Space paints only. Same
+    // behaviour as the transport-bar Play button: start when idle,
+    // pause/resume when already playing.
+    let mut app = TuiApp::new();
+    app.welcome.screen.show = false;
+    app.animation.timeline_state.add_frame(TimelineFrame {
+        delay: 10,
+        thumbnail: vec![],
+        has_keyframe: true,
+        label: "F0".to_string(),
+        document_state: Vec::new(),
+        layer_keyframes: vec![],
+    });
+
+    app.handle_key_event(KeyCode::F(8));
+    assert!(
+        app.animation.inline_player.is_some(),
+        "F8 should start in-canvas playback"
+    );
+
+    // Second F8 toggles pause on the active player.
+    let was_playing = app
+        .animation
+        .inline_player
+        .as_ref()
+        .map(|p| p.is_playing())
+        .unwrap_or(false);
+    app.handle_key_event(KeyCode::F(8));
+    let now_playing = app
+        .animation
+        .inline_player
+        .as_ref()
+        .map(|p| p.is_playing())
+        .unwrap_or(false);
+    assert_ne!(
+        was_playing, now_playing,
+        "F8 while playing should toggle pause"
+    );
+}
+
+#[test]
 fn test_space_paints_even_with_layers_panel_open() {
     use crossterm::event::KeyCode;
     use figby::tui::side_panel::TabId;

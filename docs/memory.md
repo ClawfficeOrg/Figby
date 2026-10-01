@@ -312,6 +312,9 @@ FIGlet flag semantics preserved exactly.
 - **Palette multi-select row offset** ✅ — hit-test ignored the " Sel:" row
   rendered when multi-select is active. Fixed (6.0.47): click and hover apply
   the same offset.
+- **No dedicated playback key after Space became paint-only** ✅ — fixed
+  (6.0.47): F8 starts in-canvas playback or toggles pause. The inline-player
+  key intercept yields F8 so the global arm can toggle pause while playing.
 
 ### Open — needs investigation (2026-10-01 re-record session)
 - **Canvas resets after Text tool/side panel actions** — root cause found and
