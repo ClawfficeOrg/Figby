@@ -1,4 +1,32 @@
 # Changelog
+## [6.0.47] - 2026-10-01
+
+### Fixed
+- **Space is paint-only.** Removed the Space→timeline-playback binding in
+  `dispatch.rs` (it stole Space whenever frames existed, so live sessions
+  saw paint silently fail). Playback starts from the transport bar or
+  Animation > Play. Layers-panel Space toggle removed; Enter still toggles
+  visibility. Regression test: `test_space_paints_even_with_layers_panel_open`.
+- **A-key / AnimFrameAdd frame capture snapshots every layer**, not just a
+  flattened composite. Previously `document_state` held one buffer, so
+  `load_timeline_frame` cleared every other layer on timeline navigation
+  (canvas "reset to empty"). Regression test:
+  `test_a_captures_every_layer_not_just_composite`.
+- **Figmap save and export bake text overlays first.** `commit_all_text_blocks()`
+  rasterizes committed Text-tool blocks into the active layer before
+  `save_figmap` / `capture_timeline_frames`, so un-rasterized text is no
+  longer silently dropped on save/export.
+- **Rasterize button hit-rect off-by-one.** The clickable rect was computed
+  before the blank line was pushed, landing one row above the visible
+  `[Rasterize]` label. Rect now matches the label row.
+- **Props-panel buttons are keyboard-reachable.** Tab/Shift+Tab move a focus
+  cursor over side-panel buttons when the Props/Text tab is open; Enter
+  activates. Ctrl+R rasterizes the selected text block directly (no mouse
+  rect needed under tmux).
+- **Palette click/hover row math accounts for the multi-select " Sel:" row.**
+  With multi-select active, swatches shift down one rendered row; hit-testing
+  now applies the same offset for both click and hover.
+
 ## [6.0.46] - 2026-09-24
 
 ### Added

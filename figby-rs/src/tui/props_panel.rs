@@ -55,6 +55,8 @@ pub enum PropsPanelMode {
 pub struct PropsPanel {
     pub mode: PropsPanelMode,
     pub rects: Vec<PropsWidgetRect>,
+    /// Keyboard cursor over `rects` (Props/Text tab). None = no focus.
+    pub focused_rect: Option<usize>,
     char_buffer: String,
 }
 
@@ -63,12 +65,14 @@ impl PropsPanel {
         Self {
             mode: PropsPanelMode::Idle,
             rects: Vec::new(),
+            focused_rect: None,
             char_buffer: String::new(),
         }
     }
 
     pub fn clear_rects(&mut self) {
         self.rects.clear();
+        self.focused_rect = None;
     }
 
     pub fn handle_click(&self, col: u16, row: u16) -> Option<PropAction> {
@@ -83,7 +87,39 @@ impl PropsPanel {
 
     pub fn handle_key(&mut self, code: KeyCode) -> Option<PropAction> {
         match self.mode {
-            PropsPanelMode::Idle => None,
+            PropsPanelMode::Idle => match code {
+                // Keyboard path for side-panel buttons (Rasterize, Scale, …).
+                // Mouse rects stay the primary affordance; Tab/Shift+Tab
+                // move a focus cursor, Enter activates it.
+                KeyCode::Tab | KeyCode::Down => {
+                    if self.rects.is_empty() {
+                        return None;
+                    }
+                    let next = match self.focused_rect {
+                        None => 0,
+                        Some(i) => (i + 1) % self.rects.len(),
+                    };
+                    self.focused_rect = Some(next);
+                    None
+                }
+                KeyCode::BackTab | KeyCode::Up => {
+                    if self.rects.is_empty() {
+                        return None;
+                    }
+                    let prev = match self.focused_rect {
+                        None => self.rects.len() - 1,
+                        Some(0) => self.rects.len() - 1,
+                        Some(i) => i - 1,
+                    };
+                    self.focused_rect = Some(prev);
+                    None
+                }
+                KeyCode::Enter => {
+                    let idx = self.focused_rect?;
+                    self.rects.get(idx).map(|wr| wr.action)
+                }
+                _ => None,
+            },
             PropsPanelMode::EditingChar => match code {
                 KeyCode::Char(c) => {
                     self.char_buffer.push(c);
@@ -183,6 +219,46 @@ mod tests {
         assert_eq!(p.rects.len(), 1);
         p.clear_rects();
         assert!(p.rects.is_empty());
+    }
+
+    #[test]
+    fn test_idle_tab_moves_focus_and_enter_activates() {
+        let mut p = PropsPanel::new();
+        p.rects.push(PropsWidgetRect {
+            rect: Rect::new(0, 0, 3, 1),
+            action: PropAction::SizeDown,
+        });
+        p.rects.push(PropsWidgetRect {
+            rect: Rect::new(5, 0, 3, 1),
+            action: PropAction::RasterizeBlock,
+        });
+
+        // Tab with no focus lands on first rect; Enter activates it.
+        assert_eq!(p.handle_key(KeyCode::Tab), None);
+        assert_eq!(p.focused_rect, Some(0));
+        assert_eq!(p.handle_key(KeyCode::Enter), Some(PropAction::SizeDown));
+
+        // Tab again wraps to the second rect.
+        assert_eq!(p.handle_key(KeyCode::Tab), None);
+        assert_eq!(p.focused_rect, Some(1));
+        assert_eq!(
+            p.handle_key(KeyCode::Enter),
+            Some(PropAction::RasterizeBlock)
+        );
+
+        // Shift+Tab from index 1 goes back to 0.
+        assert_eq!(p.handle_key(KeyCode::BackTab), None);
+        assert_eq!(p.focused_rect, Some(0));
+    }
+
+    #[test]
+    fn test_idle_enter_without_focus_is_none() {
+        let mut p = PropsPanel::new();
+        p.rects.push(PropsWidgetRect {
+            rect: Rect::new(0, 0, 3, 1),
+            action: PropAction::SizeUp,
+        });
+        assert_eq!(p.handle_key(KeyCode::Enter), None);
     }
 
     #[test]

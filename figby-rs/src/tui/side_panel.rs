@@ -663,12 +663,14 @@ impl SidePanel {
             *line_y += 1;
         }
 
-        // Rasterize button if block selected
+        // Rasterize button if block selected. Push the blank line first,
+        // then compute y from the updated line_y so the hit-rect lands on
+        // the "[Rasterize]" row, not the blank line above it.
         if tt.selected_block.is_some() {
-            let y = area.y + *line_y;
-            let x = area.x;
             lines.push(Line::from(""));
             *line_y += 1;
+            let y = area.y + *line_y;
+            let x = area.x;
             rects.push(PropsWidgetRect {
                 rect: Rect {
                     x: x + 2,
@@ -1545,6 +1547,81 @@ mod tests {
         assert!(rects.iter().any(|r| r.action == PropAction::CycleJust));
         assert!(rects.iter().any(|r| r.action == PropAction::ScaleDown));
         assert!(rects.iter().any(|r| r.action == PropAction::ScaleUp));
+    }
+
+    #[test]
+    fn test_text_props_rasterize_rect_matches_button_row() {
+        // Regression: the hit-rect was computed before the blank line was
+        // pushed, so it sat one row ABOVE the visible "[Rasterize]" label.
+        use crate::render::Justification;
+        use crate::tui::tools::text::TextBlock;
+        use crate::tui::tools::text::TextToolState;
+        let mut tt = TextToolState::new("fonts");
+        // Need a selected block for the button to render. Seed one directly.
+        tt.blocks.push(TextBlock {
+            id: 0,
+            text: "X".into(),
+            font_index: 0,
+            x: 0,
+            y: 0,
+            scale: 1,
+            justification: Justification::Left,
+            text_color: None,
+            rotation: 0,
+            cached_rows: vec!["X".into()],
+            width: 1,
+            height: 1,
+        });
+        tt.selected_block = Some(0);
+
+        let mut lines = Vec::new();
+        let mut rects = Vec::new();
+        let area = Rect::new(0, 0, 30, 24);
+        let mut line_y = 0u16;
+        SidePanel::add_text_props(&mut lines, &tt, &mut rects, area, &mut line_y);
+
+        let raster = rects
+            .iter()
+            .find(|r| r.action == PropAction::RasterizeBlock)
+            .expect("rasterize rect should exist");
+        // Find the "[Rasterize]" line index in the rendered lines.
+        let label_row = lines
+            .iter()
+            .position(|l| l.spans.iter().any(|s| s.content.contains("[Rasterize]")))
+            .expect("rasterize label should be rendered") as u16;
+        assert_eq!(
+            raster.rect.y,
+            area.y + label_row,
+            "rasterize hit-rect y must match the label row"
+        );
+    }
+
+    #[test]
+    fn test_palette_click_accounts_for_multi_select_row() {
+        use crate::tui::palette::Palette;
+        use crossterm::event::KeyCode;
+        use ratatui::layout::Rect;
+        let mut p = Palette::new();
+        let area = Rect::new(0, 0, 16, 20);
+        // Without multi-select, Neutrals first swatch is inner row 2 → term row 3.
+        let handled = p.handle_click(2, 3, area);
+        assert!(handled, "swatch click without multi-select");
+        let without = p.selected_color;
+
+        // With multi-select active, render inserts " Sel:" at inner row 1,
+        // pushing swatches down one row. Same physical row must miss; row+1 hits.
+        // Tab is the public toggle for multi_select_active.
+        let _ = p.handle_key(KeyCode::Tab);
+        p.selected_color = None;
+        let missed = p.handle_click(2, 3, area);
+        assert!(
+            !missed || p.selected_color == without,
+            "click on pre-shift row must not select the post-shift swatch"
+        );
+        p.selected_color = None;
+        let hit = p.handle_click(2, 4, area);
+        assert!(hit, "swatch click with multi-select needs +1 row offset");
+        assert!(p.selected_color.is_some());
     }
 
     #[test]

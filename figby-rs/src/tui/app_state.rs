@@ -1137,14 +1137,23 @@ impl AnimationState {
         // capture. Navigation below stays visibility-gated so arrows
         // keep driving the canvas cursor when the panel is hidden.
         if code == KeyCode::Char('A') {
-            let buffer = editor.layer_stack.composite();
-            let thumbnail = capture_thumbnail(&buffer, 8, 3);
+            // Snapshot EVERY layer, not just the composite: a single
+            // flattened buffer in document_state[0] makes load_timeline_frame
+            // clear every other layer on navigation (canvas "reset").
+            let document_state: Vec<canvas::CanvasBuffer> = editor
+                .layer_stack
+                .layers
+                .iter()
+                .map(|l| l.buffer.clone())
+                .collect();
+            let composite = editor.layer_stack.composite();
+            let thumbnail = capture_thumbnail(&composite, 8, 3);
             let frame = timeline::TimelineFrame {
                 thumbnail,
                 has_keyframe: false,
                 label: format!("F{}", self.timeline_state.frames.len()),
                 delay: self.timeline_state.default_delay(),
-                document_state: vec![buffer],
+                document_state,
                 layer_keyframes: vec![None; editor.layer_stack.layers.len()],
             };
             self.timeline_state.sync_layer_names(&editor.layer_stack);

@@ -1622,19 +1622,10 @@ impl TuiApp {
             return None;
         }
 
-        // Timeline: Space to play animation from current frame, in place in
-        // the canvas (the rest of the editor UI stays visible around it).
-        // Checked here — after every modal dialog/overlay above but before
-        // the Layers panel dispatch and the keyboard-paint block below — so
-        // starting playback always wins over both the Layers panel's own
-        // Space/Enter binding (toggle visibility) and keyboard-painting
-        // tools, exactly mirroring Enter's old priority. Keyboard paint
-        // still works via Enter (see the paint block below), which is no
-        // longer claimed by playback.
-        if code == KeyCode::Char(' ') && !self.animation.timeline_state.frames.is_empty() {
-            self.start_inline_playback_from_timeline();
-            return None;
-        }
+        // Space paints. It is never a playback shortcut: timeline playback
+        // starts from the transport bar or Animation > Play. A dual binding
+        // made Space ambiguous in live sessions (paint vs play depending on
+        // whether frames existed).
 
         // Layer panel: dispatch keys when drawer shows layers
         if self.side_panel.open
@@ -1720,6 +1711,17 @@ impl TuiApp {
                 self.editor.text_tool.editing = true;
             }
             let cursor = self.editor.canvas.cursor();
+            // Ctrl+R rasterizes the selected block — keyboard path that
+            // doesn't depend on hitting a 1-cell mouse rect under tmux.
+            if code == KeyCode::Char('r')
+                && modifiers.contains(KeyModifiers::CONTROL)
+                && self.editor.text_tool.selected_block.is_some()
+            {
+                self.editor.push_undo_snapshot("Rasterize text");
+                self.dispatch_props_action(crate::tui::props_panel::PropAction::RasterizeBlock);
+                self.frame.dirty = true;
+                return None;
+            }
             if let Some(undo_label) = self.editor.text_tool.handle_key(code, modifiers, cursor) {
                 if !undo_label.is_empty() {
                     self.editor.push_undo_snapshot(undo_label);
@@ -1915,6 +1917,23 @@ impl TuiApp {
                 self.dispatch_props_action(action);
                 self.frame.dirty = true;
             }
+            return None;
+        }
+
+        // Props/Text tab keyboard focus: Tab/Shift+Tab move the button
+        // cursor, Enter activates (e.g. Rasterize). Only when the drawer
+        // is open on those tabs so canvas Tab navigation is untouched.
+        if self.side_panel.open
+            && matches!(self.side_panel.active_tab, TabId::Props | TabId::Text)
+            && matches!(code, KeyCode::Tab | KeyCode::BackTab | KeyCode::Enter)
+        {
+            if let Some(action) = self.props_panel.handle_key(code) {
+                self.dispatch_props_action(action);
+            }
+            // Consume Tab/Enter here even when no button matched: with the
+            // drawer focused on Props/Text, Enter must not fall through to
+            // canvas paint or layer toggles.
+            self.frame.dirty = true;
             return None;
         }
 
@@ -2424,6 +2443,51 @@ impl TuiApp {
         }
     }
 
+    /// Bake every committed text block into the active layer. Used before
+    /// figmap save / export so overlays that only live on `canvas.text_overlays`
+    /// are not silently dropped. Expands the layer (and siblings) if a block
+    /// sits outside the current buffer, same as `PropAction::RasterizeBlock`.
+    fn commit_all_text_blocks(&mut self) {
+        if self.editor.text_tool.blocks.is_empty() {
+            return;
+        }
+        // Expand active layer to cover the union of all block bounding boxes.
+        let mut need_w = 0usize;
+        let mut need_h = 0usize;
+        for idx in 0..self.editor.text_tool.blocks.len() {
+            let (bx, by, bw, bh) = self.editor.text_tool.compute_bounding_box(idx);
+            need_w = need_w.max(bx as usize + bw);
+            need_h = need_h.max(by as usize + bh);
+        }
+        let aidx = self.editor.layer_stack.active;
+        let cur_w = self.editor.layer_stack.layers[aidx].buffer.width();
+        let cur_h = self.editor.layer_stack.layers[aidx].buffer.height();
+        if need_w > cur_w || need_h > cur_h {
+            let new_w = need_w.max(cur_w);
+            let new_h = need_h.max(cur_h);
+            let mut new_buf = crate::tui::canvas::CanvasBuffer::new(new_w, new_h);
+            for y in 0..cur_h {
+                for x in 0..cur_w {
+                    if let Some(cell) = self.editor.layer_stack.layers[aidx].buffer.get(x, y) {
+                        new_buf.set(x, y, *cell);
+                    }
+                }
+            }
+            self.editor.layer_stack.layers[aidx].buffer = new_buf;
+            self.editor.layer_stack.resize_all(new_w, new_h);
+        }
+        // Rasterize from the end so removals don't shift later indices.
+        while !self.editor.text_tool.blocks.is_empty() {
+            let last = self.editor.text_tool.blocks.len() - 1;
+            self.editor.text_tool.selected_block = Some(last);
+            self.editor
+                .text_tool
+                .rasterize_selected_block(&mut self.editor.layer_stack.layers[aidx].buffer);
+        }
+        self.editor.recomposite_canvas();
+        self.editor.mark_dirty();
+    }
+
     pub(crate) fn perform_save(&mut self, save_path: Option<std::path::PathBuf>) {
         if self.ctx.throbber.is_active() {
             return;
@@ -2432,6 +2496,10 @@ impl TuiApp {
 
         // Handle .figmap save
         if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
+            // Text overlays are render-only; bake every committed block into
+            // the active layer so the saved figmap matches what the canvas
+            // shows. Without this, save silently drops un-rasterized text.
+            self.commit_all_text_blocks();
             let swatch_data = self.palette_editor.lighting_swatches();
             let figmap_timeline = if self.animation.timeline_state.frames.is_empty() {
                 None
@@ -2904,6 +2972,9 @@ impl TuiApp {
         // the live canvas (GPT review F-04). ANSI is included here too —
         // previously only GIF/APNG composed, so an ANSI animation export
         // received just the *current* frame (GPT review F-26).
+        //
+        // Bake text overlays first: they are not part of layer buffers.
+        self.commit_all_text_blocks();
         let frames: Vec<Vec<Vec<canvas::CanvasCell>>> = if (format
             == crate::tui::export::ExportMode::Gif
             || format == crate::tui::export::ExportMode::Apng
@@ -3428,14 +3499,23 @@ impl TuiApp {
                 self.frame.dirty = true;
             }
             menu::MenuAction::AnimFrameAdd => {
-                let buffer = self.editor.canvas.buffer.clone();
-                let thumbnail = capture_thumbnail(&buffer, 12, 6);
+                // Same rule as A-key capture: snapshot every layer so
+                // navigation never clears layers beyond a flattened buffer.
+                let document_state: Vec<canvas::CanvasBuffer> = self
+                    .editor
+                    .layer_stack
+                    .layers
+                    .iter()
+                    .map(|l| l.buffer.clone())
+                    .collect();
+                let composite = self.editor.layer_stack.composite();
+                let thumbnail = capture_thumbnail(&composite, 12, 6);
                 let new_frame = timeline::TimelineFrame {
                     thumbnail,
                     has_keyframe: false,
                     label: format!("F{}", self.animation.timeline_state.frames.len()),
                     delay: self.animation.timeline_state.default_delay(),
-                    document_state: vec![buffer],
+                    document_state,
                     layer_keyframes: vec![None; self.editor.layer_stack.layers.len()],
                 };
                 self.animation
@@ -4043,6 +4123,71 @@ mod timeline_key_wiring_tests {
         assert!(!app.animation.timeline_state.frames[0].has_keyframe);
         let _ = app.handle_key_event(KeyEvent::new(KeyCode::Left, none));
         assert_eq!(app.animation.timeline_state.current_frame, 0);
+    }
+
+    #[test]
+    fn test_a_captures_every_layer_not_just_composite() {
+        use crate::tui::layers::LayerStack;
+        let mut app = app_with_visible_timeline();
+        app.editor.layer_stack = LayerStack::with_capacity(4, 4, 2);
+        // Distinct content on each layer.
+        app.editor.layer_stack.layers[0].buffer.set(
+            0,
+            0,
+            canvas::CanvasCell {
+                ch: 'A',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+        app.editor.layer_stack.layers[1].buffer.set(
+            1,
+            1,
+            canvas::CanvasCell {
+                ch: 'B',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+
+        let none = KeyModifiers::NONE;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), none));
+        let f = &app.animation.timeline_state.frames[0];
+        assert_eq!(
+            f.document_state.len(),
+            2,
+            "A-key capture must snapshot every layer"
+        );
+        assert_eq!(f.document_state[0].get(0, 0).map(|c| c.ch), Some('A'));
+        assert_eq!(f.document_state[1].get(1, 1).map(|c| c.ch), Some('B'));
+
+        // Capture a second frame, then navigate Left. Navigation commits the
+        // *current* frame (F1) before loading F0 — F0's snapshot must still
+        // have both layers, not a cleared layer 1.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), none));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Left, none));
+        assert_eq!(
+            app.animation.timeline_state.current_frame, 0,
+            "Left should land on frame 0"
+        );
+        assert_eq!(
+            app.editor.layer_stack.layers[0]
+                .buffer
+                .get(0, 0)
+                .map(|c| c.ch),
+            Some('A'),
+            "layer 0 must restore from F0 snapshot"
+        );
+        assert_eq!(
+            app.editor.layer_stack.layers[1]
+                .buffer
+                .get(1, 1)
+                .map(|c| c.ch),
+            Some('B'),
+            "layer 1 must restore from F0 snapshot, not be cleared"
+        );
     }
 
     #[test]

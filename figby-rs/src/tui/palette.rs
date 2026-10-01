@@ -465,6 +465,13 @@ impl Palette {
         }
         let rel_col = col - ix;
         let rel_row = row - iy;
+        // Same " Sel:" offset as handle_click — hover and click must agree.
+        let row_offset = u16::from(self.multi_select_active);
+        let Some(swatch_row) = rel_row.checked_sub(row_offset) else {
+            let changed = self.hover_index.is_some();
+            self.hover_index = None;
+            return changed;
+        };
 
         let (swatch_start, swatch_end) = if self.show_extended {
             (2u16, 6u16)
@@ -472,11 +479,11 @@ impl Palette {
             (1u16, 20u16)
         };
 
-        if (swatch_start..swatch_end).contains(&rel_row) {
+        if (swatch_start..swatch_end).contains(&swatch_row) {
             if self.show_extended {
                 let swatch_col = (rel_col / 2) as usize;
                 if swatch_col < 5 {
-                    let idx = (rel_row as usize - 2) * 5 + swatch_col;
+                    let idx = (swatch_row as usize - 2) * 5 + swatch_col;
                     if idx < 16 {
                         if self.hover_index != Some(idx) {
                             self.hover_index = Some(idx);
@@ -485,7 +492,7 @@ impl Palette {
                         return false;
                     }
                 }
-            } else if let Some(idx) = self.standard_index_at(rel_col, rel_row) {
+            } else if let Some(idx) = self.standard_index_at(rel_col, swatch_row) {
                 if self.hover_index != Some(idx) {
                     self.hover_index = Some(idx);
                     return true;
@@ -514,8 +521,15 @@ impl Palette {
         let rel_col = col - ix;
         let rel_row = row - iy;
 
+        // Render inserts a " Sel:" row after FG/BG when multi-select is
+        // active; shift the walk down one row so clicks land on swatches.
+        let row_offset = u16::from(self.multi_select_active);
+        let Some(swatch_row) = rel_row.checked_sub(row_offset) else {
+            return false;
+        };
+
         // Row 0: " [FG]" (0..4)  " " (5)  " [BG]" (6..10)
-        if rel_row == 0 {
+        if swatch_row == 0 {
             if rel_col < 5 {
                 self.target = ColorTarget::Foreground;
                 return true;
@@ -529,10 +543,10 @@ impl Palette {
         if self.show_extended {
             // Row 1: "Ext pg:N" — not clickable
             // Rows 2-5: 5 swatches each, 2 cols wide (5+5+5+1)
-            if (2..=5).contains(&rel_row) {
+            if (2..=5).contains(&swatch_row) {
                 let swatch_col = (rel_col / 2) as usize;
                 if swatch_col < 5 {
-                    let idx = (rel_row as usize - 2) * 5 + swatch_col;
+                    let idx = (swatch_row as usize - 2) * 5 + swatch_col;
                     if idx < 16 {
                         self.selected_index = idx;
                         self.selected_color = Some(extended_color(self.extended_page, idx as u8));
@@ -540,7 +554,7 @@ impl Palette {
                     }
                 }
             }
-        } else if let Some(idx) = self.standard_index_at(rel_col, rel_row) {
+        } else if let Some(idx) = self.standard_index_at(rel_col, swatch_row) {
             self.select_color(idx);
             return true;
         }

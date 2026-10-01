@@ -866,7 +866,10 @@ impl LayerPanel {
                 }
                 true
             }
-            KeyCode::Enter | KeyCode::Char(' ') => {
+            // Enter toggles visibility. Space is reserved for canvas painting
+            // even when the Layers tab is focused — a dual binding here made
+            // Space mean different things depending on panel focus.
+            KeyCode::Enter => {
                 stack.toggle_visibility(stack.active);
                 true
             }

@@ -45,6 +45,51 @@
   No "select all + retype" — must backspace each character individually.
   `Up`/`Down` navigate fields but don't increment/decrement values.
 
+## TUI live-driving issues (2026-10-01, Chapter 1 re-record)
+
+- **Space doesn't paint in live TUI, Enter does** — **root cause found and
+  fixed (6.0.47)**. Space was bound to timeline playback in `dispatch.rs`
+  *before* the keyboard-paint block: whenever `timeline_state.frames` was
+  non-empty (any animation work), Space started playback instead of painting.
+  Unit tests passed because they used a fresh app with no frames. Enter was
+  never stolen, which matched the live observation. **Fix**: Space paints only;
+  playback starts from the transport bar or Animation > Play. Layers-panel
+  Space toggle also removed (Enter still toggles visibility).
+- **Canvas content resets to filled state** — **root cause found and fixed
+  (6.0.47)**. `A`-key capture and `AnimFrameAdd` stored a *flattened composite*
+  as `document_state: vec![buffer]` (one buffer even with multiple layers).
+  `load_timeline_frame` then cleared every layer beyond the snapshot on
+  timeline navigation. **Fix**: both capture paths now snapshot every layer's
+  buffer into `document_state`.
+- **Text tool overlay ≠ layer buffer** — **confirmed design gap, fixed
+  (6.0.47)**. Overlays (`canvas.text_overlays`) are render-only; figmap save
+  wrote only `layer_stack`. **Fix**: `commit_all_text_blocks()` bakes all
+  committed blocks into the active layer before `save_figmap` and export
+  capture.
+- **Rasterize button hard to hit via tmux mouse** — **two bugs, both fixed
+  (6.0.47)**. (1) Hit-rect off-by-one: rect computed before the blank line
+  was pushed, landing one row above the `[Rasterize]` label. (2) No keyboard
+  path at all: `PropsPanel::handle_key` returned None in Idle mode.
+  **Fix**: rect matches the label row; Tab/Shift+Tab focus + Enter activate;
+  Ctrl+R rasterizes the selected block directly.
+- **Palette click coordinates** — **root cause found and fixed (6.0.47)**.
+  Render inserts a `" Sel:"` row after FG/BG when multi-select is active,
+  shifting swatches down one row; `standard_index_at` and hover both ignored
+  this offset. **Fix**: click and hover apply the same `multi_select_active`
+  row offset.
+- **Eraser + mouse clicks works for drawing**: unlike keyboard Space, mouse
+  clicks with Eraser tool reliably erase cells. This is the most dependable
+  method for "drawing" during live tmux-driven sessions. (Space now paints
+  reliably too after the 6.0.47 fix.)
+- **Tools menu navigation is order-dependent**: Alt+T opens the menu, Down
+  navigates, Enter selects. Item order: Brush(1), Eraser(2), Line(3), Fill(4),
+  Marquee(5), Lasso(6), Circle Select(7), Polygon Select(8), Eyedropper(9),
+  Spray(10), Text(11), Lighting(12), Braille(13). Off-by-one errors are common.
+- **`figby --create-font-path` converts TTF→FLF cleanly**: `--create-font-path
+  assets/fonts/to-convert/bob_filled/Bob.ttf --font-size 14 --create-font-charset
+  full --output fonts/bob.flf` works. Freeware fonts with ReadMe.txt licenses
+  are fine to convert. Bob renders as bold filled banner-style text.
+
 ## 6.0.39 — Figmap + Light Keyframing
 
 - **CanvasBuffer serde needs manual impl**: private fields (`cells`, `width`,

@@ -274,25 +274,61 @@ FIGlet flag semantics preserved exactly.
 - `generate_figfont_header()` now uses `font.print_direction` field value instead
   of hardcoded `-1`, making headers reflect the actual struct state.
 
-## Known Issues / Bugs (discovered 2026-09-30)
+### Bob font converted (2026-10-01)
+- `assets/fonts/to-convert/bob_filled/Bob.ttf` (freeware, MondayRec Media 2001)
+  converted to `fonts/bob.flf` via `figby --create-font-path ... --font-size 14
+  --create-font-charset full`. Renders as bold filled banner-style text.
+- User wants Bob as Figby's main figlet font. Default font selection in TUI
+  and CLI may need updating to prefer `bob` when available.
 
-- **Palette hex-mode deadlock**: `h` sets `palette.custom_mode = true`, but
-  `is_typing()` in `dispatch.rs:1987` then blocks ALL keys (including
-  Enter/Escape) from reaching `palette.handle_key()`. The palette's own
-  `handle_key` has Enter/Escape handlers that reset `custom_mode`, but they
-  are never reached because the `is_typing()` guard prevents the call.
-  Mouse `handle_click()` also doesn't reset `custom_mode`. Only fix: restart
-  the app. Severity: high — any user pressing `h` in the palette gets stuck.
-- **Keyboard Space/Enter doesn't paint in Image Editor**: mouse clicks on the
-  canvas do paint, but the Space→paint path in `dispatch.rs` never fires.
-  The `demo-tui-draw.sh` script claims `T " "` works — needs re-verification.
-- **Palette mouse clicks don't select colors**: `handle_click()` is wired in
-  `dispatch.rs:822` but clicking swatches never sets `selected_color`.
-- **Text tool produced no visible output**: typed text on canvas with Text
-  tool active; nothing rendered. Needs investigation.
-- **Bare-letter tool shortcuts inconsistent**: `b` never selected Brush via
-  keyboard despite `toolbox.rs:75` mapping `b`→Brush. Menu path (Alt+T →
-  Enter) works reliably.
+## Known Issues / Bugs (discovered 2026-09-30, updated 2026-10-01)
+
+### Fixed (verified with tests, committed 1b7e0bd)
+- **Palette hex-mode deadlock** ✅ — `h` set `custom_mode=true`, `is_typing()`
+  blocked Enter/Escape from resetting it. Fixed: dispatch routes keys to palette
+  when `custom_mode` active; `EditorState::handle_key` returns false during hex mode.
+- **Text tool auto-activation** ✅ — editing only activated with side panel Text
+  tab open. Fixed: printable non-shortcut chars auto-activate editing.
+- **Tool shortcut shadowing (`b`→Brush)** ✅ — `image_editor.rs` intercepted `b`
+  for Brightness unconditionally. Fixed: adjustment keys return false when no
+  image loaded.
+- **Font dir relative to CWD** ✅ — `TuiApp::new()` used `"fonts"` relative path.
+  Fixed: `CARGO_MANIFEST_DIR`-based absolute path.
+- **Space dual-binding (paint vs playback)** ✅ — Space was stolen by timeline
+  playback whenever frames existed. Fixed (6.0.47): Space paints only; playback
+  starts from transport bar / menu. Layers-panel Space toggle removed (Enter
+  still toggles visibility).
+- **A-key frame capture flattened to one layer** ✅ — `document_state` stored a
+  single composite buffer, so timeline navigation cleared every other layer.
+  Fixed (6.0.47): capture snapshots every layer. Same for AnimFrameAdd.
+- **Text overlays dropped on figmap save/export** ✅ — overlays are render-only;
+  save wrote only layer buffers. Fixed (6.0.47): `commit_all_text_blocks()`
+  bakes all committed blocks before save/export.
+- **Rasterize hit-rect off-by-one** ✅ — rect sat one row above the label.
+  Fixed (6.0.47): rect matches the `[Rasterize]` row.
+- **Props buttons keyboard-unreachable** ✅ — `PropsPanel::handle_key` returned
+  None in Idle mode. Fixed (6.0.47): Tab/Shift+Tab focus, Enter activates;
+  Ctrl+R rasterizes selected text block directly.
+- **Palette multi-select row offset** ✅ — hit-test ignored the " Sel:" row
+  rendered when multi-select is active. Fixed (6.0.47): click and hover apply
+  the same offset.
+
+### Open — needs investigation (2026-10-01 re-record session)
+- **Canvas resets after Text tool/side panel actions** — root cause found and
+  fixed (6.0.47): A-key/AnimFrameAdd captured a flattened composite into
+  `document_state[0]`, so `load_timeline_frame` cleared every other layer on
+  timeline navigation. Capture now snapshots all layers. If resets persist
+  after this fix, re-record with debug logging.
+- ~~Space doesn't paint in live TUI~~ — fixed (6.0.47), see Fixed section.
+- ~~Text overlays not persisting~~ — fixed (6.0.47), see Fixed section.
+- ~~Rasterize button hard to hit~~ — fixed (6.0.47), see Fixed section.
+- ~~Palette click coordinate computation~~ — fixed (6.0.47), see Fixed section.
+
+### Not bugs (verified working)
+- **Palette handle_click**: works with correct coordinates (unit test passes).
+  Live failures were coordinate guessing; multi-select row offset is now fixed.
+- **Keyboard paint path**: both Space and Enter work in unit tests. Space was
+  stolen by timeline playback in live sessions; fixed in 6.0.47.
 
 ## Task History
 ### 1.1.1 — Create `figby` crate in workspace

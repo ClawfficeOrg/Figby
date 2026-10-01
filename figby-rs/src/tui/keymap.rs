@@ -551,7 +551,7 @@ pub const KEYMAP: &[KeyBinding] = &[
         description: "Select layer",
     },
     KeyBinding {
-        keys: "Enter / Space",
+        keys: "Enter",
         scope: Scope::LayerPanel,
         description: "Toggle layer visibility",
     },
@@ -630,6 +630,16 @@ pub const KEYMAP: &[KeyBinding] = &[
         keys: "[ / ]",
         scope: Scope::TextTool,
         description: "Scale text down / up",
+    },
+    KeyBinding {
+        keys: "Ctrl+R",
+        scope: Scope::TextTool,
+        description: "Rasterize selected text block to canvas",
+    },
+    KeyBinding {
+        keys: "Tab / Enter",
+        scope: Scope::TextTool,
+        description: "Focus side-panel button / activate (e.g. Rasterize)",
     },
     // Timeline
     KeyBinding {

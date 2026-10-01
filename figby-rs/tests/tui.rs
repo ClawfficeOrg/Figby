@@ -2959,23 +2959,20 @@ fn test_welcome_screen_font_and_image_import_keys_do_not_collide() {
 }
 
 #[test]
-fn test_space_starts_playback_even_with_layers_panel_open() {
+fn test_space_paints_even_with_layers_panel_open() {
     use crossterm::event::KeyCode;
     use figby::tui::side_panel::TabId;
     use figby::tui::timeline::TimelineFrame;
     use figby::tui::TuiApp;
 
-    // The side panel now opens by default on wide terminals, defaulting to
-    // the Layers tab — whose own Space/Enter binding (toggle visibility)
-    // previously shadowed the "Space starts timeline playback" binding
-    // entirely, since the Layers-panel key dispatch was checked earlier in
-    // handle_key_event. Space must start playback, not silently toggle the
-    // active layer's visibility, whenever the side panel happens to be
-    // open on the Layers tab.
+    // Space is the paint key. Timeline frames must not redirect it to
+    // playback, and the Layers tab must not redirect it to
+    // toggle-visibility. Playback starts from the transport bar / menu.
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.side_panel.open = true;
     app.side_panel.active_tab = TabId::Layers;
+    app.editor.toolbox.selected = figby::tui::toolbox::Tool::Brush;
     app.animation.timeline_state.add_frame(TimelineFrame {
         delay: 10,
         thumbnail: vec![],
@@ -2984,25 +2981,34 @@ fn test_space_starts_playback_even_with_layers_panel_open() {
         document_state: Vec::new(),
         layer_keyframes: vec![],
     });
-    app.animation.timeline_state.add_frame(TimelineFrame {
-        delay: 10,
-        thumbnail: vec![],
-        has_keyframe: true,
-        label: "F1".to_string(),
-        document_state: Vec::new(),
-        layer_keyframes: vec![],
-    });
-    assert!(app.editor.layer_stack.layers[0].visible);
 
+    let before = app
+        .editor
+        .layer_stack
+        .active_layer()
+        .buffer
+        .get(0, 0)
+        .copied();
     app.handle_key_event(KeyCode::Char(' '));
+    let after = app
+        .editor
+        .layer_stack
+        .active_layer()
+        .buffer
+        .get(0, 0)
+        .copied();
 
     assert!(
-        app.animation.inline_player.is_some(),
-        "Space should start in-canvas playback even when the Layers panel is focused"
+        app.animation.inline_player.is_none(),
+        "Space must not start playback when frames exist"
     );
     assert!(
         app.editor.layer_stack.layers[0].visible,
         "Space must not fall through to the Layers panel's toggle-visibility binding"
+    );
+    assert_ne!(
+        before, after,
+        "Space should paint at the cursor even with the Layers panel focused"
     );
 }
 
