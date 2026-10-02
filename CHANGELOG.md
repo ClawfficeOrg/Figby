@@ -18,6 +18,13 @@
   buffer — output sees the text, the live document does not lose it.
   `TextToolState::bake_blocks_into` is the shared bake; the destructive
   `commit_all_text_blocks` (which consumed blocks on save) is gone.
+- **Text blocks persist their font by name.** `TextBlock.font_name` is
+  recorded at commit time and resolved on restore against the session's font
+  list, so reopening a figmap on a machine with a different font ordering
+  keeps the intended face. Older files without the field fall back to the
+  legacy `font_index`, clamped into range; unresolvable names do the same.
+  `cached_rows` are stored either way, so blocks keep rendering even when no
+  font resolves.
 
 ### Fixed
 - **Space is paint-only.** Removed the Space→timeline-playback binding in

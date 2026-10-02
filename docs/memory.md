@@ -309,6 +309,8 @@ FIGlet flag semantics preserved exactly.
   `TextToolState::bake_blocks_into` — output sees the text, the live
   document keeps the objects. The earlier destructive
   `commit_all_text_blocks()` (consumed blocks on save) is removed.
+  Blocks also persist `font_name`, resolved by name on restore (legacy
+  `font_index` is the fallback for older files).
 - **Rasterize hit-rect off-by-one** ✅ — rect sat one row above the label.
   Fixed (6.0.47): rect matches the `[Rasterize]` row.
 - **Props buttons keyboard-unreachable** ✅ — `PropsPanel::handle_key` returned

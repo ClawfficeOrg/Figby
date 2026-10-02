@@ -13,6 +13,12 @@ use ratatui::Frame;
 pub struct TextBlock {
     pub id: usize,
     pub text: String,
+    /// Session-independent font identity. Preferred over `font_index`, which
+    /// only means something relative to one machine's font list.
+    #[serde(default)]
+    pub font_name: Option<String>,
+    /// Legacy positional index. Used only when `font_name` is absent (older
+    /// figmaps) or doesn't resolve in this session's font list.
     pub font_index: usize,
     pub x: i16,
     pub y: i16,
@@ -80,17 +86,30 @@ impl TextToolState {
         }
     }
 
-    /// Restore persisted text blocks (figmap load). Clamps `font_index` into
-    /// this session's font list and rebuilds `next_block_id` so new commits
-    /// never collide with restored ids.
+    /// Restore persisted text blocks (figmap load).
+    ///
+    /// Font resolution order per block:
+    /// 1. `font_name` matched against this session's font list (stable across
+    ///    machines/dirs — the whole point of storing the name).
+    /// 2. Legacy `font_index`, clamped into range (older figmaps).
+    /// 3. Index 0.
+    ///
+    /// Rebuilds `next_block_id` so new commits never collide with restored
+    /// ids. `cached_rows` are preserved, so blocks keep rendering even when
+    /// no font resolves.
     pub fn restore_blocks(&mut self, blocks: Vec<TextBlock>) {
         let nfonts = self.available_fonts.len();
         self.blocks = blocks
             .into_iter()
             .map(|mut b| {
-                if b.font_index >= nfonts {
-                    b.font_index = 0;
-                }
+                b.font_index = match b.font_name.as_deref() {
+                    Some(name) => self
+                        .available_fonts
+                        .iter()
+                        .position(|f| f == name)
+                        .unwrap_or_else(|| b.font_index.min(nfonts.saturating_sub(1))),
+                    None => b.font_index.min(nfonts.saturating_sub(1)),
+                };
                 b
             })
             .collect();
@@ -157,9 +176,11 @@ impl TextToolState {
         let height = rows.len();
         let id = self.next_block_id;
         self.next_block_id += 1;
+        let font_name = self.available_fonts.get(self.font_index).cloned();
         let block = TextBlock {
             id,
             text: self.text_buffer.clone(),
+            font_name,
             font_index: self.font_index,
             x: self.preview_pos.0,
             y: self.preview_pos.1,
@@ -1192,6 +1213,59 @@ mod tests {
                 .any(|(x, y)| buf.get(x, y).is_some_and(|c| c.ch != ' ')),
             "baked buffer should contain the text pixels"
         );
+    }
+
+    #[test]
+    fn test_restore_blocks_resolves_font_by_name() {
+        // font_name is the stable identity; font_index is legacy fallback.
+        // Restore must prefer the name match even when the index is stale.
+        let mut state = TextToolState::new(test_font_dir());
+        if state.available_fonts.len() < 2 {
+            return;
+        }
+        // Pick a font that is NOT at index 0 so a stale index is detectable.
+        let (target_idx, target_name) = state
+            .available_fonts
+            .iter()
+            .enumerate()
+            .find(|(i, _)| *i != 0)
+            .map(|(i, n)| (i, n.clone()))
+            .unwrap();
+
+        let make = |id: usize, name: Option<&str>, idx: usize| TextBlock {
+            id,
+            text: "Z".into(),
+            font_name: name.map(|s| s.to_string()),
+            font_index: idx,
+            x: 0,
+            y: 0,
+            scale: 1,
+            justification: Justification::Left,
+            text_color: None,
+            rotation: 0,
+            cached_rows: vec!["Z".into()],
+            width: 1,
+            height: 1,
+        };
+
+        // Name resolves → index follows the name, stale index ignored.
+        state.restore_blocks(vec![make(1, Some(&target_name), 0)]);
+        assert_eq!(
+            state.blocks[0].font_index, target_idx,
+            "font_name must win over stale font_index"
+        );
+
+        // Name missing from this session → fall back to clamped legacy index.
+        state.restore_blocks(vec![make(2, Some("no-such-font"), 9999)]);
+        assert_eq!(
+            state.blocks[0].font_index,
+            state.available_fonts.len() - 1,
+            "unresolvable name falls back to clamped legacy index"
+        );
+
+        // No name (older figmap) → clamped legacy index.
+        state.restore_blocks(vec![make(3, None, 0)]);
+        assert_eq!(state.blocks[0].font_index, 0);
     }
 
     #[test]

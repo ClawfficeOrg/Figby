@@ -1561,6 +1561,7 @@ mod tests {
         tt.blocks.push(TextBlock {
             id: 0,
             text: "X".into(),
+            font_name: None,
             font_index: 0,
             x: 0,
             y: 0,

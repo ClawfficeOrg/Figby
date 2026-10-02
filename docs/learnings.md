@@ -67,8 +67,10 @@
   serde-compatible with older files). Save never rasterizes. Export and every
   player path (TUI export, inline playback, CLI `--play`) bake a
   **non-destructive** copy via `TextToolState::bake_blocks_into` — output
-  sees the pixels, the document keeps the objects. The earlier destructive
-  `commit_all_text_blocks()` (consumed blocks on save) is removed.
+  sees the pixels, the document keeps the objects. Blocks persist `font_name`
+  and resolve by name on restore (legacy `font_index` is the fallback for
+  older files). The earlier destructive `commit_all_text_blocks()` (consumed
+  blocks on save) is removed.
 - **Rasterize button hard to hit via tmux mouse** — **two bugs, both fixed
   (6.0.47)**. (1) Hit-rect off-by-one: rect computed before the blank line
   was pushed, landing one row above the `[Rasterize]` label. (2) No keyboard

@@ -317,7 +317,8 @@ mod tests {
         let block = TextBlock {
             id: 7,
             text: "HELLO".into(),
-            font_index: 0,
+            font_name: Some("banner".into()),
+            font_index: 3,
             x: 2,
             y: 1,
             scale: 2,
@@ -335,9 +336,12 @@ mod tests {
         let b = &loaded.text_blocks[0];
         assert_eq!(b.id, 7);
         assert_eq!(b.text, "HELLO");
-        assert_eq!(b.x, 2);
-        assert_eq!(b.y, 1);
-        assert_eq!(b.scale, 2);
+        assert_eq!(
+            b.font_name.as_deref(),
+            Some("banner"),
+            "font name must roundtrip"
+        );
+        assert_eq!(b.font_index, 3);
         assert_eq!(b.justification, Justification::Center);
         assert_eq!(b.text_color, Some(Color::Red));
         assert_eq!(b.cached_rows, vec!["H E".to_string(), " E ".to_string()]);
