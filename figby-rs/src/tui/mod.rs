@@ -551,6 +551,7 @@ impl TuiApp {
                     let font_idx = self.editor.text_tool.font_index;
                     let just = self.editor.text_tool.justification;
                     let color = self.editor.text_tool.text_color;
+                    let mode = self.editor.text_tool.mode;
                     let scale = self.editor.text_tool.scale;
                     let px = self.editor.text_tool.preview_pos.0;
                     let py = self.editor.text_tool.preview_pos.1;
@@ -560,9 +561,12 @@ impl TuiApp {
                     preview_state.font_index = font_idx;
                     preview_state.justification = just;
                     preview_state.text_color = color;
+                    preview_state.mode = mode;
                     preview_state.scale = scale;
                     preview_state.preview_pos = (px, py);
-                    if preview_state.font.is_none() {
+                    if mode == crate::tui::tools::text::TextMode::Figlet
+                        && preview_state.font.is_none()
+                    {
                         preview_state.load_selected_font();
                     }
                     let (rows, width) = preview_state.render_rows_from_buffer().unwrap_or_default();

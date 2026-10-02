@@ -461,6 +461,8 @@ fn test_brush_cycle_shape() {
     brush.cycle_shape();
     assert_eq!(brush.shape, BrushShape::SprayPaint);
     brush.cycle_shape();
+    assert_eq!(brush.shape, BrushShape::Dither);
+    brush.cycle_shape();
     assert_eq!(brush.shape, BrushShape::Custom);
     brush.cycle_shape();
     assert_eq!(brush.shape, BrushShape::Square);

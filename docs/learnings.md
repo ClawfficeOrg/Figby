@@ -95,6 +95,26 @@
   full --output fonts/bob.flf` works. Freeware fonts with ReadMe.txt licenses
   are fine to convert. Bob renders as bold filled banner-style text.
 
+## 6.0.48 — Plain text mode + Dither brush
+
+- **Sub-mode toggle pattern transfers**: Brush's `Normal ↔ Marker` (`M` key)
+  is the template for Text's `Figlet ↔ Plain`. Guard: `M` must not toggle
+  while `editing` is true, or it types the letter instead. Auto-activate in
+  dispatch must not steal `M` before the tool handler runs (Emitter's
+  shortcut is lowercase `m`; uppercase `M` falls through to the tool).
+- **`String::len()` is bytes, not chars**: preview/padding code that assumes
+  1 byte/char breaks on multibyte density chars (`█` = 3 bytes). Use
+  `chars().count()` when measuring preview row width.
+- **Mini-preview char mapping can collapse distinct shapes**: mapping every
+  non-space cell to the brush char made Dither and Circle produce identical
+  previews. Keep density chars visible for Dither so shapes stay unique.
+- **Dither falloff center**: offsets are already centered on `(0,0)`; adding
+  `+0.5` pushed the true center off-cell so size-5 center landed on `▓`
+  instead of the brush char. Use raw `dx`/`dy` distance from center.
+- **C-parity `run_tests` fail when untracked fonts land in `fonts/`**:
+  `showfigfonts` listings include `bob.flf`, diverging from expected fixtures.
+  Pre-existing noise from font-conversion work, not a renderer regression.
+
 ## 6.0.39 — Figmap + Light Keyframing
 
 - **CanvasBuffer serde needs manual impl**: private fields (`cells`, `width`,

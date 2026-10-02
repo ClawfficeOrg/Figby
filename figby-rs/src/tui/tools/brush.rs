@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ratatui::style::Color;
 
-use crate::tui::brush::BrushShape;
+use crate::tui::brush::{dither_char, BrushShape};
 use crate::tui::canvas::{CanvasBuffer, CanvasCell};
 use crate::tui::palette::ColorTarget;
 
@@ -17,6 +17,8 @@ pub fn stamp_offsets(shape: BrushShape, size: u8) -> Vec<(i16, i16)> {
         BrushShape::Square => square_offsets(start, end),
         BrushShape::Circle => circle_offsets(size, start, end),
         BrushShape::SprayPaint => spray_offsets(size, start, end),
+        // Dither stamps a soft disk; erase/marker treat it like a circle.
+        BrushShape::Dither => circle_offsets(size, start, end),
         BrushShape::Custom => vec![(0, 0)],
     }
 }
@@ -71,12 +73,61 @@ pub fn paint_stamp(
     size: u8,
     cell: CanvasCell,
 ) {
+    if shape == BrushShape::Dither {
+        paint_dither_stamp(buffer, cx, cy, size, cell);
+        return;
+    }
     for (dx, dy) in stamp_offsets(shape, size) {
         let x = cx.wrapping_add(dx);
         let y = cy.wrapping_add(dy);
         if x >= 0 && y >= 0 {
             if let Some(c) = buffer.get_mut(x as usize, y as usize) {
                 *c = cell;
+            }
+        }
+    }
+}
+
+/// Soft block: center uses the brush char; edges dissolve through ▓▒░.
+fn paint_dither_stamp(buffer: &mut CanvasBuffer, cx: i16, cy: i16, size: u8, cell: CanvasCell) {
+    if size <= 1 {
+        if cx >= 0 && cy >= 0 {
+            if let Some(c) = buffer.get_mut(cx as usize, cy as usize) {
+                *c = cell;
+            }
+        }
+        return;
+    }
+    // Offsets are already centered on (0,0); radius = half extent.
+    let r = size as f64 / 2.0;
+    let half = size as i16 / 2;
+    let start = -half;
+    let end = start + size as i16 - 1;
+    for dy in start..=end {
+        for dx in start..=end {
+            let fx = dx as f64;
+            let fy = dy as f64;
+            let dist = (fx * fx + fy * fy).sqrt();
+            if dist > r {
+                continue;
+            }
+            let falloff = (1.0 - dist / r).clamp(0.0, 1.0);
+            let ch = if falloff > 0.75 {
+                cell.ch
+            } else {
+                dither_char(falloff)
+            };
+            let x = cx.wrapping_add(dx);
+            let y = cy.wrapping_add(dy);
+            if x >= 0 && y >= 0 {
+                if let Some(c) = buffer.get_mut(x as usize, y as usize) {
+                    *c = CanvasCell {
+                        ch,
+                        fg: cell.fg,
+                        bg: cell.bg,
+                        height: cell.height,
+                    };
+                }
             }
         }
     }
@@ -128,6 +179,7 @@ pub fn stamp_offsets_with_falloff(shape: BrushShape, size: u8) -> Vec<(i16, i16,
         BrushShape::Square => square_offsets_falloff(start, end, half),
         BrushShape::Circle => circle_offsets_falloff(size, start, end),
         BrushShape::SprayPaint => spray_offsets_falloff(size, start, end),
+        BrushShape::Dither => circle_offsets_falloff(size, start, end),
         BrushShape::Custom => vec![(0, 0, 1.0)],
     }
 }
@@ -505,6 +557,40 @@ mod tests {
         assert_eq!(buf.get(2, 2).unwrap().ch, '@');
         assert_eq!(buf.get(1, 2).unwrap().ch, ' ');
         assert_eq!(buf.get(2, 1).unwrap().ch, ' ');
+    }
+
+    #[test]
+    fn test_dither_stamp_soft_edges() {
+        let mut buf = canvas_10x10();
+        let cell = filled_cell();
+        paint_stamp(&mut buf, 5, 5, BrushShape::Dither, 5, cell);
+        // Center keeps the brush char.
+        assert_eq!(buf.get(5, 5).unwrap().ch, '@');
+        // Mid ring is a block-density char, not the brush char.
+        let mid = buf.get(5, 3).unwrap().ch;
+        assert!(
+            matches!(mid, '\u{2593}' | '\u{2592}' | '\u{2591}' | '@'),
+            "mid ring should be dither density, got {mid:?}"
+        );
+        // Far corner outside the disk stays empty.
+        assert_eq!(buf.get(0, 0).unwrap().ch, ' ');
+    }
+
+    #[test]
+    fn test_dither_size_one_is_solid() {
+        let mut buf = canvas_5x5();
+        let cell = filled_cell();
+        paint_stamp(&mut buf, 2, 2, BrushShape::Dither, 1, cell);
+        assert_eq!(buf.get(2, 2).unwrap().ch, '@');
+        assert_eq!(buf.get(1, 2).unwrap().ch, ' ');
+    }
+
+    #[test]
+    fn test_dither_char_density_order() {
+        assert_eq!(crate::tui::brush::dither_char(1.0), '\u{2588}');
+        assert_eq!(crate::tui::brush::dither_char(0.6), '\u{2593}');
+        assert_eq!(crate::tui::brush::dither_char(0.4), '\u{2592}');
+        assert_eq!(crate::tui::brush::dither_char(0.1), '\u{2591}');
     }
 
     #[test]

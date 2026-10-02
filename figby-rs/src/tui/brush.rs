@@ -9,6 +9,7 @@ pub enum BrushShape {
     Square,
     Circle,
     SprayPaint,
+    Dither,
     Custom,
 }
 
@@ -17,7 +18,8 @@ impl BrushShape {
         match self {
             BrushShape::Square => BrushShape::Circle,
             BrushShape::Circle => BrushShape::SprayPaint,
-            BrushShape::SprayPaint => BrushShape::Custom,
+            BrushShape::SprayPaint => BrushShape::Dither,
+            BrushShape::Dither => BrushShape::Custom,
             BrushShape::Custom => BrushShape::Square,
         }
     }
@@ -27,6 +29,7 @@ impl BrushShape {
             BrushShape::Square => "Square",
             BrushShape::Circle => "Circle",
             BrushShape::SprayPaint => "Spray",
+            BrushShape::Dither => "Dither",
             BrushShape::Custom => "Custom",
         }
     }
@@ -36,6 +39,7 @@ impl BrushShape {
             BrushShape::Square,
             BrushShape::Circle,
             BrushShape::SprayPaint,
+            BrushShape::Dither,
             BrushShape::Custom,
         ]
     }
@@ -159,6 +163,7 @@ impl BrushState {
             BrushShape::Square => render_square_preview(s),
             BrushShape::Circle => render_circle_preview(s),
             BrushShape::SprayPaint => render_spray_preview(s, self.density),
+            BrushShape::Dither => render_dither_preview(s),
             BrushShape::Custom => render_custom_preview(s),
         }
     }
@@ -171,11 +176,15 @@ impl BrushState {
             BrushShape::Square => render_square_preview(size),
             BrushShape::Circle => render_circle_preview(size),
             BrushShape::SprayPaint => render_spray_preview(size, self.density),
+            BrushShape::Dither => render_dither_preview(size),
             BrushShape::Custom => render_custom_preview(size),
         };
 
         let map_cell = |c: char| -> char {
-            if c != ' ' {
+            if self.shape == BrushShape::Dither {
+                // Keep ░▒▓█ so the falloff ring stays visible.
+                c
+            } else if c != ' ' {
                 self.ch
             } else {
                 ' '
@@ -196,10 +205,11 @@ impl BrushState {
                 result.push(" ".repeat(GRID));
             }
             for row in &full {
+                let row_chars = row.chars().count();
                 let mut line = String::with_capacity(GRID);
                 line.push_str(&" ".repeat(offset));
                 line.push_str(&row.chars().map(map_cell).collect::<String>());
-                line.push_str(&" ".repeat(GRID - offset - row.len()));
+                line.push_str(&" ".repeat(GRID.saturating_sub(offset + row_chars)));
                 result.push(line);
             }
             while result.len() < GRID {
@@ -382,6 +392,45 @@ fn render_custom_preview(size: usize) -> Vec<String> {
         .collect()
 }
 
+fn render_dither_preview(size: usize) -> Vec<String> {
+    if size == 0 {
+        return vec![String::new()];
+    }
+    let r = size as f64 / 2.0;
+    (0..size)
+        .map(|y| {
+            (0..size)
+                .map(|x| {
+                    // Match paint_dither_stamp: offsets centered on (0,0).
+                    let dx = x as f64 - (size as f64 - 1.0) / 2.0;
+                    let dy = y as f64 - (size as f64 - 1.0) / 2.0;
+                    let dist = (dx * dx + dy * dy).sqrt();
+                    if dist > r {
+                        ' '
+                    } else {
+                        let falloff = (1.0 - dist / r).clamp(0.0, 1.0);
+                        dither_char(falloff)
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Map circular falloff to a block-density character.
+/// Center is solid `█`; edges dissolve through `▓`/`▒`/`░`.
+pub fn dither_char(falloff: f64) -> char {
+    if falloff > 0.75 {
+        '\u{2588}' // █
+    } else if falloff > 0.5 {
+        '\u{2593}' // ▓
+    } else if falloff > 0.25 {
+        '\u{2592}' // ▒
+    } else {
+        '\u{2591}' // ░
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -406,6 +455,8 @@ mod tests {
         assert_eq!(brush.shape, BrushShape::Circle);
         brush.cycle_shape();
         assert_eq!(brush.shape, BrushShape::SprayPaint);
+        brush.cycle_shape();
+        assert_eq!(brush.shape, BrushShape::Dither);
         brush.cycle_shape();
         assert_eq!(brush.shape, BrushShape::Custom);
         brush.cycle_shape();
@@ -588,7 +639,7 @@ mod tests {
             };
             let preview = brush.render_preview(5);
             assert_eq!(preview.len(), 1);
-            assert_eq!(preview[0].len(), 1);
+            assert_eq!(preview[0].chars().count(), 1);
         }
     }
 
@@ -629,7 +680,7 @@ mod tests {
                 let preview = brush.render_mini_preview();
                 assert_eq!(preview.len(), 5, "size={size} shape={:?}", shape);
                 for row in &preview {
-                    assert_eq!(row.len(), 5, "size={size} shape={:?}", shape);
+                    assert_eq!(row.chars().count(), 5, "size={size} shape={:?}", shape);
                 }
             }
         }
@@ -649,12 +700,13 @@ mod tests {
             sub_y: 0,
         };
         let mut outputs = HashSet::new();
-        for _ in 0..4 {
+        // One pass over every shape — previews must all differ.
+        for _ in 0..BrushShape::all().len() {
             let preview = brush.render_mini_preview();
             outputs.insert(preview.join("\n"));
             brush.cycle_shape();
         }
-        assert_eq!(outputs.len(), 4);
+        assert_eq!(outputs.len(), BrushShape::all().len());
     }
 
     #[test]

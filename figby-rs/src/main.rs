@@ -1313,33 +1313,8 @@ fn main() {
                     // editable text shows only the layer pixels.
                     let composite = {
                         let mut buf = composite;
-                        // TextBlock bake needs cached_rows; reuse the same
-                        // per-cell logic as TextToolState::bake_blocks_into.
                         for block in &text_blocks {
-                            let scale = block.scale.max(1) as usize;
-                            let (bx, by) = (block.x, block.y);
-                            for (oy, row) in block.cached_rows.iter().enumerate() {
-                                for (ox, ch) in row.chars().enumerate() {
-                                    if ch == ' ' {
-                                        continue;
-                                    }
-                                    for dy in 0..scale {
-                                        for dx in 0..scale {
-                                            let cx = bx as usize + ox * scale + dx;
-                                            let cy = by as usize + oy * scale + dy;
-                                            if cx < buf.width() && cy < buf.height() {
-                                                let cell = figby::CanvasCell {
-                                                    ch,
-                                                    fg: block.text_color,
-                                                    bg: None,
-                                                    height: Some(255),
-                                                };
-                                                buf.set(cx, cy, cell);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            block.bake_into(&mut buf);
                         }
                         buf
                     };

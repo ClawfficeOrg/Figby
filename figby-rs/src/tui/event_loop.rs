@@ -217,9 +217,17 @@ impl TuiApp {
                 match target {
                     palette::ColorTarget::Foreground => {
                         self.editor.palette.target = palette::ColorTarget::Foreground;
+                        // Text tool: palette FG becomes block text color.
+                        if self.editor.toolbox.selected == Tool::Text {
+                            self.editor.text_tool.text_color = Some(*color);
+                        }
                     }
                     palette::ColorTarget::Background => {
                         self.editor.palette.target = palette::ColorTarget::Background;
+                        // Text tool: palette BG becomes block background.
+                        if self.editor.toolbox.selected == Tool::Text {
+                            self.editor.text_tool.bg_color = Some(*color);
+                        }
                     }
                 }
             }

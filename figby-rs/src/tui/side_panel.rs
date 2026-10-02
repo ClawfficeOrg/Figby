@@ -548,6 +548,8 @@ impl SidePanel {
         area: Rect,
         line_y: &mut u16,
     ) {
+        use crate::tui::tools::text::TextMode;
+
         lines.push(Line::from(Span::styled(
             " Text Tool ",
             Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
@@ -568,42 +570,98 @@ impl SidePanel {
             *line_y += 1;
         }
 
-        let font_name = if tt.font_index < tt.available_fonts.len() {
-            &tt.available_fonts[tt.font_index]
-        } else {
-            "?"
-        };
-
-        // Font: [<] name [>]
+        // Mode: Figlet | Plain (click cycles)
         {
             let y = area.y + *line_y;
             let x = area.x;
-            // prev button
+            let val_start = x + 6;
+            let val_w = tt.mode.name().len() as u16;
             rects.push(PropsWidgetRect {
                 rect: Rect {
-                    x: x + 6,
+                    x: val_start,
                     y,
-                    width: 3,
+                    width: val_w,
                     height: 1,
                 },
-                action: PropAction::FontPrev,
-            });
-            // next button
-            let name_start = x + 6 + 3 + 1 + font_name.len() as u16 + 1;
-            rects.push(PropsWidgetRect {
-                rect: Rect {
-                    x: name_start,
-                    y,
-                    width: 3,
-                    height: 1,
-                },
-                action: PropAction::FontNext,
+                action: PropAction::CycleSubMode,
             });
             lines.push(Line::from(vec![
-                Span::styled("Font:", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(format!(" [<] {} [>]", font_name)),
+                Span::styled("Mode:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(" {}", tt.mode.name())),
             ]));
             *line_y += 1;
+        }
+
+        if tt.mode == TextMode::Figlet {
+            let font_name = if tt.font_index < tt.available_fonts.len() {
+                &tt.available_fonts[tt.font_index]
+            } else {
+                "?"
+            };
+
+            // Font: [<] name [>]
+            {
+                let y = area.y + *line_y;
+                let x = area.x;
+                rects.push(PropsWidgetRect {
+                    rect: Rect {
+                        x: x + 6,
+                        y,
+                        width: 3,
+                        height: 1,
+                    },
+                    action: PropAction::FontPrev,
+                });
+                let name_start = x + 6 + 3 + 1 + font_name.len() as u16 + 1;
+                rects.push(PropsWidgetRect {
+                    rect: Rect {
+                        x: name_start,
+                        y,
+                        width: 3,
+                        height: 1,
+                    },
+                    action: PropAction::FontNext,
+                });
+                lines.push(Line::from(vec![
+                    Span::styled("Font:", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(format!(" [<] {} [>]", font_name)),
+                ]));
+                *line_y += 1;
+            }
+        } else {
+            // Plain mode: FG / BG from palette selection
+            let fg_label = match tt.text_color {
+                Some(c) => format!("{:?}", c),
+                None => "—".to_string(),
+            };
+            let bg_label = match tt.bg_color {
+                Some(c) => format!("{:?}", c),
+                None => "—".to_string(),
+            };
+            lines.push(Line::from(vec![
+                Span::styled("FG:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(" {}", fg_label)),
+            ]));
+            *line_y += 1;
+            {
+                let y = area.y + *line_y;
+                let x = area.x;
+                rects.push(PropsWidgetRect {
+                    rect: Rect {
+                        x: x + 4,
+                        y,
+                        width: bg_label.len().max(1) as u16,
+                        height: 1,
+                    },
+                    action: PropAction::TextBgToggle,
+                });
+                lines.push(Line::from(vec![
+                    Span::styled("BG:", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(format!(" {} ", bg_label)),
+                    Span::raw("(click clear)"),
+                ]));
+                *line_y += 1;
+            }
         }
 
         // Just: click to cycle
@@ -689,6 +747,10 @@ impl SidePanel {
         lines.push(Line::from(Span::raw(" Hover canvas to preview")));
         *line_y += 1;
         lines.push(Line::from(Span::raw(" Click to place text")));
+        if tt.mode == TextMode::Plain {
+            *line_y += 1;
+            lines.push(Line::from(Span::raw(" M: toggle Figlet/Plain")));
+        }
     }
 
     fn add_braille_props(
@@ -1320,6 +1382,8 @@ impl SidePanel {
         _theme: &Theme,
         rects: &mut Vec<PropsWidgetRect>,
     ) {
+        use crate::tui::tools::text::TextMode;
+
         let font_name = if tt.font_index < tt.available_fonts.len() {
             &tt.available_fonts[tt.font_index]
         } else {
@@ -1354,7 +1418,7 @@ impl SidePanel {
         })));
         line_y += 1;
 
-        // Font: [<] name [>]
+        // Mode row
         {
             let y = area.y + line_y;
             let x = area.x;
@@ -1362,24 +1426,65 @@ impl SidePanel {
                 rect: Rect {
                     x: x + 6,
                     y,
-                    width: 3,
+                    width: tt.mode.name().len() as u16,
                     height: 1,
                 },
-                action: PropAction::FontPrev,
-            });
-            let name_end = x + 6 + 3 + 1 + font_name.len() as u16 + 1;
-            rects.push(PropsWidgetRect {
-                rect: Rect {
-                    x: name_end,
-                    y,
-                    width: 3,
-                    height: 1,
-                },
-                action: PropAction::FontNext,
+                action: PropAction::CycleSubMode,
             });
             lines.push(Line::from(vec![
-                Span::styled("Font:", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(format!(" [<] {} [>]", font_name)),
+                Span::styled("Mode:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(" {}", tt.mode.name())),
+            ]));
+            line_y += 1;
+        }
+
+        if tt.mode == TextMode::Figlet {
+            // Font: [<] name [>]
+            {
+                let y = area.y + line_y;
+                let x = area.x;
+                rects.push(PropsWidgetRect {
+                    rect: Rect {
+                        x: x + 6,
+                        y,
+                        width: 3,
+                        height: 1,
+                    },
+                    action: PropAction::FontPrev,
+                });
+                let name_end = x + 6 + 3 + 1 + font_name.len() as u16 + 1;
+                rects.push(PropsWidgetRect {
+                    rect: Rect {
+                        x: name_end,
+                        y,
+                        width: 3,
+                        height: 1,
+                    },
+                    action: PropAction::FontNext,
+                });
+                lines.push(Line::from(vec![
+                    Span::styled("Font:", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(format!(" [<] {} [>]", font_name)),
+                ]));
+                line_y += 1;
+            }
+        } else {
+            let fg_label = match tt.text_color {
+                Some(c) => format!("{:?}", c),
+                None => "—".to_string(),
+            };
+            let bg_label = match tt.bg_color {
+                Some(c) => format!("{:?}", c),
+                None => "—".to_string(),
+            };
+            lines.push(Line::from(vec![
+                Span::styled("FG:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(" {}", fg_label)),
+            ]));
+            line_y += 1;
+            lines.push(Line::from(vec![
+                Span::styled("BG:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(" {}", bg_label)),
             ]));
             line_y += 1;
         }
@@ -1540,13 +1645,14 @@ mod tests {
 
         SidePanel::add_text_props(&mut lines, &tt, &mut rects, area, &mut line_y);
 
-        // Should have rects for: font prev, font next, just cycle, scale -, scale +
-        assert_eq!(rects.len(), 5);
+        // Figlet mode rects: Mode, FontPrev, FontNext, Just, Scale-, Scale+
+        assert!(rects.iter().any(|r| r.action == PropAction::CycleSubMode));
         assert!(rects.iter().any(|r| r.action == PropAction::FontPrev));
         assert!(rects.iter().any(|r| r.action == PropAction::FontNext));
         assert!(rects.iter().any(|r| r.action == PropAction::CycleJust));
         assert!(rects.iter().any(|r| r.action == PropAction::ScaleDown));
         assert!(rects.iter().any(|r| r.action == PropAction::ScaleUp));
+        assert_eq!(rects.len(), 6);
     }
 
     #[test]
@@ -1568,6 +1674,8 @@ mod tests {
             scale: 1,
             justification: Justification::Left,
             text_color: None,
+            bg_color: None,
+            mode: crate::tui::tools::text::TextMode::Figlet,
             rotation: 0,
             cached_rows: vec!["X".into()],
             width: 1,

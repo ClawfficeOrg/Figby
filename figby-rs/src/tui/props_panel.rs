@@ -38,6 +38,7 @@ pub enum PropAction {
     LineArrowCycle,
     LineCurveToggle,
     RasterizeBlock,
+    TextBgToggle,
 }
 
 #[derive(Debug, Clone)]

@@ -324,6 +324,8 @@ mod tests {
             scale: 2,
             justification: Justification::Center,
             text_color: Some(Color::Red),
+            bg_color: None,
+            mode: crate::tui::tools::text::TextMode::Figlet,
             rotation: 0,
             cached_rows: vec!["H E".into(), " E ".into()],
             width: 3,
@@ -345,6 +347,8 @@ mod tests {
         assert_eq!(b.justification, Justification::Center);
         assert_eq!(b.text_color, Some(Color::Red));
         assert_eq!(b.cached_rows, vec!["H E".to_string(), " E ".to_string()]);
+        assert_eq!(b.mode, crate::tui::tools::text::TextMode::Figlet);
+        assert!(b.bg_color.is_none());
 
         // The layer itself must NOT contain baked text pixels.
         let (_, _, _, _, text_blocks) = into_runtime(loaded);
@@ -357,6 +361,43 @@ mod tests {
             !has_text_pixel,
             "save must not rasterize text into layer buffers"
         );
+    }
+
+    #[test]
+    fn figmap_roundtrip_preserves_plain_text_blocks() {
+        use crate::render::Justification;
+        use crate::tui::tools::text::{TextBlock, TextMode};
+        use ratatui::style::Color;
+
+        let layers = make_test_layers();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("plain.figmap");
+
+        let block = TextBlock {
+            id: 1,
+            text: "Hi".into(),
+            font_name: None,
+            font_index: 0,
+            x: 0,
+            y: 0,
+            scale: 1,
+            justification: Justification::Left,
+            text_color: Some(Color::Green),
+            bg_color: Some(Color::Black),
+            mode: TextMode::Plain,
+            rotation: 0,
+            cached_rows: vec!["Hi".into()],
+            width: 2,
+            height: 1,
+        };
+        save_figmap(&layers, None, &[], &[], std::slice::from_ref(&block), &path).unwrap();
+
+        let loaded = load_figmap(&path).unwrap();
+        let b = &loaded.text_blocks[0];
+        assert_eq!(b.mode, TextMode::Plain);
+        assert_eq!(b.text_color, Some(Color::Green));
+        assert_eq!(b.bg_color, Some(Color::Black));
+        assert_eq!(b.cached_rows, vec!["Hi".to_string()]);
     }
 
     #[test]

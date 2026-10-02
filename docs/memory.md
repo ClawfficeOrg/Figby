@@ -325,6 +325,22 @@ FIGlet flag semantics preserved exactly.
   playback routes keys through, so F8 works in `play_fullscreen`/`play_raw`
   too. One key contract, not two.
 
+### 6.0.48 — Plain text mode + Dither brush
+
+- **Text tool has two modes**: `TextMode::{Figlet, Plain}`, toggled with `M`
+  (not while typing into the buffer — `M` types as a char when editing).
+  Plain commits ordinary characters as cells; no font required. Figmap
+  `TextBlock` gained `mode` + `bg_color` (`#[serde(default)]`).
+- **Palette FG/BG sync to text**: while Text tool is active, ColorChanged
+  sets `text_tool.text_color` / `bg_color`. BG props row click clears bg.
+- **Bake consolidation**: `TextBlock::bake_into` is the single bake path
+  (TUI `bake_blocks_into`, rasterize, CLI `--play`). Spaces never stamp as
+  glyphs; bg bar fills the bbox first when `bg_color` is set.
+- **Dither brush**: `BrushShape::Dither` — center = brush char, edges
+  dissolve `█▓▒░`. Cycle order Square→Circle→Spray→**Dither**→Custom.
+  Mini-preview keeps density chars (mapping all to brush char made it
+  collide with Circle).
+
 ### Open — needs investigation (2026-10-01 re-record session)
 - **Canvas resets after Text tool/side panel actions** — root cause found and
   fixed (6.0.47): A-key/AnimFrameAdd captured a flattened composite into

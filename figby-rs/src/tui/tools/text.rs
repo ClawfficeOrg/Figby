@@ -9,6 +9,32 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
+/// How committed text is rendered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+pub enum TextMode {
+    /// FIGfont pipeline (default).
+    #[default]
+    Figlet,
+    /// Plain characters — no font, one cell per char.
+    Plain,
+}
+
+impl TextMode {
+    pub fn cycle(&self) -> Self {
+        match self {
+            TextMode::Figlet => TextMode::Plain,
+            TextMode::Plain => TextMode::Figlet,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            TextMode::Figlet => "Figlet",
+            TextMode::Plain => "Plain",
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TextBlock {
     pub id: usize,
@@ -25,21 +51,106 @@ pub struct TextBlock {
     pub scale: u8,
     pub justification: Justification,
     pub text_color: Option<Color>,
+    /// Optional background fill behind the block (both modes).
+    #[serde(default)]
+    pub bg_color: Option<Color>,
+    /// Figlet vs plain. Older figmaps default to Figlet.
+    #[serde(default)]
+    pub mode: TextMode,
     pub rotation: u16,
     pub cached_rows: Vec<String>,
     pub width: usize,
     pub height: usize,
 }
 
+impl TextBlock {
+    /// Bake this block into `buffer` without removing it.
+    ///
+    /// Figlet: skip space gaps between glyphs. Plain: stamp every char
+    /// (spaces included) so word spacing survives. When `bg_color` is set,
+    /// the bounding box is filled first so spaces still paint a bar.
+    pub fn bake_into(&self, buffer: &mut CanvasBuffer) {
+        let scale = self.scale.max(1) as usize;
+        let (bx, by, _bw, _bh) = self.bbox();
+        if self.bg_color.is_some() {
+            for oy in 0..self.height {
+                for ox in 0..self.width {
+                    for dy in 0..scale {
+                        for dx in 0..scale {
+                            let cell_x = bx as usize + ox * scale + dx;
+                            let cell_y = by as usize + oy * scale + dy;
+                            if cell_x < buffer.width() && cell_y < buffer.height() {
+                                buffer.set(
+                                    cell_x,
+                                    cell_y,
+                                    CanvasCell {
+                                        ch: ' ',
+                                        fg: self.text_color,
+                                        bg: self.bg_color,
+                                        height: Some(255),
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (oy, row) in self.cached_rows.iter().enumerate() {
+            for (ox, ch) in row.chars().enumerate() {
+                // Spaces never stamp as glyphs; bg bar (if any) was already
+                // filled above. Figlet gaps and plain word-spacing both skip.
+                if ch == ' ' {
+                    continue;
+                }
+                for dy in 0..scale {
+                    for dx in 0..scale {
+                        let cell_x = bx as usize + ox * scale + dx;
+                        let cell_y = by as usize + oy * scale + dy;
+                        if cell_x < buffer.width() && cell_y < buffer.height() {
+                            buffer.set(
+                                cell_x,
+                                cell_y,
+                                CanvasCell {
+                                    ch,
+                                    fg: self.text_color,
+                                    bg: self.bg_color,
+                                    height: Some(255),
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn bbox(&self) -> (i16, i16, usize, usize) {
+        let scale = self.scale.max(1) as usize;
+        let (bb_w, bb_h) = match self.rotation {
+            90 | 270 => (self.height * scale, self.width * scale),
+            _ => (self.width * scale, self.height * scale),
+        };
+        let left_x = match self.justification {
+            Justification::Left => self.x,
+            Justification::Center => self.x - (bb_w as i16 / 2),
+            Justification::Right => self.x - bb_w as i16,
+        };
+        (left_x, self.y, bb_w, bb_h)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TextToolState {
     pub editing: bool,
     pub text_buffer: String,
+    pub mode: TextMode,
     pub font_index: usize,
     pub available_fonts: Vec<String>,
     pub font: Option<FIGfont>,
     pub justification: Justification,
     pub text_color: Option<Color>,
+    pub bg_color: Option<Color>,
     pub scale: u8,
     pub preview_pos: (i16, i16),
     pub show_preview: bool,
@@ -55,11 +166,13 @@ impl TextToolState {
         Self {
             editing: false,
             text_buffer: String::new(),
+            mode: TextMode::Figlet,
             font_index: 0,
             available_fonts: available,
             font: None,
             justification: Justification::Left,
             text_color: None,
+            bg_color: None,
             scale: 1,
             preview_pos: (0, 0),
             show_preview: false,
@@ -67,6 +180,14 @@ impl TextToolState {
             selected_block: None,
             font_dir: font_dir.to_string(),
             next_block_id: 0,
+        }
+    }
+
+    /// Toggle Figlet ↔ Plain (Brush Marker-style sub-mode).
+    pub fn cycle_mode(&mut self) {
+        self.mode = self.mode.cycle();
+        if self.mode == TextMode::Figlet {
+            self.load_selected_font();
         }
     }
 
@@ -123,6 +244,13 @@ impl TextToolState {
         if self.text_buffer.is_empty() {
             return None;
         }
+        if self.mode == TextMode::Plain {
+            let width = self.text_buffer.chars().count();
+            if width == 0 {
+                return None;
+            }
+            return Some((vec![self.text_buffer.clone()], width));
+        }
         if self.font.is_none() {
             self.load_selected_font();
         }
@@ -176,7 +304,11 @@ impl TextToolState {
         let height = rows.len();
         let id = self.next_block_id;
         self.next_block_id += 1;
-        let font_name = self.available_fonts.get(self.font_index).cloned();
+        let font_name = if self.mode == TextMode::Figlet {
+            self.available_fonts.get(self.font_index).cloned()
+        } else {
+            None
+        };
         let block = TextBlock {
             id,
             text: self.text_buffer.clone(),
@@ -187,6 +319,8 @@ impl TextToolState {
             scale: self.scale,
             justification: self.justification,
             text_color: self.text_color,
+            bg_color: self.bg_color,
+            mode: self.mode,
             rotation: 0,
             cached_rows: rows,
             width,
@@ -203,46 +337,26 @@ impl TextToolState {
         }
         let block = self.blocks.remove(idx);
         self.text_buffer = block.text;
+        self.mode = block.mode;
         self.font_index = block.font_index;
         self.justification = block.justification;
         self.text_color = block.text_color;
+        self.bg_color = block.bg_color;
         self.scale = block.scale;
         self.preview_pos = (block.x, block.y);
         self.selected_block = None;
         self.editing = true;
-        self.load_selected_font();
+        if self.mode == TextMode::Figlet {
+            self.load_selected_font();
+        }
     }
 
     /// Render every committed block into `buffer` WITHOUT removing them.
     /// Used before export / player capture so output sees text pixels while
     /// the editable text objects stay live in the document.
     pub fn bake_blocks_into(&self, buffer: &mut CanvasBuffer) {
-        for idx in 0..self.blocks.len() {
-            let block = &self.blocks[idx];
-            let scale = block.scale.max(1) as usize;
-            let (bx, by, _bw, _bh) = self.compute_bounding_box(idx);
-            for (oy, row) in block.cached_rows.iter().enumerate() {
-                for (ox, ch) in row.chars().enumerate() {
-                    if ch == ' ' {
-                        continue;
-                    }
-                    for dy in 0..scale {
-                        for dx in 0..scale {
-                            let cell_x = bx as usize + ox * scale + dx;
-                            let cell_y = by as usize + oy * scale + dy;
-                            if cell_x < buffer.width() && cell_y < buffer.height() {
-                                let cell = CanvasCell {
-                                    ch,
-                                    fg: block.text_color,
-                                    bg: None,
-                                    height: Some(255),
-                                };
-                                buffer.set(cell_x, cell_y, cell);
-                            }
-                        }
-                    }
-                }
-            }
+        for block in &self.blocks {
+            block.bake_into(buffer);
         }
     }
 
@@ -252,31 +366,7 @@ impl TextToolState {
             Some(i) if i < self.blocks.len() => i,
             _ => return,
         };
-        let block = &self.blocks[idx];
-        let scale = block.scale.max(1) as usize;
-        let (bx, by, _bw, _bh) = self.compute_bounding_box(idx);
-        for (oy, row) in block.cached_rows.iter().enumerate() {
-            for (ox, ch) in row.chars().enumerate() {
-                if ch == ' ' {
-                    continue;
-                }
-                for dy in 0..scale {
-                    for dx in 0..scale {
-                        let cell_x = bx as usize + ox * scale + dx;
-                        let cell_y = by as usize + oy * scale + dy;
-                        if cell_x < buffer.width() && cell_y < buffer.height() {
-                            let cell = CanvasCell {
-                                ch,
-                                fg: block.text_color,
-                                bg: None,
-                                height: Some(255),
-                            };
-                            buffer.set(cell_x, cell_y, cell);
-                        }
-                    }
-                }
-            }
-        }
+        self.blocks[idx].bake_into(buffer);
         self.blocks.remove(idx);
         self.selected_block = None;
     }
@@ -406,10 +496,7 @@ impl TextToolState {
             None => return,
         };
 
-        let font = match self.font.as_ref() {
-            Some(f) => f,
-            None => return,
-        };
+        let hardblank = self.font.as_ref().map(|f| f.hardblank);
 
         let (cx, cy) = self.preview_pos;
         let left_x = match self.justification {
@@ -422,8 +509,11 @@ impl TextToolState {
 
         for (oy, row) in output_rows.iter().enumerate() {
             for (ox, ch) in row.chars().enumerate() {
-                let cell_char = if ch == font.hardblank { ' ' } else { ch };
-                if cell_char == ' ' {
+                let cell_char = match hardblank {
+                    Some(hb) if ch == hb => ' ',
+                    _ => ch,
+                };
+                if cell_char == ' ' && self.bg_color.is_none() {
                     continue;
                 }
                 let base_x = left_x + scale * ox as i16;
@@ -436,7 +526,7 @@ impl TextToolState {
                             let cell = CanvasCell {
                                 ch: cell_char,
                                 fg: self.text_color,
-                                bg: None,
+                                bg: self.bg_color,
                                 height: Some(255),
                             };
                             buffer.set(bx as usize, by as usize, cell);
@@ -461,15 +551,22 @@ impl TextToolState {
 
         let mut lines: Vec<Line<'_>> = Vec::new();
 
-        let font_name = if self.font_index < self.available_fonts.len() {
-            &self.available_fonts[self.font_index]
-        } else {
-            "?"
-        };
         lines.push(Line::from(vec![
-            Span::styled("Font:", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(format!(" {}", font_name)),
+            Span::styled("Mode:", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(format!(" {}", self.mode.name())),
         ]));
+
+        if self.mode == TextMode::Figlet {
+            let font_name = if self.font_index < self.available_fonts.len() {
+                &self.available_fonts[self.font_index]
+            } else {
+                "?"
+            };
+            lines.push(Line::from(vec![
+                Span::styled("Font:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(" {}", font_name)),
+            ]));
+        }
 
         let just_str = match self.justification {
             Justification::Left => "Left",
@@ -546,6 +643,13 @@ impl TextToolState {
                 }
                 _ => {}
             }
+        }
+
+        // M toggles Figlet ↔ Plain when not typing into the buffer.
+        if !self.editing && code == KeyCode::Char('M') && !modifiers.contains(KeyModifiers::CONTROL)
+        {
+            self.cycle_mode();
+            return Some("Toggle text mode");
         }
 
         // Block operations (selected block, no editing)
@@ -661,6 +765,99 @@ mod tests {
         assert_eq!(state.scale, 1);
         assert_eq!(state.justification, Justification::Left);
         assert!(state.text_color.is_none());
+        assert_eq!(state.mode, TextMode::Figlet);
+        assert!(state.bg_color.is_none());
+    }
+
+    #[test]
+    fn test_plain_mode_commit_and_bake() {
+        let mut state = TextToolState::new(test_font_dir());
+        state.cycle_mode();
+        assert_eq!(state.mode, TextMode::Plain);
+
+        state.text_buffer = "Hi".into();
+        state.text_color = Some(Color::Red);
+        state.bg_color = Some(Color::Blue);
+        state.preview_pos = (1, 1);
+        state.commit_block();
+
+        assert_eq!(state.blocks.len(), 1);
+        let b = &state.blocks[0];
+        assert_eq!(b.mode, TextMode::Plain);
+        assert!(b.font_name.is_none(), "plain blocks carry no font name");
+        assert_eq!(b.cached_rows, vec!["Hi".to_string()]);
+        assert_eq!(b.width, 2);
+        assert_eq!(b.height, 1);
+        assert_eq!(b.text_color, Some(Color::Red));
+        assert_eq!(b.bg_color, Some(Color::Blue));
+
+        let mut buf = CanvasBuffer::new(10, 5);
+        state.bake_blocks_into(&mut buf);
+        let c0 = buf.get(1, 1).unwrap();
+        assert_eq!(c0.ch, 'H');
+        assert_eq!(c0.fg, Some(Color::Red));
+        assert_eq!(c0.bg, Some(Color::Blue));
+        let c1 = buf.get(2, 1).unwrap();
+        assert_eq!(c1.ch, 'i');
+        assert_eq!(c1.bg, Some(Color::Blue));
+        // Outside the block bbox — untouched.
+        assert_eq!(buf.get(3, 1).unwrap().ch, ' ');
+        assert!(buf.get(3, 1).unwrap().bg.is_none());
+    }
+
+    #[test]
+    fn test_plain_mode_internal_space_gets_bg_bar() {
+        let mut state = TextToolState::new(test_font_dir());
+        state.cycle_mode();
+        state.text_buffer = "A B".into();
+        state.text_color = Some(Color::White);
+        state.bg_color = Some(Color::Black);
+        state.preview_pos = (0, 0);
+        state.commit_block();
+
+        let mut buf = CanvasBuffer::new(10, 3);
+        state.bake_blocks_into(&mut buf);
+        // Glyph cells
+        assert_eq!(buf.get(0, 0).unwrap().ch, 'A');
+        assert_eq!(buf.get(2, 0).unwrap().ch, 'B');
+        // Internal space: bg bar filled, no glyph stamped.
+        let mid = buf.get(1, 0).unwrap();
+        assert_eq!(mid.ch, ' ');
+        assert_eq!(mid.bg, Some(Color::Black));
+    }
+
+    #[test]
+    fn test_plain_mode_m_toggles() {
+        let mut state = TextToolState::new(test_font_dir());
+        assert_eq!(state.mode, TextMode::Figlet);
+        let label = state.handle_key(KeyCode::Char('M'), KeyModifiers::NONE, (0, 0));
+        assert_eq!(state.mode, TextMode::Plain);
+        assert_eq!(label, Some("Toggle text mode"));
+        let label = state.handle_key(KeyCode::Char('M'), KeyModifiers::NONE, (0, 0));
+        assert_eq!(state.mode, TextMode::Figlet);
+        assert_eq!(label, Some("Toggle text mode"));
+    }
+
+    #[test]
+    fn test_plain_mode_editing_types_m_as_char() {
+        let mut state = TextToolState::new(test_font_dir());
+        state.editing = true;
+        let _ = state.handle_key(KeyCode::Char('M'), KeyModifiers::NONE, (0, 0));
+        assert_eq!(state.text_buffer, "M");
+        assert_eq!(
+            state.mode,
+            TextMode::Figlet,
+            "M must not toggle while editing"
+        );
+    }
+
+    #[test]
+    fn test_plain_mode_preview_rows_without_font() {
+        let mut state = TextToolState::new("/nonexistent/font/dir");
+        state.cycle_mode();
+        state.text_buffer = "OK".into();
+        let rows = state.render_rows_from_buffer();
+        assert_eq!(rows, Some((vec!["OK".to_string()], 2)));
     }
 
     #[test]
@@ -1242,6 +1439,8 @@ mod tests {
             scale: 1,
             justification: Justification::Left,
             text_color: None,
+            bg_color: None,
+            mode: TextMode::Figlet,
             rotation: 0,
             cached_rows: vec!["Z".into()],
             width: 1,

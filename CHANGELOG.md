@@ -1,4 +1,26 @@
 # Changelog
+## [6.0.48] - 2026-10-02
+
+### Added
+- **Plain text mode on the Text tool.** `TextMode::{Figlet, Plain}` — `M`
+  toggles (same pattern as Brush Marker). Plain mode commits ordinary
+  characters as canvas cells; no FIGfont is loaded or required. Props show
+  `Mode: Figlet/Plain`; in Plain mode the Font row is replaced by FG/BG.
+  Palette FG/BG set `text_color`/`bg_color` while the Text tool is active;
+  clicking the BG row clears it. Blocks persist `mode` + `bg_color`
+  (`#[serde(default)]`, older figmaps stay Figlet). Bake/rasterize/CLI
+  `--play` share `TextBlock::bake_into` — spaces skip unless a bg bar fills
+  the bounding box.
+- **Dither brush shape.** New `BrushShape::Dither` in the shape cycle
+  (Square → Circle → Spray → Dither → Custom). Soft disk: center uses the
+  brush char, edges dissolve through `█ → ▓ → ▒ → ░`. Size 1 is solid.
+  Config key `"dither"`. Mini-preview keeps density chars so it stays
+  distinct from Circle.
+
+### Changed
+- Text-block bake logic consolidated into `TextBlock::bake_into` (TUI export,
+  rasterize, and CLI `--play` all call it).
+
 ## [6.0.47] - 2026-10-01
 
 ### Added

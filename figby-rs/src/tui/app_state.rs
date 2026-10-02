@@ -1392,6 +1392,7 @@ impl TuiApp {
                 "square" => brush::BrushShape::Square,
                 "circle" => brush::BrushShape::Circle,
                 "spray" => brush::BrushShape::SprayPaint,
+                "dither" => brush::BrushShape::Dither,
                 "custom" => brush::BrushShape::Custom,
                 _ => brush.shape,
             };

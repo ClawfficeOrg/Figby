@@ -152,11 +152,15 @@ impl TuiApp {
             PropAction::DensityDown => self.editor.brush.density_down(),
             PropAction::CycleShape => self.editor.brush.cycle_shape(),
             PropAction::CycleSubMode => {
-                self.editor
-                    .brush
-                    .cycle_sub_mode(self.editor.palette.has_multi_select());
-                if self.editor.brush.sub_mode == brush::BrushSubMode::Normal {
-                    self.animation.marker_accum.clear();
+                if self.editor.toolbox.selected == Tool::Text {
+                    self.editor.text_tool.cycle_mode();
+                } else {
+                    self.editor
+                        .brush
+                        .cycle_sub_mode(self.editor.palette.has_multi_select());
+                    if self.editor.brush.sub_mode == brush::BrushSubMode::Normal {
+                        self.animation.marker_accum.clear();
+                    }
                 }
             }
             PropAction::CycleJust => {
@@ -270,6 +274,9 @@ impl TuiApp {
             }
             PropAction::LineCurveToggle => {
                 self.editor.line_state.curve.toggle();
+            }
+            PropAction::TextBgToggle => {
+                self.editor.text_tool.bg_color = None;
             }
             PropAction::RasterizeBlock => {
                 let block_idx = match self.editor.text_tool.selected_block {

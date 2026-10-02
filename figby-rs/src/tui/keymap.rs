@@ -442,7 +442,7 @@ pub const KEYMAP: &[KeyBinding] = &[
     KeyBinding {
         keys: "M",
         scope: Scope::Canvas,
-        description: "Toggle marker sub-mode (brush tool)",
+        description: "Toggle brush Marker / text Figlet↔Plain sub-mode",
     },
     KeyBinding {
         keys: "drag (Rotate tool)",
