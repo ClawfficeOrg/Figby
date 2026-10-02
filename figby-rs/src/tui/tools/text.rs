@@ -9,7 +9,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TextBlock {
     pub id: usize,
     pub text: String,
@@ -78,6 +78,26 @@ impl TextToolState {
         } else {
             self.font = None;
         }
+    }
+
+    /// Restore persisted text blocks (figmap load). Clamps `font_index` into
+    /// this session's font list and rebuilds `next_block_id` so new commits
+    /// never collide with restored ids.
+    pub fn restore_blocks(&mut self, blocks: Vec<TextBlock>) {
+        let nfonts = self.available_fonts.len();
+        self.blocks = blocks
+            .into_iter()
+            .map(|mut b| {
+                if b.font_index >= nfonts {
+                    b.font_index = 0;
+                }
+                b
+            })
+            .collect();
+        self.selected_block = None;
+        self.editing = false;
+        self.text_buffer.clear();
+        self.next_block_id = self.blocks.iter().map(|b| b.id + 1).max().unwrap_or(0);
     }
 
     pub(crate) fn render_rows_from_buffer(&mut self) -> Option<(Vec<String>, usize)> {
@@ -170,6 +190,39 @@ impl TextToolState {
         self.selected_block = None;
         self.editing = true;
         self.load_selected_font();
+    }
+
+    /// Render every committed block into `buffer` WITHOUT removing them.
+    /// Used before export / player capture so output sees text pixels while
+    /// the editable text objects stay live in the document.
+    pub fn bake_blocks_into(&self, buffer: &mut CanvasBuffer) {
+        for idx in 0..self.blocks.len() {
+            let block = &self.blocks[idx];
+            let scale = block.scale.max(1) as usize;
+            let (bx, by, _bw, _bh) = self.compute_bounding_box(idx);
+            for (oy, row) in block.cached_rows.iter().enumerate() {
+                for (ox, ch) in row.chars().enumerate() {
+                    if ch == ' ' {
+                        continue;
+                    }
+                    for dy in 0..scale {
+                        for dx in 0..scale {
+                            let cell_x = bx as usize + ox * scale + dx;
+                            let cell_y = by as usize + oy * scale + dy;
+                            if cell_x < buffer.width() && cell_y < buffer.height() {
+                                let cell = CanvasCell {
+                                    ch,
+                                    fg: block.text_color,
+                                    bg: None,
+                                    height: Some(255),
+                                };
+                                buffer.set(cell_x, cell_y, cell);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Render selected block into canvas buffer and remove the block.
@@ -1104,6 +1157,41 @@ mod tests {
         assert_eq!(byr, 200);
         assert_eq!(bwr, state.blocks[0].width * 3);
         assert_eq!(bhr, state.blocks[0].height * 3);
+    }
+
+    #[test]
+    fn test_bake_blocks_into_is_non_destructive() {
+        // Export/player capture must bake text pixels into a buffer while
+        // leaving the editable blocks intact — save keeps them as objects.
+        let mut state = TextToolState::new(test_font_dir());
+        if !state.available_fonts.contains(&"standard".to_string()) {
+            return;
+        }
+        state.font_index = state
+            .available_fonts
+            .iter()
+            .position(|n| n == "standard")
+            .unwrap();
+        state.load_selected_font();
+        state.text_buffer = "X".to_string();
+        state.preview_pos = (1, 1);
+        state.commit_block();
+        assert_eq!(state.blocks.len(), 1);
+
+        let mut buf = CanvasBuffer::new(20, 10);
+        state.bake_blocks_into(&mut buf);
+
+        assert_eq!(
+            state.blocks.len(),
+            1,
+            "bake_blocks_into must not remove blocks"
+        );
+        assert!(
+            (0..buf.height())
+                .flat_map(|y| (0..buf.width()).map(move |x| (x, y)))
+                .any(|(x, y)| buf.get(x, y).is_some_and(|c| c.ch != ' ')),
+            "baked buffer should contain the text pixels"
+        );
     }
 
     #[test]

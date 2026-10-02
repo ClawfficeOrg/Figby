@@ -61,11 +61,14 @@
   `load_timeline_frame` then cleared every layer beyond the snapshot on
   timeline navigation. **Fix**: both capture paths now snapshot every layer's
   buffer into `document_state`.
-- **Text tool overlay ≠ layer buffer** — **confirmed design gap, fixed
-  (6.0.47)**. Overlays (`canvas.text_overlays`) are render-only; figmap save
-  wrote only `layer_stack`. **Fix**: `commit_all_text_blocks()` bakes all
-  committed blocks into the active layer before `save_figmap` and export
-  capture.
+- **Text tool overlay ≠ layer buffer** — **resolved by an object model
+  (6.0.47)**. Overlays (`canvas.text_overlays`) stay render-only; committed
+  blocks now persist in `.figmap` as editable objects (`text_blocks`,
+  serde-compatible with older files). Save never rasterizes. Export and every
+  player path (TUI export, inline playback, CLI `--play`) bake a
+  **non-destructive** copy via `TextToolState::bake_blocks_into` — output
+  sees the pixels, the document keeps the objects. The earlier destructive
+  `commit_all_text_blocks()` (consumed blocks on save) is removed.
 - **Rasterize button hard to hit via tmux mouse** — **two bugs, both fixed
   (6.0.47)**. (1) Hit-rect off-by-one: rect computed before the blank line
   was pushed, landing one row above the `[Rasterize]` label. (2) No keyboard

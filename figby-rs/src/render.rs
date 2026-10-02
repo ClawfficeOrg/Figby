@@ -301,7 +301,7 @@ pub fn split_line(
 /// Output justification mode.
 ///
 /// Matches C `justification` global: 0=left, 1=center, 2=right.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Justification {
     Left,
     Center,

@@ -103,7 +103,7 @@ fn e2e_art_banner_is_animation_with_lights() {
 #[test]
 fn e2e_art_banner_into_runtime_composites() {
     let fig = load("banner-figby-finale.figmap");
-    let (layers, timeline, lights, _palette) = figby::figmap::into_runtime(fig);
+    let (layers, timeline, lights, _palette, _text_blocks) = figby::figmap::into_runtime(fig);
     assert!(!layers.layers.is_empty());
     assert_eq!(lights.len(), 2);
     let tl = timeline.expect("banner timeline survives into_runtime");

@@ -90,6 +90,11 @@ pub struct FigmapFile {
     pub palette: Vec<Swatch>,
     #[serde(default)]
     pub lights: Vec<Light>,
+    /// Editable Text-tool blocks. Persisted as objects (not rasterized) so
+    /// reopening restores them for further editing. Export/players bake a
+    /// non-destructive copy instead of consuming these.
+    #[serde(default)]
+    pub text_blocks: Vec<crate::tui::tools::text::TextBlock>,
 }
 
 #[derive(Debug)]
@@ -140,11 +145,15 @@ impl From<serde_json::Error> for FigmapError {
 }
 
 /// Save a document state as a `.figmap` file.
+///
+/// `text_blocks` are persisted as editable objects — the save path never
+/// rasterizes them (baking is export/player-only, and non-destructive).
 pub fn save_figmap(
     layers: &LayerStack,
     timeline: Option<&FigmapTimeline>,
     lights: &[Light],
     palette: &[Swatch],
+    text_blocks: &[crate::tui::tools::text::TextBlock],
     path: &Path,
 ) -> Result<(), FigmapError> {
     let width = layers
@@ -176,6 +185,7 @@ pub fn save_figmap(
         timeline: timeline.cloned(),
         palette: palette.to_vec(),
         lights: lights.to_vec(),
+        text_blocks: text_blocks.to_vec(),
     };
 
     let json = serde_json::to_string_pretty(&figmap)?;
@@ -215,10 +225,17 @@ pub fn load_figmap(path: &Path) -> Result<FigmapFile, FigmapError> {
     Ok(figmap)
 }
 
-/// Convert a loaded `FigmapFile` into runtime `LayerStack` + optional timeline state.
+/// Convert a loaded `FigmapFile` into runtime state:
+/// `(layers, timeline, lights, palette, text_blocks)`.
 pub fn into_runtime(
     figmap: FigmapFile,
-) -> (LayerStack, Option<FigmapTimeline>, Vec<Light>, Vec<Swatch>) {
+) -> (
+    LayerStack,
+    Option<FigmapTimeline>,
+    Vec<Light>,
+    Vec<Swatch>,
+    Vec<crate::tui::tools::text::TextBlock>,
+) {
     let layer_count = figmap.layers.len();
     let layers = LayerStack {
         layers: figmap.layers,
@@ -227,7 +244,13 @@ pub fn into_runtime(
         links: figmap.links,
     };
 
-    (layers, figmap.timeline, figmap.lights, figmap.palette)
+    (
+        layers,
+        figmap.timeline,
+        figmap.lights,
+        figmap.palette,
+        figmap.text_blocks,
+    )
 }
 
 #[cfg(test)]
@@ -263,7 +286,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.figmap");
 
-        save_figmap(&layers, None, &[], &[], &path).unwrap();
+        save_figmap(&layers, None, &[], &[], &[], &path).unwrap();
         let loaded = load_figmap(&path).unwrap();
 
         assert_eq!(loaded.version, 1);
@@ -273,6 +296,63 @@ mod tests {
         assert_eq!(loaded.layers.len(), 1);
         assert_eq!(loaded.layers[0].name, "Test");
         assert!(loaded.timeline.is_none());
+        assert!(
+            loaded.text_blocks.is_empty(),
+            "no text blocks saved → empty on load"
+        );
+    }
+
+    #[test]
+    fn figmap_roundtrip_preserves_editable_text_blocks() {
+        use crate::render::Justification;
+        use crate::tui::tools::text::TextBlock;
+        use ratatui::style::Color;
+
+        let layers = make_test_layers();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("text.figmap");
+
+        // A block that was committed but never rasterized — must survive
+        // save/load as an editable object, not become layer pixels.
+        let block = TextBlock {
+            id: 7,
+            text: "HELLO".into(),
+            font_index: 0,
+            x: 2,
+            y: 1,
+            scale: 2,
+            justification: Justification::Center,
+            text_color: Some(Color::Red),
+            rotation: 0,
+            cached_rows: vec!["H E".into(), " E ".into()],
+            width: 3,
+            height: 2,
+        };
+        save_figmap(&layers, None, &[], &[], std::slice::from_ref(&block), &path).unwrap();
+
+        let loaded = load_figmap(&path).unwrap();
+        assert_eq!(loaded.text_blocks.len(), 1, "text block must roundtrip");
+        let b = &loaded.text_blocks[0];
+        assert_eq!(b.id, 7);
+        assert_eq!(b.text, "HELLO");
+        assert_eq!(b.x, 2);
+        assert_eq!(b.y, 1);
+        assert_eq!(b.scale, 2);
+        assert_eq!(b.justification, Justification::Center);
+        assert_eq!(b.text_color, Some(Color::Red));
+        assert_eq!(b.cached_rows, vec!["H E".to_string(), " E ".to_string()]);
+
+        // The layer itself must NOT contain baked text pixels.
+        let (_, _, _, _, text_blocks) = into_runtime(loaded);
+        assert_eq!(text_blocks.len(), 1);
+        let buf = &layers.layers[0].buffer;
+        let has_text_pixel = (0..buf.height())
+            .flat_map(|y| (0..buf.width()).map(move |x| (x, y)))
+            .any(|(x, y)| buf.get(x, y).is_some_and(|c| c.ch == 'H'));
+        assert!(
+            !has_text_pixel,
+            "save must not rasterize text into layer buffers"
+        );
     }
 
     #[test]
@@ -296,7 +376,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test_anim.figmap");
 
-        save_figmap(&layers, Some(&timeline), &[], &[], &path).unwrap();
+        save_figmap(&layers, Some(&timeline), &[], &[], &[], &path).unwrap();
         let loaded = load_figmap(&path).unwrap();
 
         assert_eq!(loaded.kind, FigmapKind::Animation);

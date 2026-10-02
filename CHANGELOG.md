@@ -9,6 +9,16 @@
   key through, so F8 works there too. No-op when the timeline is empty.
   Listed in the keybindings overlay.
 
+### Changed
+- **Text blocks are document objects, not pixels.** `.figmap` now persists
+  committed Text-tool blocks in a `text_blocks` field (serde-compatible with
+  older files that lack it). Saving keeps them editable; reopening restores
+  them for further editing. Export and every player path (TUI export, inline
+  playback, CLI `--play`) bake a **non-destructive** copy into a cloned
+  buffer — output sees the text, the live document does not lose it.
+  `TextToolState::bake_blocks_into` is the shared bake; the destructive
+  `commit_all_text_blocks` (which consumed blocks on save) is gone.
+
 ### Fixed
 - **Space is paint-only.** Removed the Space→timeline-playback binding in
   `dispatch.rs` (it stole Space whenever frames existed, so live sessions

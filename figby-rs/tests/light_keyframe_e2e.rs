@@ -379,7 +379,7 @@ fn figmap_roundtrip_with_light_keyframes() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("test_light_kf.figmap");
 
-    figmap::save_figmap(&layers, Some(&timeline), &lights, &[], &path).unwrap();
+    figmap::save_figmap(&layers, Some(&timeline), &lights, &[], &[], &path).unwrap();
     let loaded = figmap::load_figmap(&path).unwrap();
 
     assert_eq!(loaded.kind, FigmapKind::Animation);

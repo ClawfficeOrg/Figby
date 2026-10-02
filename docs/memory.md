@@ -301,9 +301,14 @@ FIGlet flag semantics preserved exactly.
 - **A-key frame capture flattened to one layer** ✅ — `document_state` stored a
   single composite buffer, so timeline navigation cleared every other layer.
   Fixed (6.0.47): capture snapshots every layer. Same for AnimFrameAdd.
-- **Text overlays dropped on figmap save/export** ✅ — overlays are render-only;
-  save wrote only layer buffers. Fixed (6.0.47): `commit_all_text_blocks()`
-  bakes all committed blocks before save/export.
+- **Text overlays dropped on figmap save/export** ✅ — superseded by the
+  object model (6.0.47): `.figmap` persists committed Text-tool blocks in
+  `text_blocks` as **editable objects** (serde-compatible with older files).
+  Save never rasterizes. Export and every player path (TUI export, inline
+  playback, CLI `--play`) bake a **non-destructive** copy via
+  `TextToolState::bake_blocks_into` — output sees the text, the live
+  document keeps the objects. The earlier destructive
+  `commit_all_text_blocks()` (consumed blocks on save) is removed.
 - **Rasterize hit-rect off-by-one** ✅ — rect sat one row above the label.
   Fixed (6.0.47): rect matches the `[Rasterize]` row.
 - **Props buttons keyboard-unreachable** ✅ — `PropsPanel::handle_key` returned

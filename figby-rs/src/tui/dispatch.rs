@@ -2452,49 +2452,19 @@ impl TuiApp {
         }
     }
 
-    /// Bake every committed text block into the active layer. Used before
-    /// figmap save / export so overlays that only live on `canvas.text_overlays`
-    /// are not silently dropped. Expands the layer (and siblings) if a block
-    /// sits outside the current buffer, same as `PropAction::RasterizeBlock`.
-    fn commit_all_text_blocks(&mut self) {
+    /// Clone the layer stack with every text block baked into the active layer,
+    /// WITHOUT mutating the document. Export and player capture use this so
+    /// output sees text pixels while the editable blocks stay live.
+    fn layer_stack_with_text_baked(&self) -> crate::tui::layers::LayerStack {
+        let mut stack = self.editor.layer_stack.clone();
         if self.editor.text_tool.blocks.is_empty() {
-            return;
+            return stack;
         }
-        // Expand active layer to cover the union of all block bounding boxes.
-        let mut need_w = 0usize;
-        let mut need_h = 0usize;
-        for idx in 0..self.editor.text_tool.blocks.len() {
-            let (bx, by, bw, bh) = self.editor.text_tool.compute_bounding_box(idx);
-            need_w = need_w.max(bx as usize + bw);
-            need_h = need_h.max(by as usize + bh);
-        }
-        let aidx = self.editor.layer_stack.active;
-        let cur_w = self.editor.layer_stack.layers[aidx].buffer.width();
-        let cur_h = self.editor.layer_stack.layers[aidx].buffer.height();
-        if need_w > cur_w || need_h > cur_h {
-            let new_w = need_w.max(cur_w);
-            let new_h = need_h.max(cur_h);
-            let mut new_buf = crate::tui::canvas::CanvasBuffer::new(new_w, new_h);
-            for y in 0..cur_h {
-                for x in 0..cur_w {
-                    if let Some(cell) = self.editor.layer_stack.layers[aidx].buffer.get(x, y) {
-                        new_buf.set(x, y, *cell);
-                    }
-                }
-            }
-            self.editor.layer_stack.layers[aidx].buffer = new_buf;
-            self.editor.layer_stack.resize_all(new_w, new_h);
-        }
-        // Rasterize from the end so removals don't shift later indices.
-        while !self.editor.text_tool.blocks.is_empty() {
-            let last = self.editor.text_tool.blocks.len() - 1;
-            self.editor.text_tool.selected_block = Some(last);
-            self.editor
-                .text_tool
-                .rasterize_selected_block(&mut self.editor.layer_stack.layers[aidx].buffer);
-        }
-        self.editor.recomposite_canvas();
-        self.editor.mark_dirty();
+        let aidx = stack.active;
+        self.editor
+            .text_tool
+            .bake_blocks_into(&mut stack.layers[aidx].buffer);
+        stack
     }
 
     pub(crate) fn perform_save(&mut self, save_path: Option<std::path::PathBuf>) {
@@ -2505,10 +2475,8 @@ impl TuiApp {
 
         // Handle .figmap save
         if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
-            // Text overlays are render-only; bake every committed block into
-            // the active layer so the saved figmap matches what the canvas
-            // shows. Without this, save silently drops un-rasterized text.
-            self.commit_all_text_blocks();
+            // Text blocks are saved as editable objects — NOT rasterized.
+            // Baking happens only at export/player capture, non-destructively.
             let swatch_data = self.palette_editor.lighting_swatches();
             let figmap_timeline = if self.animation.timeline_state.frames.is_empty() {
                 None
@@ -2545,6 +2513,7 @@ impl TuiApp {
                 figmap_timeline.as_ref(),
                 &lights,
                 &palette,
+                &self.editor.text_tool.blocks,
                 &path,
             );
             match result {
@@ -2631,8 +2600,11 @@ impl TuiApp {
         self.new_document(crate::tui::documents::DocumentKind::Image);
         match crate::figmap::load_figmap(path) {
             Ok(figmap) => {
-                let (layers, timeline, lights, palette) = crate::figmap::into_runtime(figmap);
+                let (layers, timeline, lights, palette, text_blocks) =
+                    crate::figmap::into_runtime(figmap);
                 self.editor.layer_stack = layers;
+                // Text blocks come back as editable objects, not pixels.
+                self.editor.text_tool.restore_blocks(text_blocks);
                 if let Some(tl) = timeline {
                     self.animation.timeline_state.frames = tl.frames;
                     self.animation.timeline_state.fps = tl.fps;
@@ -2982,8 +2954,16 @@ impl TuiApp {
         // previously only GIF/APNG composed, so an ANSI animation export
         // received just the *current* frame (GPT review F-26).
         //
-        // Bake text overlays first: they are not part of layer buffers.
-        self.commit_all_text_blocks();
+        // Bake text blocks non-destructively into a cloned stack: output sees
+        // the pixels, the editable objects stay live in the document.
+        let baked_stack;
+        let layer_stack_ref: &crate::tui::layers::LayerStack =
+            if self.editor.text_tool.blocks.is_empty() {
+                &self.editor.layer_stack
+            } else {
+                baked_stack = self.layer_stack_with_text_baked();
+                &baked_stack
+            };
         let frames: Vec<Vec<Vec<canvas::CanvasCell>>> = if (format
             == crate::tui::export::ExportMode::Gif
             || format == crate::tui::export::ExportMode::Apng
@@ -2993,13 +2973,13 @@ impl TuiApp {
         {
             let ts = &self.animation.timeline_state;
             let swatch_data = self.palette_editor.lighting_swatches();
-            let lighting_ctx = if let Some(ref scene) = self.lighting.scene {
+            let lighting_ctx = if let Some(scene) = &self.lighting.scene {
                 if !self.lighting.light_keyframes.is_empty() {
                     Some(export::LightingContext {
                         base_scene: scene,
                         light_keyframes: &self.lighting.light_keyframes,
                         lut: &self.lighting.lut,
-                        layer_stack: &self.editor.layer_stack,
+                        layer_stack: layer_stack_ref,
                         max_shadow_distance: self.lighting.max_shadow_distance,
                         height_scale: self.lighting.height_scale,
                         palette_rgb_to_swatch: &self.ctx.palette_rgb_to_swatch,
@@ -3011,15 +2991,21 @@ impl TuiApp {
             } else {
                 None
             };
-            export::capture_timeline_frames(
-                ts,
-                &self.editor.layer_stack,
-                w,
-                h,
-                lighting_ctx.as_ref(),
-            )
-        } else {
+            export::capture_timeline_frames(ts, layer_stack_ref, w, h, lighting_ctx.as_ref())
+        } else if self.editor.text_tool.blocks.is_empty() {
             vec![cells.clone()]
+        } else {
+            // Static export with text: bake onto a canvas-sized buffer.
+            let mut buf = self.editor.canvas.buffer.clone();
+            self.editor.text_tool.bake_blocks_into(&mut buf);
+            let baked_cells: Vec<Vec<canvas::CanvasCell>> = (0..h)
+                .map(|y| {
+                    (0..w)
+                        .map(|x| buf.get(x, y).copied().unwrap_or_default())
+                        .collect()
+                })
+                .collect();
+            vec![baked_cells]
         };
 
         let (tx, rx) = mpsc::channel();
@@ -3109,13 +3095,25 @@ impl TuiApp {
         if self.animation.timeline_state.frames.is_empty() {
             return;
         }
-        let frames = export::capture_timeline_frames(
-            &self.animation.timeline_state,
-            &self.editor.layer_stack,
-            w,
-            h,
-            None, // player preview skips lighting for speed
-        );
+        let frames = {
+            // Bake text non-destructively so the player shows text pixels
+            // while the editable blocks stay live in the document.
+            let baked;
+            let stack_ref: &crate::tui::layers::LayerStack =
+                if self.editor.text_tool.blocks.is_empty() {
+                    &self.editor.layer_stack
+                } else {
+                    baked = self.layer_stack_with_text_baked();
+                    &baked
+                };
+            export::capture_timeline_frames(
+                &self.animation.timeline_state,
+                stack_ref,
+                w,
+                h,
+                None, // player preview skips lighting for speed
+            )
+        };
         if frames.is_empty() {
             return;
         }
@@ -4237,7 +4235,7 @@ mod open_in_new_tab_tests {
         let dir = std::env::temp_dir().join("figby-open-tab-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("doc.figmap");
-        crate::figmap::save_figmap(&app.editor.layer_stack, None, &[], &[], &path).unwrap();
+        crate::figmap::save_figmap(&app.editor.layer_stack, None, &[], &[], &[], &path).unwrap();
 
         app.perform_open_figmap(&path);
         assert_eq!(app.document_count(), 2);
