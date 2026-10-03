@@ -341,6 +341,27 @@ FIGlet flag semantics preserved exactly.
   Mini-preview keeps density chars (mapping all to brush char made it
   collide with Circle).
 
+### 6.0.49 — MCP recorder fix + Tools 01 recording attempt
+
+- **Recorder root cause:** MCP `record_start` typed asciinema into the Figby
+  TUI. Fix: `launch(..., record=name)` wraps
+  `asciinema rec --command "<figby> --tui" <cast>`; `record_stop` quits
+  Figby so the cast finalizes. Restart the MCP server to pick up
+  `scripts/figby-mcp.py`.
+- **asciinema 3.x:** `--command` is required; `rec file cmd` is invalid.
+- **Artifacts (partial, not polished):**
+  - `assets/e2e-art/timelapse/tools-01-start.figmap` — 60×20, layer Motif
+  - `assets/e2e-art/timelapse/tools-01-paint-and-color.figmap` — painted take
+  - `assets/e2e-art/recordings/tools-01-paint-and-color.{cast,gif}` — live
+    keyboard take (brush strokes + save; fill/eyedropper weak)
+- **figby-fonts dirty** is pre-existing case-collision (`Banner.flf` vs
+  `banner.flf` in submodule index), not content drift.
+- **C-parity `run_tests`** fails if untracked `fonts/bob.flf` pollutes
+  `fonts/` listings vs expected fixtures.
+- **Open for next session:** re-record toolbox shorts with fixed MCP
+  (`launch` + `record=`); optional figby-fonts case-rename commit; optional
+  Bob default-font preference in TUI/CLI; system-font `TextBlock` family name.
+
 ### Open — needs investigation (2026-10-01 re-record session)
 - **Canvas resets after Text tool/side panel actions** — root cause found and
   fixed (6.0.47): A-key/AnimFrameAdd captured a flattened composite into

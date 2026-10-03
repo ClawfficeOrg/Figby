@@ -1,4 +1,24 @@
 # Changelog
+## [6.0.49] - 2026-10-03
+
+### Fixed
+- **MCP recorder wraps Figby with asciinema correctly.** `record_start`
+  previously typed `asciinema rec …` *into* the live TUI (not a shell), which
+  polluted path dialogs, swallowed tool keys, and never wrote a `.cast`.
+  Launch now accepts `record=<name>` and starts
+  `asciinema rec --command "<figby> --tui" <cast>` as the outer process.
+  `record_start` on a live TUI errors and points at relaunch; `record_stop`
+  quits Figby (`q` / discard `n`) so asciinema finalizes the file, then
+  builds a GIF via `agg` when available.
+- **asciinema 3.x CLI:** command must be `--command "…" file`, not
+  `asciinema rec file command` (3.2 rejects trailing argv).
+
+### Notes
+- Toolbox-short take `assets/e2e-art/recordings/tools-01-paint-and-color.{cast,gif}`
+  plus checkpoints `timelapse/tools-01-{start,paint-and-color}.figmap` are
+  partial live-session artifacts (keyboard paint + save; fill/eyedropper weak).
+  Re-record when convenient; do not treat as polished storyboard finals.
+
 ## [6.0.48] - 2026-10-02
 
 ### Added

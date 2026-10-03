@@ -115,6 +115,33 @@
   `showfigfonts` listings include `bob.flf`, diverging from expected fixtures.
   Pre-existing noise from font-conversion work, not a renderer regression.
 
+## 6.0.49 — Live TUI recording (Tools 01 attempt)
+
+- **asciinema must wrap Figby, never be typed into it.** The old MCP
+  `record_start` did `tmux send-keys "asciinema rec …"` while the PTY was
+  running `figby --tui`. Symptom set: Open Image dialogs filled with fragments
+  like `verwrite --cols 140 …`, `b`/`M` swallowed (typed into path fields),
+  extra documents/layers, and `asciinema did not produce *.cast`.
+- **asciinema 3.2.0 syntax:** `asciinema rec --overwrite --cols C --rows R
+  --command "<bin> --tui" out.cast`. Trailing `file cmd` is invalid
+  (`unexpected argument`). Recording a non-shell command requires `--command`.
+- **Quit finalizes the cast:** when asciinema is the outer process, quit
+  Figby (`q`, then `n` to discard dirty docs) so the child exits and
+  asciinema writes the file. C-d/EOF injection into a TUI does not.
+- **Keyboard drive beats MCP mouse for tutorials:** Tools-menu `Alt+T` →
+  Enter selects Brush (first item); arrows move canvas cursor; Space paints;
+  `]`/`[` size; Alt+F → Down×4 → Enter = Save as Figmap. MCP mouse at
+  guessed palette/toolbox coords opened wrong dialogs.
+- **Canvas hit coords (140×50):** toolbox width 16; canvas border col 33
+  row 15 → inner col 34 row 16; buffer `(bx,by)` → screen `(34+bx, 16+by)`
+  at zoom 1. Palette test coords from unit tests: FG `(2,23)`, neutrals
+  `(2,25)` when panel origin is `(0,22)`.
+- **`figby-fonts` “modified content” can be pure mode/case noise:** submodule
+  tracks both `Banner.flf` and `banner.flf`; APFS is case-insensitive so git
+  always reports dirty even when blob hashes match HEAD.
+- **Restart MCP server after editing `scripts/figby-mcp.py`** — a long-lived
+  stdio server keeps the old code until the process exits.
+
 ## 6.0.39 — Figmap + Light Keyframing
 
 - **CanvasBuffer serde needs manual impl**: private fields (`cells`, `width`,

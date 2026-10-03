@@ -22,11 +22,13 @@ SERVER_NAME = f"figby-mcp-{os.getpid()}"
 server = None
 
 TOOLS = [
-    {"name": "launch", "description": "Launch Figby TUI in a controlled PTY. Optionally open workspace-relative figmap.",
+    {"name": "launch", "description": "Launch Figby TUI in a controlled PTY. Optionally open workspace-relative figmap. Pass record=name to wrap the session in asciinema from the start.",
      "inputSchema": {"type": "object", "properties": {
         "cols": {"type": "integer", "minimum": 80, "maximum": 240},
         "rows": {"type": "integer", "minimum": 24, "maximum": 100},
-        "figmap": {"type": "string", "description": "Workspace-relative .figmap path"}},
+        "figmap": {"type": "string", "description": "Workspace-relative .figmap path"},
+        "record": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+                   "description": "Cast basename; asciinema wraps figby --tui"}},
         "additionalProperties": False}},
 
     {"name": "resize", "description": "Resize Figby PTY; screen capture uses same dimensions.",
@@ -170,18 +172,38 @@ def launch(args):
         raise RuntimeError("Figby binary missing; build with cargo build --manifest-path figby-rs/Cargo.toml")
     COLS = max(80, min(240, int(args.get("cols", 140))))
     ROWS = max(24, min(100, int(args.get("rows", 50))))
+    record = args.get("record")
+    cast_path = None
+    if record:
+        cast_path = RECORDINGS / f"{record}.cast"
+        gif_path = cast_path.with_suffix(".gif")
+        if cast_path.exists() or gif_path.exists():
+            raise FileExistsError(f"refusing to overwrite {record}.cast or {record}.gif")
+        RECORDINGS.mkdir(parents=True, exist_ok=True)
+        # asciinema must be the OUTER process (learnings 2026-09-30).
+        # asciinema 3.x: command goes in --command, not as argv after FILE.
+        inner = f"{BIN} --tui"
+        tmux_cmd = (
+            f"asciinema rec --overwrite --cols {COLS} --rows {ROWS} "
+            f"--command {json.dumps(inner)} {cast_path}"
+        )
+    else:
+        tmux_cmd = f"{BIN} --tui"
     tmux_args = ["tmux", "-L", SERVER_NAME, "new-session", "-d", "-s", SERVER_NAME,
-                 "-x", str(COLS), "-y", str(ROWS), "-c", str(ROOT),
-                 str(BIN), "--tui"]
+                 "-x", str(COLS), "-y", str(ROWS), "-c", str(ROOT), "bash", "-lc", tmux_cmd]
     subprocess.run(tmux_args, cwd=ROOT, check=True, capture_output=True, timeout=10)
-    server = {"cols": COLS, "rows": ROWS, "recording": None, "started": time.monotonic()}
+    server = {
+        "cols": COLS, "rows": ROWS,
+        "recording": {"name": record, "cast_path": cast_path} if record else None,
+        "started": time.monotonic(),
+    }
     tmux("set-option", "-t", SERVER_NAME, "window-size", "manual")
-    time.sleep(1.5)
+    time.sleep(2.0)
     tmux("send-keys", "-t", SERVER_NAME, "Escape")
     time.sleep(0.2)
     if args.get("figmap"):
         open_figmap(args["figmap"])
-    return {"cols": COLS, "rows": ROWS, "screen": capture_screen()}
+    return {"cols": COLS, "rows": ROWS, "recording": record, "screen": capture_screen()}
 
 
 def open_figmap(relative_path):
@@ -285,23 +307,11 @@ def do_tool(name, args):
         return {"started": True, "screen": capture_screen()}
     if name == "record_start":
         if server.get("recording"):
-            raise RuntimeError("recording already active")
-        name = args["name"]
-        cast_path = RECORDINGS / f"{name}.cast"
-        gif_path = cast_path.with_suffix(".gif")
-        if cast_path.exists() or gif_path.exists():
-            raise FileExistsError(f"refusing to overwrite {name}.cast or {name}.gif; choose another name")
-        RECORDINGS.mkdir(parents=True, exist_ok=True)
-        # Start asciinema rec inside the tmux session. It captures the real
-        # PTY output stream, which agg renders correctly (unlike tmux pane
-        # snapshots with ANSI codes that break box-drawing/PUA layout).
-        tmux("send-keys", "-t", SERVER_NAME,
-             f"asciinema rec --overwrite --cols {COLS} --rows {ROWS} {cast_path}")
-        time.sleep(0.3)
-        tmux("send-keys", "-t", SERVER_NAME, "Enter")
-        time.sleep(1.0)
-        server["recording"] = {"name": name, "cast_path": cast_path}
-        return {"recording": name, "cols": COLS, "rows": ROWS}
+            raise RuntimeError("recording already active — launch with record=name instead")
+        raise RuntimeError(
+            "record_start cannot inject asciinema into a live TUI; "
+            "relaunch with launch(..., record='name')"
+        )
     if name == "record_stop":
         return stop_recording(bool(args.get("make_gif", True)))
     raise ValueError(f"unknown tool: {name}")
@@ -311,24 +321,37 @@ def stop_recording(make_gif):
     record = server.get("recording") if server else None
     if record is None:
         raise RuntimeError("no recording is active")
-    # Stop asciinema rec by sending EOF (Ctrl+D) to its shell
-    tmux("send-keys", "-t", SERVER_NAME, "C-d")
-    time.sleep(1.5)
-    # Now we're back at the regular shell; restart figby so the session is usable
-    tmux("send-keys", "-t", SERVER_NAME, f"{BIN} --tui")
-    time.sleep(0.3)
-    tmux("send-keys", "-t", SERVER_NAME, "Enter")
-    time.sleep(2.0)
-    server["recording"] = None
     path = record["cast_path"]
     gif_path = path.with_suffix(".gif")
+    # Quit Figby so asciinema (outer process) finalizes the cast.
+    tmux("send-keys", "-t", SERVER_NAME, "Escape")
+    time.sleep(0.2)
+    tmux("send-keys", "-t", SERVER_NAME, "q")
+    time.sleep(0.4)
+    screen = capture_screen()
+    if "Discard" in screen or "quit" in screen.lower() or "[N]" in screen:
+        tmux("send-keys", "-t", SERVER_NAME, "n")
+        time.sleep(0.3)
+    # Wait for asciinema child to exit and write the cast.
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline:
+        if path.exists() and path.stat().st_size > 0:
+            break
+        time.sleep(0.2)
+    server["recording"] = None
     if not path.exists():
         raise FileNotFoundError(f"asciinema did not produce {path}")
     if make_gif and shutil.which("agg"):
-        subprocess.run(["agg", "--quiet", "--fps-cap", "24", "--idle-time-limit", "1",
-                        str(path), str(gif_path)], cwd=ROOT, check=True)
-    return {"cast": str(path.relative_to(ROOT)), "gif": str(gif_path.relative_to(ROOT)) if gif_path.exists() else None,
-            "dimensions": f"{COLS}x{ROWS}"}
+        subprocess.run(
+            ["agg", "--quiet", "--fps-cap", "24", "--idle-time-limit", "1",
+             str(path), str(gif_path)],
+            cwd=ROOT, check=True,
+        )
+    return {
+        "cast": str(path.relative_to(ROOT)),
+        "gif": str(gif_path.relative_to(ROOT)) if gif_path.exists() else None,
+        "dimensions": f"{COLS}x{ROWS}",
+    }
 
 
 def response(message_id, result=None, error=None):
