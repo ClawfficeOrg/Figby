@@ -244,14 +244,53 @@ impl Scene {
         Scene { lights: Vec::new() }
     }
 
-    pub fn add_light(&mut self, light: Light) {
-        self.lights.push(light);
+    /// Default level for the global base light.
+    pub const DEFAULT_AMBIENT: f32 = 0.5;
+
+    pub fn has_ambient(&self) -> bool {
+        self.lights
+            .iter()
+            .any(|l| matches!(l, Light::Ambient { .. }))
     }
 
-    pub fn remove_light(&mut self, index: usize) {
-        if index < self.lights.len() {
-            self.lights.remove(index);
+    /// Guarantee the scene has a global ambient base light. Directional and
+    /// point lights alone leave every unlit or back-facing cell black, so any
+    /// scene that has lights always carries at least one ambient light.
+    pub fn ensure_ambient(&mut self) {
+        if !self.lights.is_empty() && !self.has_ambient() {
+            // Appended, not inserted, so existing light indices (keyframes) stay valid.
+            self.lights.push(Light::Ambient {
+                intensity: Self::DEFAULT_AMBIENT,
+                color: Rgb(255, 255, 255),
+                target: LightTarget::default(),
+            });
         }
+    }
+
+    pub fn add_light(&mut self, light: Light) {
+        let is_ambient = matches!(light, Light::Ambient { .. });
+        self.lights.push(light);
+        if !is_ambient {
+            self.ensure_ambient();
+        }
+    }
+
+    /// Remove a light. The last remaining ambient light is the scene's base
+    /// light and is kept; returns whether a light was removed.
+    pub fn remove_light(&mut self, index: usize) -> bool {
+        let Some(light) = self.lights.get(index) else {
+            return false;
+        };
+        let ambients = self
+            .lights
+            .iter()
+            .filter(|l| matches!(l, Light::Ambient { .. }))
+            .count();
+        if matches!(light, Light::Ambient { .. }) && ambients <= 1 {
+            return false;
+        }
+        self.lights.remove(index);
+        true
     }
 
     pub fn clear_lights(&mut self) {
@@ -1384,6 +1423,42 @@ mod tests {
             }
             _ => panic!("expected Ambient"),
         }
+    }
+
+    #[test]
+    fn scene_keeps_a_global_ambient_base_light() {
+        let mut scene = Scene::new();
+        scene.add_light(Light::Point {
+            position: (1.0, 1.0, 1.0),
+            intensity: 1.0,
+            color: Rgb(255, 255, 255),
+            attenuation: Attenuation::default(),
+            target: LightTarget::default(),
+        });
+        assert!(scene.has_ambient(), "adding a point light adds ambient");
+        let amb = scene
+            .lights
+            .iter()
+            .position(|l| matches!(l, Light::Ambient { .. }))
+            .unwrap();
+        assert!(!scene.remove_light(amb), "last ambient cannot be removed");
+        assert!(scene.has_ambient());
+        // a second ambient makes the first removable
+        scene.add_light(Light::Ambient {
+            intensity: 0.2,
+            color: Rgb(255, 255, 255),
+            target: LightTarget::default(),
+        });
+        assert!(scene.remove_light(amb));
+        assert!(scene.has_ambient());
+        let mut loaded = Scene {
+            lights: scene.lights.clone(),
+        };
+        loaded
+            .lights
+            .retain(|l| !matches!(l, Light::Ambient { .. }));
+        loaded.ensure_ambient();
+        assert!(loaded.has_ambient());
     }
 
     #[test]

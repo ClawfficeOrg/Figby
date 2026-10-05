@@ -2032,6 +2032,8 @@ impl TuiApp {
                 | KeyCode::Char('z')
                 | KeyCode::Char('Z')
                 | KeyCode::Left
+                | KeyCode::Char('j')
+                | KeyCode::Char('J')
                 | KeyCode::Right
                 | KeyCode::Up
                 | KeyCode::Down
@@ -2618,7 +2620,9 @@ impl TuiApp {
                     self.lighting.light_keyframes = tl.light_keyframes;
                 }
                 if !lights.is_empty() {
-                    self.lighting.scene = Some(crate::tui::lighting::Scene { lights });
+                    let mut scene = crate::tui::lighting::Scene { lights };
+                    scene.ensure_ambient();
+                    self.lighting.scene = Some(scene);
                 }
                 // Restore the saved palette swatches into the palette
                 // editor: the lighting LUT/shading path is built from this

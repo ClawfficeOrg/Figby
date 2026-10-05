@@ -1014,8 +1014,7 @@ impl LightingState {
             KeyCode::Delete => {
                 if let Some(ref mut scene) = self.scene {
                     let idx = self.panel.selected_index;
-                    if idx < scene.lights.len() {
-                        scene.remove_light(idx);
+                    if scene.remove_light(idx) {
                         if self.panel.selected_index >= scene.lights.len()
                             && !scene.lights.is_empty()
                         {

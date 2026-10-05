@@ -222,6 +222,13 @@ impl Palette {
         self.multi_select_indices.clear();
     }
 
+    pub fn toggle_multi_select_mode(&mut self) {
+        self.multi_select_active = !self.multi_select_active;
+        if self.multi_select_active {
+            self.multi_select_indices.clear();
+        }
+    }
+
     pub fn toggle_multi_select_color(&mut self, index: usize) {
         if let Some(pos) = self.multi_select_indices.iter().position(|i| *i == index) {
             self.multi_select_indices.remove(pos);
@@ -375,11 +382,9 @@ impl Palette {
                 }
                 true
             }
-            KeyCode::Tab => {
-                self.multi_select_active = !self.multi_select_active;
-                if self.multi_select_active {
-                    self.multi_select_indices.clear();
-                }
+            // Tab is the global next-mode key, so multi-select lives on `j`.
+            KeyCode::Char('j') | KeyCode::Char('J') => {
+                self.toggle_multi_select_mode();
                 true
             }
             KeyCode::Enter => {
@@ -555,7 +560,11 @@ impl Palette {
                 }
             }
         } else if let Some(idx) = self.standard_index_at(rel_col, swatch_row) {
-            self.select_color(idx);
+            if self.multi_select_active {
+                self.toggle_multi_select_color(idx);
+            } else {
+                self.select_color(idx);
+            }
             return true;
         }
 
@@ -720,7 +729,24 @@ mod tests {
     use super::ColorTarget;
     use super::Palette;
     use super::CHAR_GROUPS;
+    use crossterm::event::KeyCode;
     use ratatui::layout::Rect;
+
+    #[test]
+    fn test_j_key_enables_multi_select_and_clicks_toggle() {
+        let mut p = Palette::new();
+        assert!(!p.has_multi_select());
+        assert!(p.handle_key(KeyCode::Char('j')));
+        // Enter toggles the highlighted swatch while multi-select is active.
+        p.handle_key(KeyCode::Enter);
+        p.handle_key(KeyCode::Right);
+        p.handle_key(KeyCode::Enter);
+        assert!(p.has_multi_select());
+        assert_eq!(p.multi_select_indices, vec![0, 1]);
+        // Leaving the mode keeps the selection so Marker mode stays usable.
+        p.handle_key(KeyCode::Char('j'));
+        assert!(p.has_multi_select());
+    }
 
     #[test]
     fn test_braille_palette_group_length() {

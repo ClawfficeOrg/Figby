@@ -440,6 +440,11 @@ pub const KEYMAP: &[KeyBinding] = &[
         description: "Cycle brush shape",
     },
     KeyBinding {
+        keys: "J",
+        scope: Scope::Canvas,
+        description: "Palette multi-select mode (click swatches in order, then M for Marker)",
+    },
+    KeyBinding {
         keys: "M",
         scope: Scope::Canvas,
         description: "Toggle brush Marker / text Figlet↔Plain sub-mode",
@@ -746,7 +751,7 @@ pub const KEYMAP: &[KeyBinding] = &[
     KeyBinding {
         keys: "Delete",
         scope: Scope::Lighting,
-        description: "Remove selected light",
+        description: "Remove selected light (the last ambient base light is kept)",
     },
     KeyBinding {
         keys: "A",

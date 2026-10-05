@@ -1719,8 +1719,8 @@ mod tests {
 
         // With multi-select active, render inserts " Sel:" at inner row 1,
         // pushing swatches down one row. Same physical row must miss; row+1 hits.
-        // Tab is the public toggle for multi_select_active.
-        let _ = p.handle_key(KeyCode::Tab);
+        // `j` is the public toggle for multi_select_active.
+        let _ = p.handle_key(KeyCode::Char('j'));
         p.selected_color = None;
         let missed = p.handle_click(2, 3, area);
         assert!(
@@ -1730,7 +1730,7 @@ mod tests {
         p.selected_color = None;
         let hit = p.handle_click(2, 4, area);
         assert!(hit, "swatch click with multi-select needs +1 row offset");
-        assert!(p.selected_color.is_some());
+        assert_eq!(p.multi_select_indices.len(), 1, "click toggles the swatch");
     }
 
     #[test]

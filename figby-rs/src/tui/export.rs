@@ -298,8 +298,13 @@ impl ExportDialog {
     const LOOP_PRESETS: &'static [u16] = &[0, 1, 2, 5, 10];
 
     pub fn handle_key(&mut self, code: KeyCode) -> bool {
+        // Hotkeys (T/L/P/F/V/Space) only act while the suggested path is
+        // still untouched; once the user types, those letters are literal
+        // path characters (otherwise "title", "plot" etc. can't be typed).
+        let hotkeys = self.path_selected;
         // Animation export keys (only when GIF/APNG mode + timeline available)
-        if (self.format == ExportMode::Gif || self.format == ExportMode::Apng)
+        if hotkeys
+            && (self.format == ExportMode::Gif || self.format == ExportMode::Apng)
             && self.timeline_available
         {
             match code {
@@ -346,19 +351,20 @@ impl ExportDialog {
         }
 
         match code {
-            KeyCode::Char('T') | KeyCode::Char('t') => {
+            KeyCode::Char('T') | KeyCode::Char('t') if hotkeys => {
                 self.format = self.format.cycle();
-                self.path_selected = false;
                 true
             }
-            KeyCode::Char('L') | KeyCode::Char('l') if self.format != ExportMode::Ansi => {
+            KeyCode::Char('L') | KeyCode::Char('l')
+                if hotkeys && self.format != ExportMode::Ansi =>
+            {
                 self.export_layers = !self.export_layers;
-                self.path_selected = false;
                 true
             }
-            KeyCode::Char('P') | KeyCode::Char('p') if self.format != ExportMode::Ansi => {
+            KeyCode::Char('P') | KeyCode::Char('p')
+                if hotkeys && self.format != ExportMode::Ansi =>
+            {
                 self.use_transparency = !self.use_transparency;
-                self.path_selected = false;
                 true
             }
             KeyCode::Char(c) if !c.is_control() => {
@@ -986,6 +992,22 @@ mod tests {
     }
 
     #[test]
+    fn test_export_dialog_path_may_contain_hotkey_letters() {
+        let mut dialog = ExportDialog::new();
+        dialog.enter_export(ExportMode::Png);
+        // Hotkeys still work while the suggestion is untouched, and keep it selected.
+        dialog.handle_key(KeyCode::Char('t'));
+        assert_eq!(dialog.format, ExportMode::Apng);
+        // First typed non-hotkey char replaces the suggestion; after that t/l/p are literal.
+        for c in "a/title-plot".chars() {
+            dialog.handle_key(KeyCode::Char(c));
+        }
+        assert_eq!(dialog.path_buffer, "a/title-plot");
+        assert_eq!(dialog.format, ExportMode::Apng);
+        assert!(!dialog.export_layers);
+    }
+
+    #[test]
     fn test_export_dialog_enter_closes() {
         let mut dialog = ExportDialog::new();
         dialog.enter_export(ExportMode::Png);
@@ -1166,6 +1188,8 @@ mod tests {
         assert_eq!(dialog.fps, 12); // unchanged
                                     // In GIF mode with timeline, they should work
         dialog.format = ExportMode::Gif;
+        // Hotkeys only act while the suggested path is untouched.
+        dialog.path_selected = true;
         dialog.handle_key(KeyCode::Char('F'));
         assert_eq!(dialog.fps, 24);
     }
