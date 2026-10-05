@@ -266,11 +266,19 @@ fn procedural_pixel(ch: char, sx: usize, sy: usize) -> bool {
     }
 }
 
+/// Background for opaque (non-transparent) raster exports when a cell has no
+/// background colour. Matches the dark editor background, so GIF/PNG output
+/// is not transparent (which viewers render as white).
+const EXPORT_BG: (u8, u8, u8) = (12, 12, 22);
+/// Default foreground in opaque exports for cells with no foreground colour.
+const EXPORT_FG: (u8, u8, u8) = (204, 204, 204);
+
 fn rasterize_char(
     ch: char,
     fg: Option<Color>,
     bg: Option<Color>,
     scale: u8,
+    opaque: bool,
 ) -> Vec<Vec<(u8, u8, u8, u8)>> {
     let s = scale.max(1) as usize;
     let cw = 8 * s;
@@ -295,10 +303,12 @@ fn rasterize_char(
             };
 
             if pixel_on {
-                let (r, g, b) = fg_rgb.unwrap_or((0, 0, 0));
+                let (r, g, b) = fg_rgb.unwrap_or(if opaque { EXPORT_FG } else { (0, 0, 0) });
                 *pixel = (r, g, b, 255);
             } else if let Some((r, g, b)) = bg_rgb {
                 *pixel = (r, g, b, 255);
+            } else if opaque {
+                *pixel = (EXPORT_BG.0, EXPORT_BG.1, EXPORT_BG.2, 255);
             } else {
                 *pixel = (0, 0, 0, 0);
             }
@@ -382,7 +392,7 @@ fn render_frame(
             } else {
                 '?'
             };
-            let char_pixels = rasterize_char(ch, cell.fg, cell.bg, scale);
+            let char_pixels = rasterize_char(ch, cell.fg, cell.bg, scale, !transparent);
             let base_y = cy * char_h;
             let base_x = cx * char_w;
             for dy in 0..char_h {
@@ -640,8 +650,23 @@ mod tests {
         render_frame(&cells, 1, false)
             .iter()
             .flatten()
-            .filter(|p| p.3 == 255)
+            .filter(|p| (p.0, p.1, p.2) == (255, 0, 0))
             .count()
+    }
+
+    #[test]
+    fn test_opaque_export_has_no_transparent_pixels() {
+        let cells = make_buffer(2, 2, ' ', None, None);
+        let px = render_frame(&cells, 1, false);
+        assert!(
+            px.iter().flatten().all(|p| p.3 == 255),
+            "opaque export fills empty cells"
+        );
+        let px = render_frame(&cells, 1, true);
+        assert!(
+            px.iter().flatten().all(|p| p.3 == 0),
+            "transparent export keeps alpha 0"
+        );
     }
 
     #[test]

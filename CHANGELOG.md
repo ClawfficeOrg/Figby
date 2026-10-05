@@ -2,6 +2,9 @@
 ## [Unreleased]
 
 ### Added
+- `Dockerfile` + `docker-compose.yml` (+ `.dockerignore`): build Figby and run the TUI/CLI with the bundled
+  `fonts/` and the `figby-fonts` submodule mounted as FIGlet font dirs
+  (`docker compose run --rm figby`).
 - Timelapse chapter 4 (`04-title-shading-lighting-v3.{cast,gif}`, `driver/ch4.py`): FIGBY title, Marker-brush
   shading, static `.txt`/`.ansi` exports and a light-sweep GIF (`timelapse/title/`).
 - `assets/templates/figby-header.ftmp`: a working TOML starter template (render-tested). The YAML-style
@@ -13,7 +16,13 @@
 - Emitter particles now render in inline playback and ride the layer that was active when the
   emitter was placed (keyframed position offset moves the emission point).
 
+### Changed
+- Welcome dialog title uses the embedded `bob` FIGfont (`figby-rs/assets/fonts/bob.flf`) instead of the old
+  hand-drawn / system-font title, so it no longer depends on installed FIGlet fonts.
+
 ### Fixed
+- Opaque PNG/GIF/APNG exports left cells without a background fully transparent (white in most viewers);
+  they now use the dark editor background and a light default foreground. Transparent export is unchanged.
 - Marker brush could not be enabled: palette multi-select lived on `Tab` (global next-mode key). It is now
   `J`, and clicking swatches toggles them while it is active; `M` then enables Marker mode.
 - Export dialog T/L/P/F/V hotkeys swallowed those letters in typed paths; they now act only while the

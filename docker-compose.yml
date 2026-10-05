@@ -1,0 +1,14 @@
+# Run the Figby TUI with the bundled fonts and the figby-fonts submodule:
+#   git submodule update --init figby-fonts
+#   docker compose run --rm figby            # TUI
+#   docker compose run --rm figby -f slant "Hello"   # CLI
+services:
+  figby:
+    build: .
+    image: figby:local
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./figby-fonts/fonts:/usr/local/share/figlet:ro   # figby-fonts submodule
+      - ./fonts:/usr/share/figlet:ro                     # fonts bundled in this repo
+      - ./work:/work                                     # saved/exported files

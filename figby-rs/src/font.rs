@@ -527,7 +527,7 @@ fn extract_first_zip_entry(bytes: &[u8]) -> Result<Vec<u8>, FontError> {
 }
 
 /// Parse font content as either FLF or TLF (delegates to parse_tlf_font).
-fn parse_font_bytes(content: &str) -> Result<FIGfont, FontError> {
+pub(crate) fn parse_font_bytes(content: &str) -> Result<FIGfont, FontError> {
     parse_tlf_font(content)
 }
 

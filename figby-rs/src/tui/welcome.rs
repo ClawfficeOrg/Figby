@@ -83,15 +83,8 @@ impl WelcomeScreen {
             })
             .max()
             .unwrap_or(30) as u16;
-        let title_lines_large = render_title_with_font("Computerist-20");
-        let title_lines_small = {
-            let s = render_title_with_font("Computerist-12");
-            if s.is_empty() {
-                ascii_fallback_title()
-            } else {
-                s
-            }
-        };
+        let title_lines_large = render_title_with_bob();
+        let title_lines_small = ascii_fallback_title();
         Self {
             show: true,
             scroll_offset: 0,
@@ -584,31 +577,29 @@ fn build_action_row<'a>(
     ])
 }
 
-fn render_title_with_font(name: &str) -> Vec<String> {
-    let font_dirs = ["/usr/share/figlet", "/usr/local/share/figlet"];
-    if let Ok(font) = crate::font::load_font(name, &font_dirs) {
-        let rows = crate::render::render_string(&font, "FIGBY");
-        let trimmed: Vec<String> = rows
-            .into_iter()
-            .map(|l| l.replace('\u{00A0}', " "))
-            .collect();
-        let last_content = trimmed
-            .iter()
-            .rposition(|l| !l.trim_end().is_empty())
-            .unwrap_or(0);
-        return trimmed[..=last_content].to_vec();
-    }
-    Vec::new()
+/// The bundled `bob` FIGfont (same one used in the recordings), embedded so
+/// the welcome title never depends on system FIGlet fonts being installed.
+const BOB_FONT: &str = include_str!("../../assets/fonts/bob.flf");
+
+fn render_title_with_bob() -> Vec<String> {
+    let Ok(font) = crate::font::parse_font_bytes(BOB_FONT) else {
+        return Vec::new();
+    };
+    let rows = crate::render::render_string(&font, "FIGBY");
+    let trimmed: Vec<String> = rows
+        .into_iter()
+        .map(|l| l.replace('\u{00A0}', " "))
+        .collect();
+    let last_content = trimmed
+        .iter()
+        .rposition(|l| !l.trim_end().is_empty())
+        .unwrap_or(0);
+    trimmed[..=last_content].to_vec()
 }
 
+/// Narrow-terminal fallback: plain text, not the old hand-drawn art.
 fn ascii_fallback_title() -> Vec<String> {
-    vec![
-        " _____ _  ____ ______   __".to_string(),
-        "|  ___| |/ ___|  _ \\ \\ / /".to_string(),
-        "| |_  | | |  _| |_) \\ V / ".to_string(),
-        "|  _| | | |_| |  _ < | |  ".to_string(),
-        "|_|   |_|\\____|_| \\_\\|_|  ".to_string(),
-    ]
+    vec!["F I G B Y".to_string()]
 }
 
 fn parse_ansi_lines(text: &str) -> Vec<Line<'static>> {
