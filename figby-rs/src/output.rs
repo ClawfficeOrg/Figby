@@ -34,7 +34,7 @@ impl std::fmt::Display for ExportError {
 
 impl std::error::Error for ExportError {}
 
-fn color_to_rgb(color: Color) -> (u8, u8, u8) {
+pub(crate) fn color_to_rgb(color: Color) -> (u8, u8, u8) {
     match color {
         Color::Rgb(r, g, b) => (r, g, b),
         Color::Indexed(i) => xterm_to_rgb(i),

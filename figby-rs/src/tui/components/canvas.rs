@@ -173,7 +173,10 @@ fn find_swatch_for_cell(
     if swatch_data.is_empty() {
         return 0;
     }
-    if let Some(ratatui::style::Color::Rgb(r, g, b)) = cell.fg {
+    // Palette colours are often ANSI/indexed, not RGB; resolve them all so lit
+    // art keeps its hues instead of falling through to swatch 0.
+    if let Some(fg) = cell.fg {
+        let (r, g, b) = crate::output::color_to_rgb(fg);
         if let Some(&idx) = rgb_to_swatch.get(&(r, g, b)) {
             return idx;
         }

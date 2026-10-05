@@ -139,8 +139,8 @@ impl Default for Attenuation {
     fn default() -> Self {
         Attenuation {
             constant: 1.0,
-            linear: 0.09,
-            quadratic: 0.032,
+            linear: 0.02,
+            quadratic: 0.004,
         }
     }
 }
@@ -1113,7 +1113,8 @@ mod tests {
         };
         let nmap = NormalMap::new(1, 1);
         let (lum, _) = shade_canvas(&scene, &nmap, |_, _| false, 50);
-        let expected = 1.0 / (1.0 + 0.09 * 5.0 + 0.032 * 25.0);
+        let a = Attenuation::default();
+        let expected = 1.0 / (a.constant + a.linear * 5.0 + a.quadratic * 25.0);
         assert!(
             (lum[0][0] - expected).abs() < 0.001,
             "expected {}, got {}",

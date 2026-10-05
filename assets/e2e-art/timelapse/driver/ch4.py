@@ -90,9 +90,6 @@ def lighting():
     alt("v"); [key("Down") for _ in range(6)]; key("Enter"); time.sleep(.8)   # View > Palette Editor: Recent -> lighting swatches
     key("Escape"); time.sleep(.5)
     text("G"); time.sleep(.8); key("P"); time.sleep(.6)
-    key("Up"); time.sleep(.2)
-    for _ in range(2): text("-"); time.sleep(.15)         # dim the ambient so the point light reads
-    key("Down"); time.sleep(.2)
     move_light(4, 10); time.sleep(1.2)
     move_light(30, 10); time.sleep(1.5)
     key("Escape"); time.sleep(.8)

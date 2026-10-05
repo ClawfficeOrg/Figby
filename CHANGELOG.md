@@ -28,6 +28,9 @@
   hand-drawn / system-font title, so it no longer depends on installed FIGlet fonts.
 
 ### Fixed
+- Lighting ignored ANSI/indexed palette colours (only RGB cells matched a swatch), so lit art fell onto
+  swatch 0 and went grey. Every colour used by lit layers now gets a lighting swatch and keeps its hue.
+- Point lights default to a gentler falloff (linear 0.02, quadratic 0.004) so the lit area is visible.
 - Opaque PNG/GIF/APNG exports left cells without a background fully transparent (white in most viewers);
   they now use the dark editor background and a light default foreground. Transparent export is unchanged.
 - Marker brush could not be enabled: palette multi-select lived on `Tab` (global next-mode key). It is now
