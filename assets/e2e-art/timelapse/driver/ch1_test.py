@@ -1,0 +1,11 @@
+from ui import *
+call("stop"); call("launch", {"cols":140,"rows":50})
+new_image(92,34)
+key("F2"); bs(24); text("Background"); key("Enter")
+tool("brush"); set_char("░"); pick_navy(); tool("fill"); click(*cell(40,15)); time.sleep(.3)
+new_layer("Stars")
+tool("brush"); set_char("*"); set_size(1)
+pick("neutral",3)
+random.seed(7)
+for _ in range(14): dab(random.randrange(0,92), random.randrange(0,34))
+print(snap())
