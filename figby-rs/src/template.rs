@@ -1342,6 +1342,27 @@ width = 80
     }
 
     #[test]
+    fn test_bundled_header_template_renders() {
+        // The bundled TOML starter template must keep parsing and rendering.
+        // (The YAML-style templates in assets/templates are deferred-format drafts.)
+        let src = include_str!("../../assets/templates/figby-header.ftmp");
+        let tmpl = parse_ftmp(src).expect("bundled header template parses");
+        let config = RenderConfig {
+            font_dir: "../fonts".to_string(),
+            term_width: 80,
+            override_width: None,
+            base_dir: None,
+            expand_env: false,
+        };
+        let out = render_template(&tmpl, &config).expect("bundled header template renders");
+        assert!(out.len() >= 12, "title + tagline rows present");
+        assert!(
+            out.iter().any(|l| l.contains("|_|")),
+            "FIGlet glyphs rendered"
+        );
+    }
+
+    #[test]
     fn test_resolve_text_in_template_ftmp() {
         // Verify that ${VAR} in a variable's text field gets resolved.
         // Set a known env var for the test.

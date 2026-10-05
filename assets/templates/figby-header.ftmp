@@ -1,0 +1,19 @@
+---
+[canvas]
+width = 60
+height = 12
+padding = 1
+
+[variables.title]
+text = "Figby"
+font = "standard"
+align = "center"
+
+[variables.tagline]
+text = "FIGlet art, images and animation"
+font = "small"
+align = "center"
+y = 7
+---
+{{title}}
+{{tagline}}
