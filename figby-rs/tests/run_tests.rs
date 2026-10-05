@@ -51,6 +51,10 @@ fn long_text() -> Vec<u8> {
     std::fs::read(root.join("tests/longtext.txt")).expect("missing tests/longtext.txt")
 }
 
+/// Fonts bundled with Figby that stock C FIGlet 2.2.5 does not ship; the
+/// C-parity expected outputs don't cover them.
+const FIGBY_ONLY_FONTS: &[&str] = &["bob"];
+
 fn showfigfonts_output() -> Vec<u8> {
     let root = repo_root();
     let fonts_dir = root.join("fonts");
@@ -67,6 +71,7 @@ fn showfigfonts_output() -> Vec<u8> {
         .map(|e| e.path().file_stem().unwrap().to_str().unwrap().to_string())
         .collect();
     font_stems.sort();
+    font_stems.retain(|stem| !FIGBY_ONLY_FONTS.contains(&stem.as_str()));
 
     let mut output = Vec::new();
     for stem in &font_stems {
@@ -148,6 +153,7 @@ fn test_02_all_fonts() {
         .map(|e| e.path().file_stem().unwrap().to_str().unwrap().to_string())
         .collect();
     font_stems.sort();
+    font_stems.retain(|stem| !FIGBY_ONLY_FONTS.contains(&stem.as_str()));
 
     let mut all_output = Vec::new();
     for stem in &font_stems {
@@ -495,6 +501,7 @@ fn all_fonts_output(extra_args: &[&str]) -> Vec<u8> {
         .map(|e| e.path().file_stem().unwrap().to_str().unwrap().to_string())
         .collect();
     font_stems.sort();
+    font_stems.retain(|stem| !FIGBY_ONLY_FONTS.contains(&stem.as_str()));
 
     let mut all_output = Vec::new();
     for stem in &font_stems {

@@ -176,7 +176,16 @@ are available from the FIGlet font archive:
 - [Patriotic fonts](http://patorjk.com/figlet/fonts/) (patched for modern FIGlet)
 - [FIGlet font archive](https://github.com/xero/figlet-fonts) (community)
 
-To install fonts system-wide:
+The community collection lives in the `figby-fonts` git submodule. Install it plus
+the bundled fonts with one command (initialises the submodule if needed, copies into
+`/usr/local/share/figlet`, which figby searches by default):
+
+```bash
+scripts/install-fonts.sh              # system-wide (uses sudo if needed)
+scripts/install-fonts.sh ~/.figlet    # or anywhere; then: export FIGLET_FONTDIR=~/.figlet
+```
+
+To install fonts system-wide by hand:
 
 ```bash
 sudo mkdir -p /usr/share/figlet

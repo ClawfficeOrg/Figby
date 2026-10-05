@@ -2,6 +2,9 @@
 ## [Unreleased]
 
 ### Added
+- `scripts/install-fonts.sh`: installs the `figby-fonts` submodule + bundled `fonts/` into a directory figby
+  searches (default `/usr/local/share/figlet`).
+- Bundled `bob` font is committed in `fonts/`; C-parity font-listing tests skip Figby-only fonts.
 - `Dockerfile` + `docker-compose.yml` (+ `.dockerignore`): build Figby and run the TUI/CLI with the bundled
   `fonts/` and the `figby-fonts` submodule mounted as FIGlet font dirs
   (`docker compose run --rm figby`).
