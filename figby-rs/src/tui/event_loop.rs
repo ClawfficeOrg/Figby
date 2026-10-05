@@ -76,12 +76,17 @@ impl TuiApp {
                     && now.saturating_duration_since(self.frame.last_draw_time)
                         >= p.frame_interval()
             });
+            // Welcome title animation: redraw ~12 fps while the dialog is up.
+            let welcome_anim_due = self.welcome.screen.show
+                && now.saturating_duration_since(self.frame.last_draw_time)
+                    >= Duration::from_millis(80);
             let needs_redraw = match self.ctx.render_mode {
                 RenderMode::Fast => true,
                 RenderMode::Dirty => {
                     self.frame.dirty
                         || self.welcome.fade_in.is_some()
                         || self.welcome.fx.is_some()
+                        || welcome_anim_due
                         || inline_playing_due
                         || (self.ctx.throbber.is_active()
                             && now.saturating_duration_since(self.frame.last_draw_time)

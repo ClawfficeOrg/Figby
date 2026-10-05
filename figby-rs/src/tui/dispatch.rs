@@ -1309,10 +1309,13 @@ impl TuiApp {
     /// Rebuild lighting LUT and rgb→swatch mapping from palette editor data.
     fn rebuild_lighting_from_palette(&mut self) {
         let swatch_data = self.palette_editor.lighting_swatches();
-        self.lighting.lut = lighting::LightingLut::from_swatches(
-            &swatch_data,
-            crate::image_input::DEFAULT_CHAR_MAP,
-        );
+        // Lit output keeps the art's glyph style: block-shade art stays block art.
+        let ramp = lighting::pick_char_ramp(self.editor.layer_stack.layers.iter().flat_map(|l| {
+            let b = l.buffer();
+            (0..b.height())
+                .flat_map(move |y| (0..b.width()).filter_map(move |x| b.get(x, y).map(|c| c.ch)))
+        }));
+        self.lighting.lut = lighting::LightingLut::from_swatches(&swatch_data, ramp);
         // Build rgb→swatch map from palette editor swatches
         let swatch_pairs: Vec<(String, String)> = self
             .palette_editor

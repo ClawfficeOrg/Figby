@@ -86,7 +86,8 @@ def move_light(tx, ty):
     raise AssertionError(("light never reached", tx, ty, light_pos()))
 
 def lighting():
-    alt("v"); [key("Down") for _ in range(9)]; key("Enter"); time.sleep(.8)   # View > Palette: Warm (lighting LUT)
+    for grp, idx in RAMP: pick(grp, idx); time.sleep(.2)    # push the title's ramp colours into Recent
+    alt("v"); [key("Down") for _ in range(6)]; key("Enter"); time.sleep(.8)   # View > Palette Editor: Recent -> lighting swatches
     key("Escape"); time.sleep(.5)
     text("G"); time.sleep(.8); key("P"); time.sleep(.6)
     key("Up"); time.sleep(.2)

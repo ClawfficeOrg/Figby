@@ -20,6 +20,10 @@
   emitter was placed (keyframed position offset moves the emission point).
 
 ### Changed
+- Welcome title animates in a loop: the bob block title is colorized top to bottom (marker-brush sunset),
+  a light spot sweeps across it (brightening and densifying the shade glyphs), then it fades and repeats.
+- Lighting picks its glyph ramp from the art: block-shade art (e.g. `bob`) is lit with `░▒▓█` instead of
+  being turned into ASCII dots.
 - Welcome dialog title uses the embedded `bob` FIGfont (`figby-rs/assets/fonts/bob.flf`) instead of the old
   hand-drawn / system-font title, so it no longer depends on installed FIGlet fonts.
 

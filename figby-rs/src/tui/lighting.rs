@@ -575,6 +575,28 @@ pub struct LightingLut {
     pub swatch_count: usize,
 }
 
+/// Luminance ramp for block-shade art (`░▒▓█`), dark to bright.
+pub const BLOCK_CHAR_MAP: &str = " ░▒▓█";
+
+/// Pick the lighting glyph ramp for some art: block-shade art (e.g. the `bob`
+/// FIGfont) keeps looking like block art when lit, anything else uses the
+/// ASCII ramp. `cells` yields every canvas character across the layers.
+pub fn pick_char_ramp(cells: impl Iterator<Item = char>) -> &'static str {
+    let (mut blocks, mut other) = (0usize, 0usize);
+    for ch in cells.filter(|c| *c != ' ') {
+        if matches!(ch as u32, 0x2580..=0x259F) {
+            blocks += 1;
+        } else {
+            other += 1;
+        }
+    }
+    if blocks > 0 && blocks >= other * 2 {
+        BLOCK_CHAR_MAP
+    } else {
+        crate::image_input::DEFAULT_CHAR_MAP
+    }
+}
+
 impl LightingLut {
     pub fn from_palette(
         shadow_color: (u8, u8, u8),
@@ -1423,6 +1445,19 @@ mod tests {
             }
             _ => panic!("expected Ambient"),
         }
+    }
+
+    #[test]
+    fn char_ramp_follows_the_art() {
+        assert_eq!(pick_char_ramp("██▒░ ▓".chars()), BLOCK_CHAR_MAP);
+        assert_eq!(
+            pick_char_ramp("hello world".chars()),
+            crate::image_input::DEFAULT_CHAR_MAP
+        );
+        assert_eq!(
+            pick_char_ramp("".chars()),
+            crate::image_input::DEFAULT_CHAR_MAP
+        );
     }
 
     #[test]

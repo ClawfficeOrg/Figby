@@ -60,6 +60,8 @@ pub struct WelcomeScreen {
     mascot_width: u16,
     title_lines_large: Vec<String>,
     title_lines_small: Vec<String>,
+    /// Start of the title animation loop (colorize, light sweep, fade).
+    anim_start: std::time::Instant,
     // Hit-test rects (updated each render)
     recent_rects: Vec<Rect>,
     font_rects: Vec<Rect>,
@@ -92,6 +94,7 @@ impl WelcomeScreen {
             mascot_width,
             title_lines_large,
             title_lines_small,
+            anim_start: std::time::Instant::now(),
             recent_rects: Vec::new(),
             font_rects: Vec::new(),
             image_rects: Vec::new(),
@@ -220,14 +223,17 @@ impl WelcomeScreen {
 
         // Title — vertically and horizontally centered
         if !title_lines.is_empty() {
-            let title_color = theme.general.primary;
             let title_top = (banner_height.saturating_sub(title_h)) / 2;
             let mut lines: Vec<Line> = (0..title_top).map(|_| Line::from("")).collect();
-            lines.extend(
-                title_lines
-                    .iter()
-                    .map(|l| Line::from(Span::styled(l.clone(), Style::default().fg(title_color)))),
-            );
+            if std::ptr::eq(title_lines, self.title_lines_large.as_slice()) {
+                let t = self.anim_start.elapsed().as_secs_f32() % TITLE_LOOP_SECS;
+                lines.extend(animated_title_lines(title_lines, t));
+            } else {
+                let title_color = theme.general.primary;
+                lines.extend(title_lines.iter().map(|l| {
+                    Line::from(Span::styled(l.clone(), Style::default().fg(title_color)))
+                }));
+            }
             frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), horiz[1]);
         }
 
@@ -577,6 +583,108 @@ fn build_action_row<'a>(
     ])
 }
 
+/// Length of the title animation loop in seconds.
+const TITLE_LOOP_SECS: f32 = 10.0;
+const TITLE_COLORIZE_END: f32 = 3.0;
+const TITLE_FADE_START: f32 = 9.0;
+/// Unlit title colour before it is colorized.
+const TITLE_BASE: (f32, f32, f32) = (70.0, 74.0, 104.0);
+/// Top-to-bottom colour ramp (the Marker-brush sunset): yellow, red, pink, purple.
+const TITLE_RAMP: [(f32, f32, f32); 4] = [
+    (250.0, 240.0, 70.0),
+    (240.0, 80.0, 70.0),
+    (255.0, 105.0, 180.0),
+    (150.0, 60.0, 170.0),
+];
+
+fn lerp3(a: (f32, f32, f32), b: (f32, f32, f32), t: f32) -> (f32, f32, f32) {
+    let t = t.clamp(0.0, 1.0);
+    (
+        a.0 + (b.0 - a.0) * t,
+        a.1 + (b.1 - a.1) * t,
+        a.2 + (b.2 - a.2) * t,
+    )
+}
+
+fn ramp_at(y: f32) -> (f32, f32, f32) {
+    let pos = y.clamp(0.0, 1.0) * (TITLE_RAMP.len() - 1) as f32;
+    let i = (pos.floor() as usize).min(TITLE_RAMP.len() - 2);
+    lerp3(TITLE_RAMP[i], TITLE_RAMP[i + 1], pos - i as f32)
+}
+
+/// Colour and glyph for one title cell at loop time `t`: the block title is
+/// colorized top to bottom, then a light spot sweeps across it (brightening
+/// and densifying the shade glyphs), then it fades back to the base colour.
+fn title_cell(ch: char, x: usize, y: usize, w: usize, h: usize, t: f32) -> (char, Color) {
+    let yf = y as f32 / h.max(2).saturating_sub(1) as f32;
+    // colorize: a front moving down the rows
+    let front = (t / TITLE_COLORIZE_END) * 1.5;
+    let amount = (front - yf * 0.5).clamp(0.0, 1.0);
+    let mut rgb = lerp3(TITLE_BASE, ramp_at(yf), amount);
+    let mut glyph = ch;
+    // light sweep after colorizing
+    if t >= TITLE_COLORIZE_END {
+        let p =
+            ((t - TITLE_COLORIZE_END) / (TITLE_FADE_START - TITLE_COLORIZE_END)).clamp(0.0, 1.0);
+        let spot_x = -8.0 + p * (w as f32 + 16.0);
+        let spot_y = h as f32 * 0.5;
+        // cells are ~2x taller than wide
+        let d = (((x as f32 - spot_x).powi(2)) + ((y as f32 - spot_y) * 2.0).powi(2)).sqrt();
+        let f = (1.0 - d / 12.0).clamp(0.0, 1.0);
+        let f = f * f;
+        rgb = lerp3(rgb, (255.0, 255.0, 255.0), f * 0.75);
+        if f > 0.35 {
+            glyph = match ch {
+                '░' => '▒',
+                '▒' => '▓',
+                '▓' => '█',
+                c => c,
+            };
+        }
+    }
+    // fade the colour back out so the loop restarts cleanly
+    if t >= TITLE_FADE_START {
+        let k = (t - TITLE_FADE_START) / (TITLE_LOOP_SECS - TITLE_FADE_START);
+        rgb = lerp3(rgb, TITLE_BASE, k);
+    }
+    (glyph, Color::Rgb(rgb.0 as u8, rgb.1 as u8, rgb.2 as u8))
+}
+
+fn animated_title_lines(rows: &[String], t: f32) -> Vec<Line<'static>> {
+    let h = rows.len();
+    let w = rows.iter().map(|r| r.chars().count()).max().unwrap_or(0);
+    rows.iter()
+        .enumerate()
+        .map(|(y, row)| {
+            let mut spans: Vec<Span<'static>> = Vec::new();
+            let mut run = String::new();
+            let mut run_color: Option<Color> = None;
+            for (x, ch) in row.chars().enumerate() {
+                let (glyph, color) = if ch == ' ' {
+                    (' ', Color::Reset)
+                } else {
+                    title_cell(ch, x, y, w, h, t)
+                };
+                if run_color != Some(color) && !run.is_empty() {
+                    spans.push(Span::styled(
+                        std::mem::take(&mut run),
+                        Style::default().fg(run_color.unwrap_or(Color::Reset)),
+                    ));
+                }
+                run_color = Some(color);
+                run.push(glyph);
+            }
+            if !run.is_empty() {
+                spans.push(Span::styled(
+                    run,
+                    Style::default().fg(run_color.unwrap_or(Color::Reset)),
+                ));
+            }
+            Line::from(spans)
+        })
+        .collect()
+}
+
 /// The bundled `bob` FIGfont (same one used in the recordings), embedded so
 /// the welcome title never depends on system FIGlet fonts being installed.
 const BOB_FONT: &str = include_str!("../../assets/fonts/bob.flf");
@@ -704,5 +812,35 @@ mod tests {
                 "shortcut '{key_char}' should also work as unshifted '{lower}'"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod title_anim_tests {
+    use super::*;
+
+    #[test]
+    fn title_animation_loops_through_phases() {
+        let rows = vec!["█▒░ █".to_string(), "▓▓ ░█".to_string()];
+        let start = animated_title_lines(&rows, 0.0);
+        let mid = animated_title_lines(&rows, 6.0);
+        let end = animated_title_lines(&rows, TITLE_LOOP_SECS - 0.001);
+        assert_eq!(start.len(), 2);
+        // colorized by mid-loop, back near the base colour at loop end
+        assert_ne!(start, mid);
+        let colour_of = |l: &Vec<Line>| l[0].spans[0].style.fg;
+        assert_ne!(colour_of(&mid), colour_of(&start));
+        let near = |a: Option<Color>, b: Option<Color>| match (a, b) {
+            (Some(Color::Rgb(r1, g1, b1)), Some(Color::Rgb(r2, g2, b2))) => {
+                (r1 as i32 - r2 as i32).abs() < 8
+                    && (g1 as i32 - g2 as i32).abs() < 8
+                    && (b1 as i32 - b2 as i32).abs() < 8
+            }
+            _ => false,
+        };
+        assert!(
+            near(colour_of(&end), colour_of(&start)),
+            "loop restarts seamlessly"
+        );
     }
 }
