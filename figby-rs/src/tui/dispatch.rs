@@ -1038,6 +1038,7 @@ impl TuiApp {
                     self.editor.recomposite_canvas();
                 } else if self.editor.toolbox.selected == Tool::Emitter {
                     self.animation.emitter_active = true;
+                    self.animation.emitter_follow_layer = Some(self.editor.layer_stack.active);
                     self.animation.particle_system.config.emitter_x = bx as f64;
                     self.animation.particle_system.config.emitter_y = by as f64;
                     self.animation.particle_system = particles::ParticleSystem::new(
@@ -1849,6 +1850,19 @@ impl TuiApp {
             return None;
         }
 
+        // Emitter config panel: dispatch when panel is open. Must run before the canvas
+        // cursor/zoom handler or the arrow keys never reach its field list.
+        if self.animation.emitter_panel.open {
+            let handled = self
+                .animation
+                .emitter_panel
+                .handle_config_key(code, &mut self.animation.particle_system.config);
+            if handled {
+                self.frame.dirty = true;
+                return None;
+            }
+        }
+
         // Canvas cursor movement, zoom, grid
         {
             let ck = key.code;
@@ -1868,17 +1882,6 @@ impl TuiApp {
             }
         }
 
-        // Emitter config panel: dispatch when panel is open
-        if self.animation.emitter_panel.open {
-            let handled = self
-                .animation
-                .emitter_panel
-                .handle_config_key(code, &mut self.animation.particle_system.config);
-            if handled {
-                self.frame.dirty = true;
-                return None;
-            }
-        }
         // Settings toggle — skip when FontEditor Overview is active so S
         // reaches the smushing-rule editor (GPT review keybind collision).
         if code == KeyCode::Char('S')
@@ -2029,11 +2032,11 @@ impl TuiApp {
                 | KeyCode::Char('F')
                 | KeyCode::Char('h')
                 | KeyCode::Char('H')
+                | KeyCode::Char('j')
+                | KeyCode::Char('J')
                 | KeyCode::Char('z')
                 | KeyCode::Char('Z')
                 | KeyCode::Left
-                | KeyCode::Char('j')
-                | KeyCode::Char('J')
                 | KeyCode::Right
                 | KeyCode::Up
                 | KeyCode::Down
@@ -3204,9 +3207,51 @@ impl TuiApp {
             return;
         }
         let fps = self.animation.timeline_state.fps;
+        let mut frames = frames;
+        if self.animation.emitter_active {
+            self.overlay_emitter_particles(&mut frames, fps);
+        }
         let start_frame = self.animation.timeline_state.current_frame;
         let delays = self.animation.timeline_state.frame_delays();
         self.play_inline(frames, delays, fps, start_frame);
+    }
+
+    /// Simulate the emitter across the captured timeline frames and composite
+    /// its particles onto each frame, so playback shows the particle stream.
+    /// When the emitter follows a layer, its keyframed position offset moves
+    /// the emission point frame by frame (e.g. exhaust trailing a ship).
+    fn overlay_emitter_particles(&self, frames: &mut [Vec<Vec<canvas::CanvasCell>>], fps: u8) {
+        let config = self.animation.particle_system.config.clone();
+        let (base_x, base_y) = (config.emitter_x, config.emitter_y);
+        let w = self.editor.canvas.buffer.width();
+        let h = self.editor.canvas.buffer.height();
+        let dt = 1.0 / f64::from(fps.max(1));
+        let mut system = particles::ParticleSystem::new(config);
+        for (i, rows) in frames.iter_mut().enumerate() {
+            if let Some(layer) = self.animation.emitter_follow_layer {
+                let kf = self
+                    .animation
+                    .timeline_state
+                    .get_interpolated_properties(i, layer);
+                system.config.emitter_x = base_x + f64::from(kf.position_offset.0);
+                system.config.emitter_y = base_y + f64::from(kf.position_offset.1);
+            }
+            system.update(dt, Some((w, h)), None);
+            let mut buf = canvas::CanvasBuffer::new(w, h);
+            for (y, row) in rows.iter().enumerate() {
+                for (x, cell) in row.iter().enumerate() {
+                    buf.set(x, y, *cell);
+                }
+            }
+            system.render_to_canvas(&mut buf);
+            for (y, row) in rows.iter_mut().enumerate() {
+                for (x, cell) in row.iter_mut().enumerate() {
+                    if let Some(c) = buf.get(x, y) {
+                        *cell = *c;
+                    }
+                }
+            }
+        }
     }
 
     /// Start in-canvas animation playback: `render_canvas_area` renders the

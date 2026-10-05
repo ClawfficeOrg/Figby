@@ -46,3 +46,9 @@ lixdu-18.flf
 .goose/
 skills-lock.json
 work/
+.infisical.json
+
+# Timelapse recording intermediates (large; regenerate with assets/e2e-art/timelapse/driver)
+assets/e2e-art/timelapse/*.figmap
+assets/e2e-art/timelapse/raw/
+assets/e2e-art/recordings/*-raw.cast

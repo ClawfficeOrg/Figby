@@ -749,6 +749,9 @@ pub struct AnimationState {
     pub timeline_state: timeline::TimelineState,
     pub particle_system: particles::ParticleSystem,
     pub emitter_active: bool,
+    /// Layer the emitter rides on during playback (the layer that was active when
+    /// the emitter was placed); its keyframed position offset moves the emitter.
+    pub emitter_follow_layer: Option<usize>,
     pub emitter_panel: particles::EmitterConfigPanel,
     pub show_live_particles: bool,
     pub baked_layer_indices: Vec<usize>,
@@ -1538,6 +1541,7 @@ impl TuiApp {
                     particles::ParticleConfig::default(),
                 ),
                 emitter_active: false,
+                emitter_follow_layer: None,
                 emitter_panel: particles::EmitterConfigPanel::new(),
                 show_live_particles: true,
                 baked_layer_indices: Vec::new(),
@@ -1980,6 +1984,7 @@ mod editor_state_tests {
             timeline_state: timeline::TimelineState::default(),
             particle_system: particles::ParticleSystem::new(particles::ParticleConfig::default()),
             emitter_active: false,
+            emitter_follow_layer: None,
             emitter_panel: particles::EmitterConfigPanel::new(),
             show_live_particles: true,
             baked_layer_indices: Vec::new(),

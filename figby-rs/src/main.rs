@@ -1524,7 +1524,7 @@ fn main() {
             let leaked: &'static [&'static str] = Box::leak(
                 args.create_font_charset
                     .split(',')
-                    .map(|s| Box::leak(s.trim().to_string().into_boxed_str()) as &'static str)
+                    .map(|s| Box::leak(s.to_string().into_boxed_str()) as &'static str)
                     .collect::<Vec<_>>()
                     .into_boxed_slice(),
             );

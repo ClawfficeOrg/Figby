@@ -1,5 +1,19 @@
 # Figby — Learnings
 
+## Timelapse recording (2026-10-03)
+
+- Mouse painting works only with SGR drag codes `32+button` and release `m` with the real button; the
+  Braille tool ignores the mouse, so park the cell cursor with a Select-tool click, then switch to Braille.
+- `=` / `-` typed into any field can hit zoom hotkeys; assert the value after each edit.
+- Text-tool blocks vanish when the tool changes: `Ctrl+R` rasterizes them onto the layer.
+- Fill replaces by *char equality* and ignores selections; brush `Char` field rejects `=`.
+- Lighting remaps every `accepts_lighting` layer to LUT glyphs (`+`); press `L` in the layer panel to
+  exclude layers. Particles are not part of timeline capture unless overlaid (see CHANGELOG).
+- Keyframe editor selection persists between opens and is unbounded: press Up x30 before Down xN.
+- Tween needs keyframes on BOTH the start and end frame for the layer or it reports "Needs generate".
+- Speed casts with `driver/speedup.py` (13x, idle cap 0.7s, real time for the `Playing` window).
+
+
 ## Local Figby TUI MCP driver (2026-09-24)
 
 - tmux `capture-pane` only outputs terminal text. To provide model-readable visual inspection, MCP `snapshot` also returns PNG image content; keep text snapshot for assertions/search.

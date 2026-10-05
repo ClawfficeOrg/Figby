@@ -272,6 +272,14 @@ impl Default for ParticleKeyframe {
     }
 }
 
+/// Before a particle glyph overwrites `cell`, fold a solid-block fill into the
+/// background so the particle sits on the object's colour, not terminal black.
+fn keep_backdrop(cell: &mut crate::CanvasCell) {
+    if cell.bg.is_none() && cell.ch == '\u{2588}' {
+        cell.bg = cell.fg;
+    }
+}
+
 fn default_keyframes() -> Vec<ParticleKeyframe> {
     Vec::new()
 }
@@ -681,6 +689,7 @@ impl ParticleSystem {
             }
             if let Some(cell) = buffer.get_mut(px as usize, py as usize) {
                 let (color, _size, character, _opacity) = p.render_values();
+                keep_backdrop(cell);
                 cell.ch = character;
                 if let Some((r, g, b)) = color {
                     cell.fg = Some(ratatui::style::Color::Rgb(r, g, b));
@@ -701,6 +710,7 @@ impl ParticleSystem {
             }
             if let Some(cell) = buffer.get_mut(px as usize, py as usize) {
                 let (color, _size, character, _opacity) = p.render_values();
+                keep_backdrop(cell);
                 cell.ch = character;
                 if let Some((r, g, b)) = color {
                     cell.fg = Some(ratatui::style::Color::Rgb(r, g, b));

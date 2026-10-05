@@ -87,13 +87,20 @@ def snapshot_image():
         image_path = Path(temp.name)
     try:
         tmux("capture-pane", "-t", SERVER_NAME, "-p")
-        result = tmux("capture-pane", "-t", SERVER_NAME, "-e", "-C")
+        result = tmux("capture-pane", "-t", SERVER_NAME, "-e", "-p")
         converter = shutil.which("ansilove")
         if converter:
             subprocess.run([converter, "-o", str(image_path), "-"], input=result.stdout,
                            text=True, cwd=ROOT, check=True, timeout=10)
         else:
-            font = ImageFont.load_default(size=14)
+            font = None
+            for candidate in ("/System/Library/Fonts/Menlo.ttc", "/System/Library/Fonts/Monaco.ttf",
+                              "/Library/Fonts/Arial Unicode.ttf"):
+                if Path(candidate).is_file():
+                    font = ImageFont.truetype(candidate, 16)
+                    break
+            if font is None:
+                font = ImageFont.load_default(size=14)
             ansi = re.compile(r"\x1b\[([0-9;]*)m")
             palette = [(0, 0, 0), (205, 49, 49), (13, 188, 121), (229, 229, 16),
                        (36, 114, 200), (188, 63, 188), (17, 168, 205), (229, 229, 229),
@@ -130,6 +137,26 @@ def snapshot_image():
                                 else:
                                     bg = color
                                 i += 4
+                            elif code in (38, 48) and i + 2 < len(codes) and codes[i + 1] == 5:
+                                n = codes[i + 2]
+                                if n < 16:
+                                    color = palette[n]
+                                elif n < 232:
+                                    n -= 16
+                                    steps = (0, 95, 135, 175, 215, 255)
+                                    color = (steps[n // 36], steps[n // 6 % 6], steps[n % 6])
+                                else:
+                                    gray = 8 + (n - 232) * 10
+                                    color = (gray, gray, gray)
+                                if code == 38:
+                                    fg = color
+                                else:
+                                    bg = color
+                                i += 2
+                            elif code == 39:
+                                fg = (220, 220, 232)
+                            elif code == 49:
+                                bg = (13, 13, 26)
                             elif code == 7:
                                 fg, bg = bg, fg
                             i += 1
@@ -142,7 +169,29 @@ def snapshot_image():
                             continue
                         left = x * cell_w
                         draw.rectangle((left, y * cell_h, left + width * cell_w, (y + 1) * cell_h), fill=bg)
-                        draw.text((left, y * cell_h), char, fill=fg, font=font)
+                        top, bottom, right = y * cell_h, (y + 1) * cell_h, left + width * cell_w
+                        shade = {"░": 0.25, "▒": 0.5, "▓": 0.75}.get(char)
+                        if char == "█":
+                            draw.rectangle((left, top, right, bottom), fill=fg)
+                        elif shade is not None:
+                            mix = tuple(int(b + (f - b) * shade) for f, b in zip(fg, bg))
+                            draw.rectangle((left, top, right, bottom), fill=mix)
+                        elif char == "▀":
+                            draw.rectangle((left, top, right, (top + bottom) // 2), fill=fg)
+                        elif char == "▄":
+                            draw.rectangle((left, (top + bottom) // 2, right, bottom), fill=fg)
+                        elif char == "▌":
+                            draw.rectangle((left, top, (left + right) // 2, bottom), fill=fg)
+                        elif char == "▐":
+                            draw.rectangle(((left + right) // 2, top, right, bottom), fill=fg)
+                        elif 0x2800 <= ord(char) <= 0x28FF:
+                            bits = ord(char) - 0x2800
+                            for dot, (dx, dy) in enumerate(((0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (0, 3), (1, 3))):
+                                if bits & (1 << dot):
+                                    cx, cy = left + 2 + dx * 5, top + 3 + dy * 4
+                                    draw.rectangle((cx, cy, cx + 2, cy + 2), fill=fg)
+                        else:
+                            draw.text((left, top), char, fill=fg, font=font)
                         x += width
                         if x >= COLS:
                             break
@@ -188,8 +237,8 @@ def launch(args):
             f"--command {json.dumps(inner)} {cast_path}"
         )
     else:
-        tmux_cmd = f"{BIN} --tui"
-    tmux_args = ["tmux", "-L", SERVER_NAME, "new-session", "-d", "-s", SERVER_NAME,
+        tmux_cmd = f"{BIN} --tui 2>>/tmp/figby-tui-stderr.log"
+    tmux_args = ["tmux", "-L", SERVER_NAME, "-f", str(ROOT / "scripts/figby-tmux.conf"), "new-session", "-d", "-s", SERVER_NAME,
                  "-x", str(COLS), "-y", str(ROWS), "-c", str(ROOT), "bash", "-lc", tmux_cmd]
     subprocess.run(tmux_args, cwd=ROOT, check=True, capture_output=True, timeout=10)
     server = {
@@ -248,7 +297,7 @@ def do_tool(name, args):
         if key == "Space":
             tmux("send-keys", "-t", SERVER_NAME, "Space")
         elif len(key) == 1 and key.isprintable():
-            tmux("send-keys", "-t", SERVER_NAME, "-l", key)
+            tmux("send-keys", "-t", SERVER_NAME, "-l", "--", key)
         elif re.fullmatch(r"C-[a-z]", key) or key in {
             "Enter", "Escape", "Tab", "Backspace", "Delete", "Up", "Down",
             "Left", "Right", "Home", "End", "PageUp", "PageDown",
@@ -263,7 +312,7 @@ def do_tool(name, args):
         text = args["text"]
         if len(text) > 4096 or "\x00" in text:
             raise ValueError("text too long or contains NUL")
-        tmux("send-keys", "-t", SERVER_NAME, "-l", text)
+        tmux("send-keys", "-t", SERVER_NAME, "-l", "--", text)
         return {"typed_characters": len(text)}
     if name == "mouse":
         x, y = int(args["x"]), int(args["y"])
@@ -272,11 +321,12 @@ def do_tool(name, args):
         action = args["action"]
         button = {"left": 0, "middle": 1, "right": 2}.get(args.get("button", "left"), 0)
         if action == "move":
-            code, final = 32, "M"
+            # motion with a button held is a drag (32+button); without `button`, plain hover (35)
+            code, final = (32 + button if "button" in args else 35), "M"
         elif action.startswith("wheel"):
             code, final = 64 + (1 if action == "wheel_down" else 0), "M"
         elif action == "up":
-            code, final = 3, "m"
+            code, final = button, "m"
         else:
             code, final = button, "M"
         sgr = f"\x1b[<{code};{x + 1};{y + 1}{final}"
@@ -328,7 +378,10 @@ def stop_recording(make_gif):
     time.sleep(0.2)
     tmux("send-keys", "-t", SERVER_NAME, "q")
     time.sleep(0.4)
-    screen = capture_screen()
+    try:
+        screen = capture_screen()
+    except subprocess.CalledProcessError:
+        screen = ""  # figby already exited, so asciinema is finalizing the cast
     if "Discard" in screen or "quit" in screen.lower() or "[N]" in screen:
         tmux("send-keys", "-t", SERVER_NAME, "n")
         time.sleep(0.3)

@@ -873,7 +873,11 @@ impl TimelineState {
             })
             .unwrap_or(4);
 
-        for layer_idx in 0..max_layer.min(6) {
+        // Show a 3-layer window that follows the selection (5 lines per layer
+        // keeps the panel inside its popup height) so any layer stays visible.
+        const VISIBLE_LAYERS: usize = 3;
+        let first_layer = (self.keyframe_editor.selected_layer + 1).saturating_sub(VISIBLE_LAYERS);
+        for layer_idx in first_layer..max_layer.min(first_layer + VISIBLE_LAYERS) {
             let props = self.get_interpolated_properties(frame_idx, layer_idx);
             let is_selected = layer_idx == self.keyframe_editor.selected_layer;
             let prefix = if is_selected { '>' } else { ' ' };

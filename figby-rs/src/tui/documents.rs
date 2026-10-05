@@ -134,6 +134,7 @@ impl Document {
                     particles::ParticleConfig::default(),
                 ),
                 emitter_active: false,
+                emitter_follow_layer: None,
                 emitter_panel: particles::EmitterConfigPanel::new(),
                 show_live_particles: true,
                 baked_layer_indices: Vec::new(),

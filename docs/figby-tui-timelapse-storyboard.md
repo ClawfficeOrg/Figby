@@ -28,7 +28,8 @@ Start from Figby welcome screen and record the entire app workflow.
 4. Build star field in visible passes: sparse bright stars, dim distant stars, colored clusters. Show tool/color changes in palette and status.
 5. Demonstrate Braille tool for a nebula or dense star texture. Use a distinct color, then return to normal brush.
 6. Add separate planet layer(s). Use brush/fill and geometric tools for planet disks, rings, moon/crater highlights. Keep shapes visibly authored through UI actions, not imported from a finished map.
-7. Add a separate title/text layer. Use Figlet text tool with an actual FIGfont to place `FIGBY`; style it with a contrasting color and glow/highlight marks.
+7. Add a separate title/text layer. Use Figlet text tool with the `bob` FIGfont (converted from `assets/fonts/to-convert/bob_filled/Bob.ttf` with the smooth charset, installed as `fonts/bob.flf`, kerning layout) to place `FIGBY`; style it with a contrasting color and glow/highlight marks.
+   - Kerning block: show kerning mode on the title (letters tucked together, no smushing) versus full-width spacing, then keep kerning for the final title.
 8. Show Layers drawer with meaningful layer names/order. Save first checkpoint, e.g. `space-scene-01.figmap`, via Figby Save as Figmap. Capture save completion and reopen confirmation if feasible.
 
 End state: coherent space scene with a legible Figlet `FIGBY`, distinct layers, and clear evidence of brush, fill, palette, Braille, geometric, and text tools.
