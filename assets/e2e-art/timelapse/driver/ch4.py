@@ -6,7 +6,8 @@ from ui import *
 import ch2, ch3
 
 OUT = "assets/e2e-art/timelapse/title"
-RAMP = (("purple", 0), ("purple", 1), ("red", 1), ("yellow", 0), ("yellow", 1))   # marker steps along this order
+RAMP = (("blue", 0), ("blue", 1), ("purple", 0), ("purple", 1), ("red", 0), ("red", 1),
+        ("yellow", 0), ("yellow", 1), ("neutral", 2), ("neutral", 3))   # marker steps along this order (dark to bright)
 
 def calibrate():
     for i, l in enumerate(screen().split("\n")):
@@ -24,7 +25,7 @@ def title():
         if "bob" in l: break
         click(l.index("[>]") + 1, row)
     assert "bob" in screen().split("\n")[row]
-    pick("purple", 0)                                     # ramp start; Marker only steps painted cells
+    pick(*RAMP[0])                                        # ramp start; Marker only steps painted cells
     mouse(*cell(4, 3), "move"); time.sleep(.6)
     click(*cell(4, 3)); time.sleep(.8)
     key("C-r"); time.sleep(.6)                            # rasterize the text block
@@ -39,10 +40,34 @@ def shade():
     key("M"); time.sleep(.4)                              # Marker (colour-stepping shading) brush
     assert "Marker" in screen(), "marker mode not active"
     key("\\"); time.sleep(.3)                             # Circle shape: soft falloff at the edges
-    for size, y in ((21, 4), (13, 4), (7, 3)):
-        set_size(size)
-        stroke(3, y, 51, y)
+    paint_title()
+
+def wave(x0, x1, y, amp=1.5, period=14.0, step=1):
+    """Hand-drawn looking horizontal stroke: a gentle sine wobble around row y."""
+    import math
+    xs = range(x0, x1 + 1, step) if x1 >= x0 else range(x0, x1 - 1, -step)
+    return [cell(x, int(round(y + amp * math.sin((x - x0) / period * 2 * math.pi)))) for x in xs]
+
+LETTERS = ((4, 13), (15, 17), (19, 28), (30, 39), (41, 50))     # F I G B Y (cell columns)
+
+def paint_title():
+    """Airbrush the lettering by hand: every pass lifts the rows it covers up the ramp, and each
+    successive pass stops higher, so the top ends up brightest and the bottom stays dark blue.
+    Then per-letter highlights go on with a soft round brush."""
+    top, bottom = 6, 18
+    levels = lambda y: int(3.0 * (bottom - y) / (bottom - top) + 0.5)    # strokes each row needs
+    set_size(3)
+    for p in range(1, 4):
+        rows = [y for y in range(top, bottom + 1, 2) if levels(y) >= p]
+        for k, y in enumerate(rows):
+            pts = wave(3, 51, y, 0.0, step=1)
+            drag(pts if (k + p) % 2 == 0 else pts[::-1])
         time.sleep(.5)
+    # per-letter highlights: a soft bright core on each letter's upper-left
+    for x0, x1 in LETTERS:
+        set_size(7)
+        dab(x0 + 2, 8); dab(x0 + 2, 8)
+        time.sleep(.25)
     time.sleep(1.5)
 
 def open_export():

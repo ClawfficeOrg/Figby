@@ -8,8 +8,9 @@
 - `Dockerfile` + `docker-compose.yml` (+ `.dockerignore`): build Figby and run the TUI/CLI with the bundled
   `fonts/` and the `figby-fonts` submodule mounted as FIGlet font dirs
   (`docker compose run --rm figby`).
-- Timelapse chapter 4 (`04-title-shading-lighting-v3.{cast,gif}`, `driver/ch4.py`): FIGBY title, Marker-brush
-  shading, static `.txt`/`.ansi` exports and a light-sweep GIF (`timelapse/title/`).
+- Timelapse chapter 4 (`04-title-shading-lighting-v4.{cast,gif}`, `driver/ch4.py`): FIGBY title painted by hand
+  with the Marker brush (airbrush passes up a 10-colour ramp, then per-letter highlights), static
+  `.txt`/`.ansi`/`.png` exports and a light-sweep GIF (`timelapse/title/`).
 - `assets/templates/figby-header.ftmp`: a working TOML starter template (render-tested). The YAML-style
   `.ftmp` files remain deferred-format drafts.
 - Timelapse chapters 1-3 (`assets/e2e-art/timelapse/0{1,2,3}-*.{cast,gif}`, raw casts in `raw/`,
