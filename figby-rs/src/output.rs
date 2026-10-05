@@ -199,6 +199,73 @@ const BITMAP_FONT_8X16: [u8; 1520] = [
     0x00, 0x00, 0x00, 0x00, 0x63, 0x77, 0x3E, 0x1C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+/// Whether `ch` is drawn procedurally (block elements, shades, quadrants,
+/// braille) instead of from the ASCII bitmap font.
+fn is_procedural_glyph(ch: char) -> bool {
+    matches!(ch as u32, 0x2580..=0x259F | 0x2800..=0x28FF)
+}
+
+/// Pixel coverage for procedural glyphs on the 8×16 cell grid (`sx` 0..8,
+/// `sy` 0..16), so block art and braille export instead of turning into `?`.
+fn procedural_pixel(ch: char, sx: usize, sy: usize) -> bool {
+    let left = sx < 4;
+    let top = sy < 8;
+    match ch as u32 {
+        0x2580 => sy < 8,                                         // ▀
+        0x2581..=0x2587 => sy >= 16 - 2 * (ch as usize - 0x2580), // ▁..▇ lower eighths
+        0x2588 => true,                                           // █
+        0x2589..=0x258F => sx < 8 - (ch as usize - 0x2588),       // ▉..▏ left eighths
+        0x2590 => !left,                                          // ▐
+        0x2591 => sx.is_multiple_of(2) && sy.is_multiple_of(2),   // ░
+        0x2592 => (sx + sy).is_multiple_of(2),                    // ▒
+        0x2593 => sx.is_multiple_of(2) || sy.is_multiple_of(2),   // ▓
+        0x2594 => sy < 2,                                         // ▔
+        0x2595 => sx >= 7,                                        // ▕
+        0x2596..=0x259F => {
+            // quadrants: bit order TL, TR, BL, BR
+            let mask: u8 = match ch as u32 {
+                0x2596 => 0b0010, // ▖
+                0x2597 => 0b0001, // ▗
+                0x2598 => 0b1000, // ▘
+                0x2599 => 0b1011, // ▙
+                0x259A => 0b1001, // ▚
+                0x259B => 0b1110, // ▛
+                0x259C => 0b1101, // ▜
+                0x259D => 0b0100, // ▝
+                0x259E => 0b0110, // ▞
+                _ => 0b0111,      // ▟
+            };
+            let bit = match (top, left) {
+                (true, true) => 0b1000,
+                (true, false) => 0b0100,
+                (false, true) => 0b0010,
+                (false, false) => 0b0001,
+            };
+            mask & bit != 0
+        }
+        0x2800..=0x28FF => {
+            // braille dots: 2 columns × 4 rows, each drawn as a 2×2 px dot
+            let bits = ch as u32 - 0x2800;
+            let col = sx / 4;
+            let row = sy / 4;
+            let dot_x = (sx % 4) >= 1 && (sx % 4) < 3;
+            let dot_y = (sy % 4) >= 1 && (sy % 4) < 3;
+            let idx = match (col, row) {
+                (0, 0) => 0,
+                (0, 1) => 1,
+                (0, 2) => 2,
+                (1, 0) => 3,
+                (1, 1) => 4,
+                (1, 2) => 5,
+                (0, 3) => 6,
+                _ => 7,
+            };
+            dot_x && dot_y && bits & (1 << idx) != 0
+        }
+        _ => false,
+    }
+}
+
 fn rasterize_char(
     ch: char,
     fg: Option<Color>,
@@ -213,6 +280,7 @@ fn rasterize_char(
     let bg_rgb = bg.map(color_to_rgb);
 
     let char_idx = (ch as usize).wrapping_sub(32);
+    let procedural = is_procedural_glyph(ch);
 
     let mut result = vec![vec![(0u8, 0u8, 0u8, 0u8); cw]; char_h];
 
@@ -220,8 +288,11 @@ fn rasterize_char(
         for (x, pixel) in row.iter_mut().enumerate().take(cw) {
             let src_y = y / s;
             let src_x = x / s;
-            let pixel_on = char_idx < 95
-                && ((BITMAP_FONT_8X16[char_idx * 16 + src_y] >> (7 - src_x)) & 1) == 1;
+            let pixel_on = if procedural {
+                procedural_pixel(ch, src_x, src_y)
+            } else {
+                char_idx < 95 && ((BITMAP_FONT_8X16[char_idx * 16 + src_y] >> (7 - src_x)) & 1) == 1
+            };
 
             if pixel_on {
                 let (r, g, b) = fg_rgb.unwrap_or((0, 0, 0));
@@ -302,7 +373,9 @@ fn render_frame(
             if transparent && cell.ch == ' ' {
                 continue;
             }
-            let ch = if cell.ch as u32 >= 32 && cell.ch as u32 <= 126 {
+            let ch = if (cell.ch as u32 >= 32 && cell.ch as u32 <= 126)
+                || is_procedural_glyph(cell.ch)
+            {
                 cell.ch
             } else if cell.ch == ' ' || cell.ch.is_ascii() {
                 ' '
@@ -560,6 +633,37 @@ pub fn export_cells_to_apng(
 mod tests {
     use super::*;
     use crate::CanvasCell;
+
+    fn lit_pixels(ch: char) -> usize {
+        use ratatui::style::Color;
+        let cells = make_buffer(1, 1, ch, Some(Color::Rgb(255, 0, 0)), None);
+        render_frame(&cells, 1, false)
+            .iter()
+            .flatten()
+            .filter(|p| p.3 == 255)
+            .count()
+    }
+
+    #[test]
+    fn test_png_block_and_braille_glyphs_are_drawn_not_question_marks() {
+        assert_eq!(lit_pixels('█'), 8 * 16);
+        assert_eq!(lit_pixels('▀'), 8 * 8);
+        assert_eq!(lit_pixels('▌'), 4 * 16);
+        assert_eq!(lit_pixels('▖'), 4 * 8);
+        let shades = (lit_pixels('░'), lit_pixels('▒'), lit_pixels('▓'));
+        assert!(shades.0 < shades.1 && shades.1 < shades.2 && shades.2 < 8 * 16);
+        assert_eq!(
+            lit_pixels('\u{2801}'),
+            4,
+            "single braille dot is a 2x2 block"
+        );
+        assert_eq!(lit_pixels('\u{28FF}'), 8 * 4, "all eight braille dots");
+        assert_ne!(
+            lit_pixels('█'),
+            lit_pixels('?'),
+            "block must not render as '?'"
+        );
+    }
 
     /// F-14 (GPT review): oversized exports must be rejected before any
     /// large allocation.

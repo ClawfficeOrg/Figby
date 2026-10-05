@@ -1,4 +1,36 @@
 # Changelog
+## [Unreleased]
+
+### Added
+- Timelapse chapter 4 (`04-title-shading-lighting-v3.{cast,gif}`, `driver/ch4.py`): FIGBY title, Marker-brush
+  shading, static `.txt`/`.ansi` exports and a light-sweep GIF (`timelapse/title/`).
+- `assets/templates/figby-header.ftmp`: a working TOML starter template (render-tested). The YAML-style
+  `.ftmp` files remain deferred-format drafts.
+- Timelapse chapters 1-3 (`assets/e2e-art/timelapse/0{1,2,3}-*.{cast,gif}`, raw casts in `raw/`,
+  reproducible drivers in `driver/`) recorded from live PTY sessions at 140x50.
+- Bundled `bob` FIGfont (`fonts/bob.flf`, from `assets/fonts/to-convert/bob_filled/Bob.ttf`, size 16,
+  custom ramp ` ░▒▓█`, full-width layout for legible `FIGBY`).
+- Emitter particles now render in inline playback and ride the layer that was active when the
+  emitter was placed (keyframed position offset moves the emission point).
+
+### Fixed
+- Marker brush could not be enabled: palette multi-select lived on `Tab` (global next-mode key). It is now
+  `J`, and clicking swatches toggles them while it is active; `M` then enables Marker mode.
+- Export dialog T/L/P/F/V hotkeys swallowed those letters in typed paths; they now act only while the
+  suggested path is untouched.
+- Lighting scenes always keep a global ambient base light: adding a point/directional light ensures one,
+  loaded figmaps get one, and the last ambient light cannot be deleted.
+- PNG/GIF/APNG export drew block elements (`█▒░▓▀▄▌▐`, quadrants) and braille as `?`; they are now
+  rasterized procedurally.
+- Keyframe editor showed only the first 6 layers (higher layers were editable blind); it now shows a
+  3-layer window that follows the selection.
+- Emitter config panel never received Up/Down (the canvas cursor handler ate them).
+- `--create-font-charset` comma lists were trimmed, dropping the space entry.
+- MCP server: PNG snapshots were blank (wrong tmux flags, unhandled `39`/`49`/256-colour SGR, no block
+  or braille glyph drawing); `mouse up` / drag codes were wrong so drags never painted; `-` typed
+  as text was parsed as a tmux flag; `record_stop` crashed when Figby had already exited; tmux status
+  bar made casts 49 rows (`scripts/figby-tmux.conf` turns it off).
+
 ## [6.0.49] - 2026-10-03
 
 ### Fixed
