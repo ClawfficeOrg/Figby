@@ -107,7 +107,7 @@ pub fn shade_composited(
                     x,
                     y,
                     CanvasCell {
-                        ch: fg_entry.ch,
+                        ch: lighting::cap_lit_char(fg_entry.ch, cell.ch),
                         fg: Some(ratatui::style::Color::Rgb(
                             fg_entry.fg_color.0,
                             fg_entry.fg_color.1,

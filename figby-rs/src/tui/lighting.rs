@@ -578,6 +578,17 @@ pub struct LightingLut {
 /// Luminance ramp for block-shade art (`░▒▓█`), dark to bright.
 pub const BLOCK_CHAR_MAP: &str = " ░▒▓█";
 
+/// Cap a lit glyph at the density the artist painted: for block-shade art a `░` stays
+/// at most `░` (it can brighten in colour but never fills in to `█`), so hand-made
+/// shading and gaps survive lighting. Anything outside the block ramp is returned as lit.
+pub fn cap_lit_char(lit: char, original: char) -> char {
+    let rank = |c: char| BLOCK_CHAR_MAP.chars().position(|b| b == c);
+    match (rank(lit), rank(original)) {
+        (Some(l), Some(o)) if o > 0 && l > o => original,
+        _ => lit,
+    }
+}
+
 /// Pick the lighting glyph ramp for some art: block-shade art (e.g. the `bob`
 /// FIGfont) keeps looking like block art when lit, anything else uses the
 /// ASCII ramp. `cells` yields every canvas character across the layers.
@@ -1371,6 +1382,16 @@ mod tests {
         assert!(lum[0][0] > 0.8, "in front of wall is lit");
         assert!(lum[0][3] < 0.6, "behind wall is shadowed (ambient only)");
         assert!(lum[0][8] > 0.8, "far behind the wall the shadow has ended");
+    }
+
+    #[test]
+    fn cap_lit_char_keeps_painted_density() {
+        assert_eq!(cap_lit_char('█', '░'), '░');
+        assert_eq!(cap_lit_char('▓', '▒'), '▒');
+        assert_eq!(cap_lit_char('░', '█'), '░');
+        // Spaces and non-block art are not capped.
+        assert_eq!(cap_lit_char('█', ' '), '█');
+        assert_eq!(cap_lit_char('@', '.'), '@');
     }
 
     #[test]

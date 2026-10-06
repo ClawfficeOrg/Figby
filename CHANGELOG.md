@@ -32,6 +32,8 @@
   hand-drawn / system-font title, so it no longer depends on installed FIGlet fonts.
 
 ### Fixed
+- Lighting no longer fills in hand-painted shading: a lit block-shade glyph is capped at the density painted
+  (`░` stays at most `░`), so gaps like the one under the bob `F` bars survive the light pool.
 - CLI `--play` lighting uses the height-aware shading too (no more rim-only lighting there).
 - Lighting only brightened a word's outer rim: shadow rays treated every filled neighbour cell as a blocker, so
   flat letter faces shadowed themselves. Shadows are now height-aware (a cell blocks only if it rises above the
