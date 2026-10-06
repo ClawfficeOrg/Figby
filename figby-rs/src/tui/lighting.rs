@@ -188,7 +188,43 @@ pub enum Light {
     },
 }
 
+/// Colour presets the light editor cycles through (`C` in lighting mode).
+pub const LIGHT_COLOR_PRESETS: [(&str, Rgb); 8] = [
+    ("white", Rgb(255, 255, 255)),
+    ("warm", Rgb(255, 200, 120)),
+    ("amber", Rgb(255, 160, 40)),
+    ("red", Rgb(255, 70, 70)),
+    ("magenta", Rgb(255, 80, 220)),
+    ("blue", Rgb(80, 120, 255)),
+    ("cyan", Rgb(80, 230, 255)),
+    ("green", Rgb(90, 255, 120)),
+];
+
 impl Light {
+    pub fn color(&self) -> Rgb {
+        match self {
+            Light::Ambient { color, .. }
+            | Light::Directional { color, .. }
+            | Light::Point { color, .. } => *color,
+        }
+    }
+    pub fn set_color(&mut self, c: Rgb) {
+        match self {
+            Light::Ambient { color, .. }
+            | Light::Directional { color, .. }
+            | Light::Point { color, .. } => *color = c,
+        }
+    }
+    /// Advance to the next colour preset (unknown colours restart at white's successor).
+    pub fn cycle_color(&mut self) -> &'static str {
+        let cur = self.color();
+        let next = LIGHT_COLOR_PRESETS
+            .iter()
+            .position(|(_, c)| *c == cur)
+            .map_or(0, |i| (i + 1) % LIGHT_COLOR_PRESETS.len());
+        self.set_color(LIGHT_COLOR_PRESETS[next].1);
+        LIGHT_COLOR_PRESETS[next].0
+    }
     pub fn target(&self) -> LightTarget {
         match self {
             Light::Ambient { target, .. }
@@ -846,6 +882,9 @@ pub fn shade_canvas(
     (fg_lum, bg_lum)
 }
 
+/// Per-cell light colour sums (see [`shade_canvas_heightfield_tinted`]).
+pub type TintGrid = Vec<Vec<(f32, f32, f32)>>;
+
 /// Height of a fully-raised (255) cell, in canvas cells, when casting shadows.
 pub const SHADOW_HEIGHT_UNITS: f32 = 8.0;
 
@@ -860,10 +899,25 @@ pub fn shade_canvas_heightfield(
     surface_height: impl Fn(u16, u16) -> Option<f32>,
     max_shadow_distance: u16,
 ) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
+    let (fg, bg, _) =
+        shade_canvas_heightfield_tinted(scene, normal_map, surface_height, max_shadow_distance);
+    (fg, bg)
+}
+
+/// Like [`shade_canvas_heightfield`] but also returns the per-cell light colour sum
+/// (each light's contribution multiplied by its colour), for [`apply_light_tint`].
+pub fn shade_canvas_heightfield_tinted(
+    scene: &Scene,
+    normal_map: &NormalMap,
+    surface_height: impl Fn(u16, u16) -> Option<f32>,
+    max_shadow_distance: u16,
+) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, TintGrid) {
     let height = normal_map.height() as usize;
     let width = normal_map.width() as usize;
     let mut fg_lum = vec![vec![0.0f32; width]; height];
     let mut bg_lum = vec![vec![0.0f32; width]; height];
+    // Sum of (contribution x light colour) per cell, 0..1 per channel.
+    let mut tint = vec![vec![(0.0f32, 0.0f32, 0.0f32); width]; height];
 
     for y in 0..height {
         for x in 0..width {
@@ -949,6 +1003,11 @@ pub fn shade_canvas_heightfield(
                 };
                 if target.applies_fg() {
                     fg_lum[y][x] += c;
+                    let col = light.color();
+                    let t = &mut tint[y][x];
+                    t.0 += c * col.0 as f32 / 255.0;
+                    t.1 += c * col.1 as f32 / 255.0;
+                    t.2 += c * col.2 as f32 / 255.0;
                 }
                 if target.applies_bg() {
                     bg_lum[y][x] += c;
@@ -958,7 +1017,27 @@ pub fn shade_canvas_heightfield(
             bg_lum[y][x] = bg_lum[y][x].clamp(0.0, 1.0);
         }
     }
-    (fg_lum, bg_lum)
+    (fg_lum, bg_lum, tint)
+}
+
+/// Tint a lit swatch colour by the colours of the lights reaching the cell.
+/// `sum` is the cell's colour sum from [`shade_canvas_heightfield_tinted`]; the tint is
+/// its direction (white light leaves the colour unchanged) blended partway so a coloured
+/// light shifts the hue without wiping out the swatch's own channels.
+pub fn apply_light_tint(color: (u8, u8, u8), sum: (f32, f32, f32)) -> (u8, u8, u8) {
+    let m = sum.0.max(sum.1).max(sum.2);
+    if m < 1e-4 {
+        return color;
+    }
+    let mix = |c: u8, t: f32| -> u8 {
+        let tn = (t / m).clamp(0.0, 1.0);
+        (c as f32 * (0.35 + 0.65 * tn)).round().clamp(0.0, 255.0) as u8
+    };
+    (
+        mix(color.0, sum.0),
+        mix(color.1, sum.1),
+        mix(color.2, sum.2),
+    )
 }
 
 /// True when a taller cell lies between this cell and the light. `(dx, dy, dz)`
@@ -1392,6 +1471,43 @@ mod tests {
         // Spaces and non-block art are not capped.
         assert_eq!(cap_lit_char('█', ' '), '█');
         assert_eq!(cap_lit_char('@', '.'), '@');
+    }
+
+    #[test]
+    fn light_color_cycles_through_presets_and_wraps() {
+        let mut l = Light::point(
+            (0.0, 0.0, 5.0),
+            1.0,
+            Rgb(255, 255, 255),
+            Attenuation::default(),
+        );
+        assert_eq!(l.cycle_color(), "warm");
+        for _ in 0..LIGHT_COLOR_PRESETS.len() - 1 {
+            l.cycle_color();
+        }
+        assert_eq!(l.color(), Rgb(255, 255, 255));
+        l.set_color(Rgb(1, 2, 3));
+        assert_eq!(l.cycle_color(), "white");
+    }
+
+    #[test]
+    fn coloured_light_tints_shading_white_light_does_not() {
+        let nm = NormalMap::new(3, 1);
+        let mut scene = Scene::new();
+        scene.add_light(Light::point(
+            (1.0, 0.0, 2.0),
+            1.0,
+            Rgb(80, 230, 255),
+            Attenuation::default(),
+        ));
+        let (_, _, tint) = shade_canvas_heightfield_tinted(&scene, &nm, |_, _| Some(0.0), 20);
+        let (r, _, b) = apply_light_tint((200, 100, 200), tint[0][1]);
+        assert!(r < 200 && b >= 190, "cyan light cuts red: r={r} b={b}");
+        assert_eq!(
+            apply_light_tint((200, 100, 200), (0.7, 0.7, 0.7)),
+            (200, 100, 200)
+        );
+        assert_eq!(apply_light_tint((9, 9, 9), (0.0, 0.0, 0.0)), (9, 9, 9));
     }
 
     #[test]

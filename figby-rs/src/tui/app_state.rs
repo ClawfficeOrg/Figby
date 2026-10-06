@@ -1001,6 +1001,15 @@ impl LightingState {
                     *dirty = true;
                 }
             }
+            KeyCode::Char('C') => {
+                // Cycle the selected light's colour through the presets
+                if let Some(ref mut scene) = self.scene {
+                    if let Some(light) = scene.lights.get_mut(self.panel.selected_index) {
+                        light.cycle_color();
+                        *dirty = true;
+                    }
+                }
+            }
             KeyCode::Char('P') => {
                 if let Some(ref mut scene) = self.scene {
                     scene.add_light(lighting::Light::Point {

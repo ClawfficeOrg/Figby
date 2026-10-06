@@ -2,6 +2,8 @@
 ## [Unreleased]
 
 ### Added
+- Lighting mode: `C` cycles the selected light's colour (white, warm, amber, red, magenta, blue, cyan, green).
+  Light colour now tints the shading (it was stored but ignored); the Lights list shows the colour name.
 - `scripts/install-fonts.sh`: installs the `figby-fonts` submodule + bundled `fonts/` into a directory figby
   searches (default `/usr/local/share/figlet`).
 - Bundled `bob` font is committed in `fonts/`; C-parity font-listing tests skip Figby-only fonts.

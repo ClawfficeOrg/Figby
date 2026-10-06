@@ -749,6 +749,11 @@ pub const KEYMAP: &[KeyBinding] = &[
         description: "Add ambient / directional / point light",
     },
     KeyBinding {
+        keys: "C",
+        scope: Scope::Lighting,
+        description: "Cycle selected light colour",
+    },
+    KeyBinding {
         keys: "Delete",
         scope: Scope::Lighting,
         description: "Remove selected light (the last ambient base light is kept)",

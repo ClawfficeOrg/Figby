@@ -80,6 +80,7 @@ impl LightPanel {
             } else {
                 "   "
             };
+            let cname = lighting_color_name(light.color());
             let label = match light {
                 Light::Ambient { intensity, .. } => format!("Amb  {:.2}", intensity),
                 Light::Directional { intensity, .. } => format!("Dir  {:.2}", intensity),
@@ -98,6 +99,11 @@ impl LightPanel {
                     .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(theme.general.secondary)
+            };
+            let label = if cname == "white" {
+                label
+            } else {
+                format!("{label} {cname}")
             };
             lines.push(Line::from(Span::styled(
                 format!("{}{}", prefix, label),
@@ -147,6 +153,7 @@ impl LightPanel {
             lines.push(Line::from(Span::raw(" ←/→=move")));
             lines.push(Line::from(Span::raw(" Sh+↑↓=v-move")));
             lines.push(Line::from(Span::raw(" +/-=intensity")));
+            lines.push(Line::from(Span::raw(" C=colour")));
             lines.push(Line::from(Span::raw(" A=ambient")));
             lines.push(Line::from(Span::raw(" D=directional")));
             lines.push(Line::from(Span::raw(" P=point")));
@@ -156,6 +163,13 @@ impl LightPanel {
 
         frame.render_widget(Paragraph::new(lines), inner);
     }
+}
+
+fn lighting_color_name(c: crate::tui::lighting::Rgb) -> &'static str {
+    crate::tui::lighting::LIGHT_COLOR_PRESETS
+        .iter()
+        .find(|(_, p)| *p == c)
+        .map_or("custom", |(n, _)| n)
 }
 
 impl Default for LightPanel {
