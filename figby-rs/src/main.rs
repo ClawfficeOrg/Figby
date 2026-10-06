@@ -1329,13 +1329,17 @@ fn main() {
                             &heightfield_from_composite(&composite),
                             0.5,
                         );
-                        let (fg_lum, bg_lum) = figby::tui::lighting::shade_canvas(
+                        let (fg_lum, bg_lum) = figby::tui::lighting::shade_canvas_heightfield(
                             &interpolated,
                             &nmap,
                             |x: u16, y: u16| {
-                                composite.get(x as usize, y as usize).is_some_and(|c| {
-                                    c.ch != ' ' || c.fg.is_some() || c.bg.is_some()
-                                })
+                                composite
+                                    .get(x as usize, y as usize)
+                                    .filter(|c| c.ch != ' ' || c.fg.is_some() || c.bg.is_some())
+                                    .map(|c| {
+                                        c.height.unwrap_or(0) as f32 / 255.0
+                                            * figby::tui::lighting::SHADOW_HEIGHT_UNITS
+                                    })
                             },
                             50,
                         );

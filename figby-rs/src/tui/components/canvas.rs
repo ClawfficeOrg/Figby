@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use crate::tui::canvas::{CanvasBuffer, CanvasCell};
 use crate::tui::layers::LayerStack;
-use crate::tui::lighting::{self, LightingLut, Scene, SwatchLightingData};
-
-/// Height of a fully-raised (255) cell, in canvas cells, when casting shadows.
-const SHADOW_HEIGHT_UNITS: f32 = 8.0;
+use crate::tui::lighting::{self, LightingLut, Scene, SwatchLightingData, SHADOW_HEIGHT_UNITS};
 
 #[allow(clippy::too_many_arguments)]
 pub fn shade_composited(

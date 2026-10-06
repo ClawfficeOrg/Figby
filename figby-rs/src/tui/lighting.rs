@@ -835,6 +835,9 @@ pub fn shade_canvas(
     (fg_lum, bg_lum)
 }
 
+/// Height of a fully-raised (255) cell, in canvas cells, when casting shadows.
+pub const SHADOW_HEIGHT_UNITS: f32 = 8.0;
+
 /// Height-aware variant of [`shade_canvas`]. `surface_height(x, y)` returns the
 /// occluder height (in cells) of a shadow-casting cell, or `None` for open ground.
 /// A cell only shadows a receiver when it rises above the ray toward the light, so
