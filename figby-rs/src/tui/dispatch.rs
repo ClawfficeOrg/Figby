@@ -1684,6 +1684,39 @@ impl TuiApp {
         // made Space ambiguous in live sessions (paint vs play depending on
         // whether frames existed).
 
+        // Lighting mode: key handling. Runs before the Layers drawer and the
+        // timeline so `+`/`-`/`D`/Shift+arrows/`A` reach the light editor
+        // instead of being captured as layer ops or frame capture.
+        if self.ui.mode == AppMode::Lighting {
+            let w = self.editor.canvas.buffer.width() as i16;
+            let h = self.editor.canvas.buffer.height() as i16;
+            let (tf, tt) = if self.animation.timeline_state.frames.is_empty() {
+                (0, 0)
+            } else {
+                (
+                    self.animation.timeline_state.current_frame,
+                    self.animation.timeline_state.frames.len(),
+                )
+            };
+            match self
+                .lighting
+                .handle_key(code, modifiers, w, h, &mut self.frame.dirty, tf, tt)
+            {
+                Some(false) => {
+                    self.ui.mode = self.ui.prev_mode;
+                    self.frame.dirty = true;
+                    return None;
+                }
+                Some(true) => {
+                    self.animation
+                        .timeline_state
+                        .update_light_keyframe_frames(&self.lighting.light_keyframes);
+                    return None;
+                }
+                None => {}
+            }
+        }
+
         // Layer panel: dispatch keys when drawer shows layers
         if self.side_panel.open
             && self.side_panel.active_tab == TabId::Layers
@@ -1844,37 +1877,6 @@ impl TuiApp {
             .handle_key(code, modifiers, &mut self.editor, &mut self.frame.dirty)
         {
             return None;
-        }
-
-        // Lighting mode: key handling
-        if self.ui.mode == AppMode::Lighting {
-            let w = self.editor.canvas.buffer.width() as i16;
-            let h = self.editor.canvas.buffer.height() as i16;
-            let (tf, tt) = if self.animation.timeline_state.frames.is_empty() {
-                (0, 0)
-            } else {
-                (
-                    self.animation.timeline_state.current_frame,
-                    self.animation.timeline_state.frames.len(),
-                )
-            };
-            match self
-                .lighting
-                .handle_key(code, modifiers, w, h, &mut self.frame.dirty, tf, tt)
-            {
-                Some(false) => {
-                    self.ui.mode = self.ui.prev_mode;
-                    self.frame.dirty = true;
-                    return None;
-                }
-                Some(true) => {
-                    self.animation
-                        .timeline_state
-                        .update_light_keyframe_frames(&self.lighting.light_keyframes);
-                    return None;
-                }
-                None => {}
-            }
         }
 
         // Enter lighting mode with uppercase G
@@ -4215,6 +4217,43 @@ mod timeline_key_wiring_tests {
         app.ui.mode = AppMode::ImageEditor;
         app.animation.timeline_visible = true;
         app
+    }
+
+    fn lighting_app_with_layers_tab() -> TuiApp {
+        let mut app = app_with_visible_timeline();
+        let none = KeyModifiers::NONE;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('G'), none));
+        assert_eq!(app.ui.mode, AppMode::Lighting);
+        app.side_panel.open = true;
+        app.side_panel.active_tab = crate::tui::side_panel::TabId::Layers;
+        app
+    }
+
+    #[test]
+    fn test_lighting_a_adds_ambient_not_frame_capture() {
+        let mut app = lighting_app_with_layers_tab();
+        let before = app.lighting.scene.as_ref().unwrap().lights.len();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('A'), KeyModifiers::NONE));
+        assert_eq!(
+            app.lighting.scene.as_ref().unwrap().lights.len(),
+            before + 1
+        );
+        assert!(app.animation.timeline_state.frames.is_empty());
+    }
+
+    #[test]
+    fn test_lighting_plus_reaches_light_with_layers_tab_open() {
+        let mut app = lighting_app_with_layers_tab();
+        let idx = app.lighting.panel.selected_index();
+        let get = |a: &TuiApp| {
+            crate::tui::light_panel::LightPanel::light_intensity(
+                a.lighting.scene.as_ref().unwrap(),
+                idx,
+            )
+        };
+        let before = get(&app);
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('-'), KeyModifiers::NONE));
+        assert_ne!(get(&app), before);
     }
 
     #[test]
