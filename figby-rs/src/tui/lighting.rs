@@ -835,11 +835,177 @@ pub fn shade_canvas(
     (fg_lum, bg_lum)
 }
 
+/// Height-aware variant of [`shade_canvas`]. `surface_height(x, y)` returns the
+/// occluder height (in cells) of a shadow-casting cell, or `None` for open ground.
+/// A cell only shadows a receiver when it rises above the ray toward the light, so
+/// a flat surface no longer shadows itself and lights reach letter faces, not just
+/// their rims.
+pub fn shade_canvas_heightfield(
+    scene: &Scene,
+    normal_map: &NormalMap,
+    surface_height: impl Fn(u16, u16) -> Option<f32>,
+    max_shadow_distance: u16,
+) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
+    let height = normal_map.height() as usize;
+    let width = normal_map.width() as usize;
+    let mut fg_lum = vec![vec![0.0f32; width]; height];
+    let mut bg_lum = vec![vec![0.0f32; width]; height];
+
+    for y in 0..height {
+        for x in 0..width {
+            let normal = normal_map.cells[y][x];
+
+            for light in &scene.lights {
+                let target = light.target();
+                let c = match light {
+                    Light::Ambient { intensity, .. } => *intensity,
+                    Light::Directional {
+                        direction,
+                        intensity,
+                        ..
+                    } => {
+                        let (nx, ny, nz) = normal.to_f32();
+                        let ndotl =
+                            (nx * direction.0 + ny * direction.1 + nz * direction.2).max(0.0);
+                        if ndotl > 0.0
+                            && !height_shadowed(
+                                x as u16,
+                                y as u16,
+                                direction.0,
+                                direction.1,
+                                direction.2,
+                                &surface_height,
+                                width as u16,
+                                height as u16,
+                                max_shadow_distance,
+                            )
+                        {
+                            ndotl * intensity
+                        } else {
+                            0.0
+                        }
+                    }
+                    Light::Point {
+                        position,
+                        intensity,
+                        attenuation,
+                        ..
+                    } => {
+                        let lx = position.0 - x as f32;
+                        let ly = position.1 - y as f32;
+                        let lz = position.2;
+                        let dist2 = lx * lx + ly * ly + lz * lz;
+                        let dist = dist2.sqrt();
+                        let ndotl = if dist > 1e-10 {
+                            let (nx, ny, nz) = normal.to_f32();
+                            (nx * lx / dist + ny * ly / dist + nz * lz / dist).max(0.0)
+                        } else {
+                            1.0
+                        };
+                        if ndotl > 0.0 {
+                            let atten = 1.0
+                                / (attenuation.constant
+                                    + attenuation.linear * dist
+                                    + attenuation.quadratic * dist2);
+                            let shadow_dir = if dist > 1e-10 {
+                                (lx / dist, ly / dist)
+                            } else {
+                                (0.0, 0.0)
+                            };
+                            if !height_shadowed(
+                                x as u16,
+                                y as u16,
+                                shadow_dir.0,
+                                shadow_dir.1,
+                                lz / dist,
+                                &surface_height,
+                                width as u16,
+                                height as u16,
+                                max_shadow_distance,
+                            ) && dist > 1e-10
+                            {
+                                ndotl * intensity * atten
+                            } else {
+                                0.0
+                            }
+                        } else {
+                            0.0
+                        }
+                    }
+                };
+                if target.applies_fg() {
+                    fg_lum[y][x] += c;
+                }
+                if target.applies_bg() {
+                    bg_lum[y][x] += c;
+                }
+            }
+            fg_lum[y][x] = fg_lum[y][x].clamp(0.0, 1.0);
+            bg_lum[y][x] = bg_lum[y][x].clamp(0.0, 1.0);
+        }
+    }
+    (fg_lum, bg_lum)
+}
+
+/// True when a taller cell lies between this cell and the light. `(dx, dy, dz)`
+/// points toward the light (dz need not be normalised against dx/dy).
+#[allow(clippy::too_many_arguments)]
+fn height_shadowed(
+    x: u16,
+    y: u16,
+    dx: f32,
+    dy: f32,
+    dz: f32,
+    surface_height: &impl Fn(u16, u16) -> Option<f32>,
+    width: u16,
+    height: u16,
+    max_distance: u16,
+) -> bool {
+    let horiz = (dx * dx + dy * dy).sqrt();
+    // Light straight overhead: nothing can be in the way.
+    if horiz < 1e-4 {
+        return false;
+    }
+    let slope = dz / horiz;
+    let recv = surface_height(x, y).unwrap_or(0.0);
+    march_shadow_ray(
+        x,
+        y,
+        (dx, dy),
+        |cx, cy, t| surface_height(cx, cy).is_some_and(|hb| hb > recv + slope * t + 1e-3),
+        width,
+        height,
+        max_distance,
+    )
+}
+
 pub fn cast_shadow(
     cell_x: u16,
     cell_y: u16,
     light_dir: (f32, f32),
     cell_has_content: impl Fn(u16, u16) -> bool,
+    canvas_w: u16,
+    canvas_h: u16,
+    max_distance: u16,
+) -> bool {
+    march_shadow_ray(
+        cell_x,
+        cell_y,
+        light_dir,
+        |cx, cy, _t| cell_has_content(cx, cy),
+        canvas_w,
+        canvas_h,
+        max_distance,
+    )
+}
+
+/// Walk a ray from a cell toward the light; `blocks(x, y, t)` is asked for every
+/// cell crossed, where `t` is the horizontal distance travelled in cells.
+fn march_shadow_ray(
+    cell_x: u16,
+    cell_y: u16,
+    light_dir: (f32, f32),
+    blocks: impl Fn(u16, u16, f32) -> bool,
     canvas_w: u16,
     canvas_h: u16,
     max_distance: u16,
@@ -893,22 +1059,26 @@ pub fn cast_shadow(
     let mut cy = cell_y as i32;
 
     loop {
+        let t;
         if t_max_x < t_max_y {
             if t_max_x > max_t {
                 break;
             }
+            t = t_max_x;
             cx += step_x;
             t_max_x += t_delta_x;
         } else if t_max_y < t_max_x {
             if t_max_y > max_t {
                 break;
             }
+            t = t_max_y;
             cy += step_y;
             t_max_y += t_delta_y;
         } else {
             if t_max_x > max_t {
                 break;
             }
+            t = t_max_x;
             cx += step_x;
             cy += step_y;
             t_max_x += t_delta_x;
@@ -918,7 +1088,7 @@ pub fn cast_shadow(
         if cx < 0 || cx >= canvas_w as i32 || cy < 0 || cy >= canvas_h as i32 {
             return false;
         }
-        if cell_has_content(cx as u16, cy as u16) {
+        if blocks(cx as u16, cy as u16, t) {
             return true;
         }
     }
@@ -1154,6 +1324,50 @@ mod tests {
     fn cast_shadow_blocked() {
         let blocked = cast_shadow(0, 0, (1.0, 0.0), |x, y| x == 2 && y == 0, 10, 10, 20);
         assert!(blocked);
+    }
+
+    /// Flat 9x1 bar of content lit by a low point light to its left: the whole
+    /// face must be lit, not just the cell nearest the light.
+    #[test]
+    fn heightfield_shading_lights_flat_face_not_just_rim() {
+        let nm = NormalMap::new(9, 1);
+        let mut scene = Scene::new();
+        scene.add_light(Light::point(
+            (-2.0, 0.0, 2.0),
+            1.0,
+            Rgb(255, 255, 255),
+            Attenuation {
+                constant: 1.0,
+                linear: 0.0,
+                quadratic: 0.0,
+            },
+        ));
+        let (flat, _) = shade_canvas_heightfield(&scene, &nm, |_, _| Some(0.0), 20);
+        assert!(
+            flat[0].iter().all(|&l| l > 0.65),
+            "flat face lit: {:?}",
+            flat[0]
+        );
+        // The old silhouette test shadows everything behind the first cell.
+        let (old, _) = shade_canvas(&scene, &nm, |_, _| true, 20);
+        assert!(old[0][8] < 0.6, "ambient only");
+    }
+
+    /// A taller wall between receiver and light still casts a shadow.
+    #[test]
+    fn heightfield_shading_tall_wall_casts_shadow() {
+        let nm = NormalMap::new(9, 1);
+        let mut scene = Scene::new();
+        scene.add_light(Light::directional(
+            (-0.6, 0.0, 0.8),
+            1.0,
+            Rgb(255, 255, 255),
+        ));
+        let wall = |x: u16, _y: u16| Some(if x == 2 { 6.0 } else { 0.0 });
+        let (lum, _) = shade_canvas_heightfield(&scene, &nm, wall, 20);
+        assert!(lum[0][0] > 0.8, "in front of wall is lit");
+        assert!(lum[0][3] < 0.6, "behind wall is shadowed (ambient only)");
+        assert!(lum[0][8] > 0.8, "far behind the wall the shadow has ended");
     }
 
     #[test]

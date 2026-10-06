@@ -4,6 +4,9 @@ use crate::tui::canvas::{CanvasBuffer, CanvasCell};
 use crate::tui::layers::LayerStack;
 use crate::tui::lighting::{self, LightingLut, Scene, SwatchLightingData};
 
+/// Height of a fully-raised (255) cell, in canvas cells, when casting shadows.
+const SHADOW_HEIGHT_UNITS: f32 = 8.0;
+
 #[allow(clippy::too_many_arguments)]
 pub fn shade_composited(
     composited: &CanvasBuffer,
@@ -59,12 +62,14 @@ pub fn shade_composited(
 
     let normal_map = lighting::compute_normal_map_figfont(&heightfield, height_scale);
 
-    let shadow_check = |x: u16, y: u16| -> bool {
+    // Occluders are height-aware: a cell blocks light only if it rises above the
+    // ray toward the light, so flat art is lit across its faces, not just its rim.
+    let surface_height = |x: u16, y: u16| -> Option<f32> {
         let (ux, uy) = (x as usize, y as usize);
-        ux < w && uy < h && shadow_mask[uy][ux]
+        (ux < w && uy < h && shadow_mask[uy][ux]).then(|| heightfield[uy][ux] * SHADOW_HEIGHT_UNITS)
     };
     let (fg_luminance, bg_luminance) =
-        lighting::shade_canvas(scene, &normal_map, shadow_check, max_shadow_distance);
+        lighting::shade_canvas_heightfield(scene, &normal_map, surface_height, max_shadow_distance);
 
     // Pre-compute specular contribution per cell
     let specular_luminance: Vec<Vec<f32>> = (0..h)
