@@ -11,6 +11,9 @@
 - Timelapse chapter 4 (`04-title-shading-lighting-v4.{cast,gif}`, `driver/ch4.py`): FIGBY title painted by hand
   with the Marker brush (airbrush passes up a 10-colour ramp, then per-letter highlights), static
   `.txt`/`.ansi`/`.png` exports and a light-sweep GIF (`timelapse/title/`).
+- Opus-authored timelapses: `04-title-shading-opus` (3D extrude/shadow/face layers, Marker ramps, driver
+  `ch4_opus.py`) and `04-title-lighting-opus` (point/directional light on the result, `ch4_opus_lighting.py`),
+  with painted and lit `.figmap` projects in `timelapse/title/`.
 - `assets/templates/figby-header.ftmp`: a working TOML starter template (render-tested). The YAML-style
   `.ftmp` files remain deferred-format drafts.
 - Timelapse chapters 1-3 (`assets/e2e-art/timelapse/0{1,2,3}-*.{cast,gif}`, raw casts in `raw/`,
@@ -29,6 +32,8 @@
   hand-drawn / system-font title, so it no longer depends on installed FIGlet fonts.
 
 ### Fixed
+- Lighting-mode keys now take priority over the Layers drawer and timeline: `+`/`-`/`D`/Shift+arrows work with
+  the Layers tab open, and `A` adds an ambient light instead of capturing a frame.
 - Lighting ignored ANSI/indexed palette colours (only RGB cells matched a swatch), so lit art fell onto
   swatch 0 and went grey. Every colour used by lit layers now gets a lighting swatch and keeps its hue.
 - Point lights default to a gentler falloff (linear 0.02, quadratic 0.004) so the lit area is visible.
