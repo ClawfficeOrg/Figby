@@ -2,6 +2,19 @@
 ## [Unreleased]
 
 ### Added
+- `.figseq`: a baked frame-sequence format — a series of flat rasterized screens with per-frame hold
+  times, the terminal-playable counterpart to the `.figmap` project format. Cells are stored as one
+  row-major `chars` string plus three integers per cell (`fg`/`bg`/`height`) instead of nested per-cell
+  objects, which is ~10x smaller than the figmap a sequence comes from (a 76×26 frame: ~270 KB →
+  ~18 KB). `figby --bake <file.figmap> --output <file.figseq>` resolves a project to the pixels the
+  editor's exporter produces (layers composited, Text-tool blocks rasterized, lighting applied) and
+  `figby --play <file.figseq>` streams it through the same player the GIF path already uses. Single-frame
+  sequences print inline through a pipe rather than entering raw mode.
+- `--hold-last <SECONDS>`: keep the final frame on screen after a non-looping animation ends instead of
+  clearing the screen immediately; any key dismisses early. Works for `--play` on any format, and is
+  recorded into a sequence by `--bake`. Ignored for looping playback and for a paused playhead.
+- `--loop` now also applies to `--bake`, marking the baked sequence as looping; playback already
+  honoured `loop_enabled`.
 - Lighting mode: `C` cycles the selected light's colour (white, warm, amber, red, magenta, blue, cyan, green).
   Light colour now tints the shading (it was stored but ignored); the Lights list shows the colour name.
 - `scripts/install-fonts.sh`: installs the `figby-fonts` submodule + bundled `fonts/` into a directory figby

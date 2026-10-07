@@ -3314,3 +3314,21 @@ attempt overwrote them. MCP probes verified launch, figmap-open, resize,
 snapshot, timeline playback, recording, and clean stop. Key events over tmux
 remain unreliable for canvas painting; prefer MCP screenshot feedback and
 verify each action, or later move control inside the app event loop.
+
+### figseq baked-frame format (2026-10-07)
+
+`.figseq` is the terminal-playable counterpart to the `.figmap` project
+format: `{version, width, height, loop_enabled, frames[{delay, chars,
+attrs}]}`, one flat rasterized screen per frame. `figby --bake X.figmap
+--output Y.figseq` resolves a project (layers, Text-tool blocks, static
+lighting) to final pixels; `figby --play Y.figseq` streams it via
+`player::play_raw_timed`, the same engine as GIF playback. Rationale: a
+figmap is a project and cannot represent some things worth playing back
+at all (a lighting scene with no keyframes), and it costs ~10x the
+bytes. `PlaybackIntent` carries the two things a figmap cannot imply (`loop_enabled`,
+`hold_last_frame_cs`), both overridable at playback time. `player::PlayOptions`
+replaces the positional playback bools. `palette_editor::sync_art_swatches` /
+`lighting_swatch_data` are shared with the editor so a bake shades
+identically to the live view. Naming note: `bake` stayed the verb, not
+the extension — `.figbake` is two letters from `.figmap`, which `--play`
+also accepts.

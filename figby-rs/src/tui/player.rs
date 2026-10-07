@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::io::{self, Write};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal;
@@ -727,7 +727,47 @@ pub fn render_frame_inline(frame: &AnimationFrame, max_w: usize, max_h: usize) -
 /// bypassed — any keypress exits immediately. This is the "banner" mode:
 /// loop until dismissed, rather than play-once-and-return.
 pub fn play_raw(frames: Vec<AnimationFrame>, fps: u8, loop_playback: bool) -> io::Result<()> {
-    play_raw_timed(frames, fps, None, loop_playback, false, false)
+    play_raw_timed(
+        frames,
+        fps,
+        None,
+        PlayOptions {
+            loop_playback,
+            ..PlayOptions::default()
+        },
+    )
+}
+
+/// Playback behaviour flags for [`play_raw_timed`]. A struct rather than a run
+/// of positional bools: `inline` and `show_timeline` were already adjacent and
+/// easy to transpose at a call site, and this keeps room for more without
+/// another signature change.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PlayOptions {
+    /// Repeat indefinitely; any keypress dismisses. Bypasses the interactive
+    /// controls (there is no natural end to wait for).
+    pub loop_playback: bool,
+    /// Render at the saved cursor instead of clearing the screen.
+    pub inline: bool,
+    /// Add a one-row playback timeline under an inline animation.
+    pub show_timeline: bool,
+    /// Keep the final frame on screen this many centiseconds after a
+    /// *non-looping* animation naturally reaches its last frame. `0` (the
+    /// default) restores the historical behaviour: exit immediately, and the
+    /// teardown clears the screen. Any keypress dismisses early.
+    ///
+    /// Ignored for looping playback (no natural end) and for a paused
+    /// playhead (pausing is not ending).
+    pub hold_last_frame_cs: u16,
+}
+
+impl PlayOptions {
+    /// The end-of-playback hold as a duration. Centiseconds (1/100 s) is the
+    /// unit every on-disk timing field in this codebase uses, so the conversion
+    /// lives here rather than at each call site.
+    pub fn hold_duration(&self) -> Duration {
+        Duration::from_millis(u64::from(self.hold_last_frame_cs) * 10)
+    }
 }
 
 /// `play_raw` with per-frame hold times (centiseconds) so GIF-imported
@@ -747,10 +787,15 @@ pub fn play_raw_timed(
     frames: Vec<AnimationFrame>,
     fps: u8,
     delays: Option<Vec<u16>>,
-    loop_playback: bool,
-    inline: bool,
-    show_timeline: bool,
+    opts: PlayOptions,
 ) -> io::Result<()> {
+    let PlayOptions {
+        loop_playback,
+        inline,
+        show_timeline,
+        ..
+    } = opts;
+    let hold = opts.hold_duration();
     if frames.is_empty() {
         return Ok(());
     }
@@ -841,6 +886,10 @@ pub fn play_raw_timed(
     io::stdout().flush()?;
 
     let mut finished = false;
+    // While holding, the playhead stays pinned on the final frame: the loop
+    // keeps re-rendering it (so the progress bar still reads the real frame
+    // count) until the deadline or a keypress lands.
+    let mut hold_deadline: Option<Instant> = None;
 
     while !finished {
         let cur = player.current_frame();
@@ -862,12 +911,24 @@ pub fn play_raw_timed(
         io::stdout().flush()?;
 
         let frame_interval = player.frame_interval();
+        // While holding the final frame, poll at a short fixed cadence instead of a
+        // whole frame interval: the frame stays live (and the progress bar
+        // still redraws) while a keypress dismisses promptly, and a short hold
+        // isn't overshot by up to one long frame.
+        const HOLD_TICK: Duration = Duration::from_millis(50);
+        let frame_interval = match hold_deadline {
+            Some(deadline) => deadline
+                .saturating_duration_since(Instant::now())
+                .clamp(Duration::from_millis(1), HOLD_TICK),
+            None => frame_interval,
+        };
         std::thread::sleep(frame_interval);
 
         if event::poll(Duration::ZERO)? {
             if let Event::Key(key) = event::read()? {
-                if loop_playback {
-                    // No natural end while looping — any keypress dismisses.
+                if loop_playback || hold_deadline.is_some() {
+                    // Looping has no natural end, and a hold is a deliberate
+                    // dwell — either way any key dismisses immediately.
                     finished = true;
                 } else {
                     let consumed = player.handle_key(key.code);
@@ -891,12 +952,21 @@ pub fn play_raw_timed(
             && !player.is_looping()
             && player.is_playing();
 
-        if player.is_playing() {
-            player.advance(frame_interval);
-        }
-
-        if finished_naturally && !finished {
-            finished = true;
+        if let Some(deadline) = hold_deadline {
+            if Instant::now() >= deadline {
+                finished = true;
+            }
+        } else {
+            if player.is_playing() {
+                player.advance(frame_interval);
+            }
+            if finished_naturally && !finished {
+                if hold.is_zero() {
+                    finished = true;
+                } else {
+                    hold_deadline = Some(Instant::now() + hold);
+                }
+            }
         }
     }
 
@@ -1015,6 +1085,33 @@ mod tests {
                 ]
             })
             .collect()
+    }
+
+    #[test]
+    fn test_play_options_default_to_no_hold() {
+        let opts = PlayOptions::default();
+        assert!(!opts.loop_playback);
+        assert!(!opts.inline);
+        assert!(!opts.show_timeline);
+        assert_eq!(opts.hold_last_frame_cs, 0);
+        assert!(opts.hold_duration().is_zero());
+    }
+
+    #[test]
+    fn test_hold_duration_converts_centiseconds() {
+        let hold = |cs| {
+            PlayOptions {
+                hold_last_frame_cs: cs,
+                ..PlayOptions::default()
+            }
+            .hold_duration()
+        };
+        assert_eq!(hold(0), Duration::ZERO);
+        assert_eq!(hold(1), Duration::from_millis(10));
+        assert_eq!(hold(25), Duration::from_millis(250));
+        assert_eq!(hold(250), Duration::from_millis(2500));
+        // u16::MAX centiseconds must not overflow the u64 millis conversion.
+        assert_eq!(hold(u16::MAX), Duration::from_millis(655_350));
     }
 
     #[test]
