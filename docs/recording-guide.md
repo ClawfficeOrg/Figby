@@ -121,3 +121,57 @@ Use 2–3× for lighting takes, ~13× for long build-alongs. Outputs go under `a
 | GIF split down the middle / shifted columns | A tmux-snapshot cast was used. Use the asciinema PTY cast. |
 | Keys land in wrong panel | Wrong side tab or open dialog; check `screen()` first. |
 | MCP behaves like old code | Restart the server/daemon. |
+
+## 9. Traps found while recording the bob takes (6.0.55)
+
+Worked example: `driver/bob.py` (shared helpers), `driver/ch4_bob_shade.py` (take 1),
+`driver/ch4_bob_litfx.py` (take 2).
+
+**The captured screen text is not column-accurate.** `capture-pane -p` lines up with real
+rows in the right-hand side panel only. In the toolbox, palette and canvas regions the
+text dump is offset — indexing `line.index("╔")` lands ~30 columns off, and toolbox rows
+in `screen()` are one lower than the real rows `mouse` needs. So:
+
+- Tool rows: 5..20 (Brush 5 … Braille 20). Palette swatch rows 25..37, FG/BG 23,
+  Recent 39/40. Side-panel tab icons on row 5 (layers 113, props/text 121, libs 125).
+  Side-panel rows: Text panel 7..12 (Font 10), Brush panel 7..12 (Size 8, Shape 9,
+  Mode 10, Density 11, Char 12), layer rows from 9. These are PNG-derived, and they are
+  what `ui.py`'s helpers assume.
+- Canvas origin: do **not** read it from the frame characters. Hover a known screen cell
+  and parse `X:n Y:n` from the status bar (`bob.calib()`). The readout only refreshes on
+  a canvas move, so probe twice from different points, then verify by hovering the
+  computed origin (must read `0,0`) — a stale readout otherwise agrees with itself.
+
+**Palette multi-select.** `ui.GROUP_ROW` already points at the *swatch* row. But while
+multi-select is armed the panel inserts a ` Sel:` line, which pushes every swatch down
+one row (`palette.rs` `handle_click` `row_offset`) — so hover-verify at `GROUP_ROW` and
+*click* at `GROUP_ROW + 1`. Getting this wrong silently drops ramp entries. Hover to read
+a swatch's name from the line just above `Cst:` (the tooltip disappears once armed).
+
+**Marker brush.** `M` only enters Marker mode when the palette holds ≥ 2 multi-selected
+colours, and only for the Brush tool. `Circle` at size 1 paints **nothing** (r=0.5 <
+dist 0.707); use `Square` size 1 — its falloff is exactly 1.0 per stamp, so steps ==
+times the path crosses a cell. Alt reverses the ramp.
+
+**Text tool.** `↑/↓` do not change the font — click the `[>]` button, whose column moves
+with the font-name length (`113 + 11 + len(name) + 1`). The block's top-left anchors to
+the clicked cell, and bob has three blank leading rows, so the glyphs appear three rows
+lower than you clicked. `Ctrl+R` rasterises; without it the block dies on tool change.
+
+**Lighting mode.** The status bar drops the `X/Y` readout, so `calib()` cannot run there
+— calibrate *before* `G`. The canvas itself does not move (still 26,13 at 140×50), and
+lights move with arrows only, so no screen coords are needed. `✦` marks point lights,
+`→` the directional, and neither is drawn once you leave lighting mode (the lit render
+stays baked).
+
+**Emitter config.** Fields are chosen by absolute index (`Enter` to edit, retype,
+`Enter`). `Emission Shape` and `Edge Mode` have no text buffer: the first `Enter` only
+opens the field, so each cycle step costs **two** Enters. Field 17 is `Edge Mode`
+(Bounce → Wrap → Despawn), so Despawn is two cycles. While `emitter_active` the keys
+`b`/`B`/`v` are stolen (bake one frame / bake 10 frames / toggle live particles).
+
+**agg palette.** agg 1.9's default theme is dracula, which maps ANSI 3 and ANSI 11 to two
+near-identical pale yellows — a red→yellow→bright-yellow→white ramp collapses to three
+tones. `--theme asciinema` keeps gold / white / deep gold separate. Pass it explicitly
+when the ramp depends on yellow separation. Also: a lighting take is ~200 s of keystrokes;
+`--render speed=6` lands around 33 s of GIF, `speed=3` was 67 s.
