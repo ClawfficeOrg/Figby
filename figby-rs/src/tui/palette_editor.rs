@@ -5,11 +5,84 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use super::layers::LayerStack;
 use super::palette::Palette;
 use super::theme::Theme;
 use crate::palette_import::{self, ImportFormat, Swatch};
+
+/// Build the lighting LUT's per-swatch inputs from a swatch list, filling in
+/// lighting defaults for anything the list does not specify. Free function so
+/// `figseq::bake_figmap` can build the same LUT from a figmap's palette without
+/// standing up a `PaletteEditor`.
+pub fn lighting_swatch_data(swatches: &[Swatch]) -> Vec<super::lighting::SwatchLightingData> {
+    swatches
+        .iter()
+        .map(|s| {
+            let lit = hex_to_rgb_tuple(s.lit_hex.as_deref().unwrap_or(&s.hex));
+            let shadow = s
+                .shadow_hex
+                .as_deref()
+                .map(hex_to_rgb_tuple)
+                .unwrap_or_else(|| hex_to_rgb_tuple(&Swatch::default_shadow_hex(&s.hex)));
+            super::lighting::SwatchLightingData {
+                lit,
+                shadow,
+                specular: s.specular.unwrap_or(false),
+                shininess: s.shininess.unwrap_or(32.0),
+            }
+        })
+        .collect()
+}
+
+/// Append a lighting swatch for every distinct RGB colour the artwork uses that
+/// `swatches` does not already cover (capped at the 24 most-used).
+///
+/// Without this, art whose colours are not in the palette collapses onto
+/// whichever swatch happens to be nearest — a Marker-shaded title lit grey,
+/// which is exactly what the lighting LUT is supposed to avoid. Shared by the
+/// editor (before rebuilding the LUT) and by `figseq::bake_figmap`, so a baked
+/// sequence shades exactly like the editor's live view.
+pub fn sync_art_swatches(swatches: &mut Vec<Swatch>, layers: &LayerStack) {
+    let known: HashSet<(u8, u8, u8)> = swatches
+        .iter()
+        .filter_map(|s| crate::tui::theme::parse_hex_rgb(&s.hex))
+        .map(|[r, g, b]| (r, g, b))
+        .collect();
+    let mut counts: HashMap<(u8, u8, u8), usize> = HashMap::new();
+    for layer in layers.layers.iter().filter(|l| l.accepts_lighting) {
+        let b = layer.buffer();
+        for y in 0..b.height() {
+            for x in 0..b.width() {
+                if let Some(Color::Rgb(r, g, bl)) = b.get(x, y).and_then(|c| c.fg) {
+                    if !known.contains(&(r, g, bl)) {
+                        *counts.entry((r, g, bl)).or_default() += 1;
+                    }
+                }
+            }
+        }
+    }
+    let mut missing: Vec<_> = counts.into_iter().collect();
+    missing.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    for ((r, g, b), _) in missing.into_iter().take(24) {
+        let hex = format!("#{r:02X}{g:02X}{b:02X}");
+        let mut swatch = Swatch::new(format!("Art {hex}"), hex.clone());
+        swatch.lit_hex = Some(hex);
+        swatches.push(swatch);
+    }
+    // Fill lighting defaults (shadow = fg * 0.3) across the whole list, matching
+    // `PaletteEditor::init_lighting_from_swatches`.
+    for swatch in swatches.iter_mut() {
+        if swatch.lit_hex.is_none() {
+            swatch.lit_hex = Some(swatch.hex.clone());
+        }
+        if swatch.shadow_hex.is_none() {
+            swatch.shadow_hex = Some(Swatch::default_shadow_hex(&swatch.hex));
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PaletteFile {
@@ -338,23 +411,7 @@ impl PaletteEditor {
 
     /// Get the lighting data for the active swatches, suitable for LUT generation.
     pub fn lighting_swatches(&self) -> Vec<super::lighting::SwatchLightingData> {
-        self.swatches
-            .iter()
-            .map(|s| {
-                let lit = hex_to_rgb_tuple(s.lit_hex.as_deref().unwrap_or(&s.hex));
-                let shadow = s
-                    .shadow_hex
-                    .as_deref()
-                    .map(hex_to_rgb_tuple)
-                    .unwrap_or_else(|| hex_to_rgb_tuple(&Swatch::default_shadow_hex(&s.hex)));
-                super::lighting::SwatchLightingData {
-                    lit,
-                    shadow,
-                    specular: s.specular.unwrap_or(false),
-                    shininess: s.shininess.unwrap_or(32.0),
-                }
-            })
-            .collect()
+        lighting_swatch_data(&self.swatches)
     }
 
     pub fn apply_to_palette(&self, palette: &mut Palette) {

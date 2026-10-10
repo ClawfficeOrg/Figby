@@ -291,8 +291,11 @@ struct CliArgs {
         help = "Font size in points for --create-font"
     )]
     create_font_size: f32,
-    #[arg(long = "output", help = "Write output to file instead of stdout")]
-    create_font_output: Option<String>,
+    #[arg(
+        long = "output",
+        help = "Write output to file instead of stdout (required by --bake, where the file IS the output)"
+    )]
+    output_path: Option<String>,
     #[arg(
         long = "create-font-charset",
         default_value = "smooth",
@@ -354,9 +357,14 @@ struct CliArgs {
     tui_render_mode: Option<String>,
     #[arg(
         long = "play",
-        help = "Play an animated GIF or figmap in the terminal (static figmaps display inline); then exit"
+        help = "Play an animated GIF, figmap or figseq in the terminal (static figmaps display inline); then exit"
     )]
     play_path: Option<String>,
+    #[arg(
+        long = "bake",
+        help = "Bake a .figmap into a .figseq frame sequence (flat rasterized screens, per-frame hold times); needs --output"
+    )]
+    bake_path: Option<String>,
     #[arg(
         long = "play-width",
         help = "Scale playback to N terminal columns, preserving aspect ratio [default: fit to terminal]"
@@ -364,9 +372,15 @@ struct CliArgs {
     play_width: Option<usize>,
     #[arg(
         long = "loop",
-        help = "With --play: repeat the animation until any key is pressed, instead of playing once"
+        help = "With --play: repeat the animation until any key is pressed, instead of playing once. With --bake: mark the sequence as looping"
     )]
     play_loop: bool,
+    #[arg(
+        long = "hold-last",
+        value_name = "SECONDS",
+        help = "Keep the final frame on screen this many seconds after a non-looping animation ends, instead of exiting immediately (any key dismisses). With --bake: record it in the sequence"
+    )]
+    hold_last: Option<f64>,
     #[arg(
         long = "play-inline",
         help = "With --play: render animation at cursor position without clearing screen"
@@ -1212,11 +1226,115 @@ fn main() {
     let args = CliArgs::parse();
     let infocode = args.infocode;
 
+    // `--hold-last` is in seconds on the command line and centiseconds in every
+    // on-disk timing field (the GIF convention this codebase already uses).
+    // Non-finite, zero and negative values all mean "no hold".
+    let hold_last_cs = args
+        .hold_last
+        .filter(|s| s.is_finite() && *s > 0.0)
+        .map(|s| (s * 100.0).round().clamp(0.0, f64::from(u16::MAX)) as u16)
+        .unwrap_or(0);
+
+    // ─── Bake a project into a flat frame sequence ──────────────────────────
+    // Runs before any text rendering: --bake is a whole-pipeline mode, not a
+    // rendering option. Resolves layers, Text-tool blocks and lighting to the
+    // pixels the editor's exporter produces, then writes a .figseq that
+    // `figby --play` can stream without any of that machinery.
+    if let Some(ref path) = args.bake_path {
+        let out = match args.output_path.as_deref() {
+            Some(o) => o,
+            None => {
+                eprintln!("--bake requires --output <path.figseq>");
+                process::exit(2);
+            }
+        };
+        let out_path = std::path::Path::new(out);
+        let intent = figby::figseq::PlaybackIntent {
+            loop_enabled: args.play_loop,
+            hold_last_frame_cs: hold_last_cs,
+        };
+        match figby::figseq::bake_figmap(std::path::Path::new(path), Some(out_path), intent) {
+            Ok(seq) => {
+                let mut notes = String::new();
+                if seq.loop_enabled {
+                    notes.push_str(", looping");
+                }
+                if seq.hold_last_frame_cs > 0 {
+                    notes.push_str(&format!(
+                        ", holds last frame {:.1}s",
+                        seq.hold_last_frame_cs as f64 / 100.0
+                    ));
+                }
+                eprintln!(
+                    "Baked {} frame{} ({}x{}) -> {} ({:.1}s{})",
+                    seq.frames.len(),
+                    if seq.frames.len() == 1 { "" } else { "s" },
+                    seq.width,
+                    seq.height,
+                    out,
+                    seq.total_duration_cs() as f64 / 100.0,
+                    notes
+                );
+            }
+            Err(e) => {
+                eprintln!("Bake error: {e}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+
     if let Some(ref path) = args.play_path {
         let ext = std::path::Path::new(path)
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
+
+        if ext.eq_ignore_ascii_case(figby::figseq::FIGSEQ_EXTENSION) {
+            // ─── .figseq playback ───────────────────────────────────
+            let seq = match figby::figseq::load_figseq(std::path::Path::new(path)) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("Error loading figseq '{path}': {e}");
+                    process::exit(1);
+                }
+            };
+            // A single-frame sequence is a still, not an animation: print it inline the way
+            // a static figmap does, so it works through a pipe. Anything longer
+            // goes to the timed player (which needs a tty).
+            let cells = seq.cells_for_playback();
+            if cells.len() == 1 {
+                print!("{}", figby::output::export_cells_to_ansi(&cells[0]));
+                return;
+            }
+            // Otherwise: hand the flat, per-frame-timed screens straight to the
+            // same engine the GIF path drives. Per-frame delays ride along; fps
+            // is only the fallback for frames without one.
+            //
+            // `--loop` and `--hold-last` are overrides: a flag beats the value
+            // the sequence carries, so a baked hold applies by default but
+            // can be changed (or dropped, with `--hold-last 0`) per playback.
+            let hold = if hold_last_cs > 0 {
+                hold_last_cs
+            } else {
+                seq.hold_last_frame_cs
+            };
+            if let Err(e) = figby::tui::player::play_raw_timed(
+                cells,
+                seq.fps_fallback(),
+                Some(seq.frame_delays()),
+                figby::tui::player::PlayOptions {
+                    loop_playback: args.play_loop || seq.loop_enabled,
+                    inline: args.play_inline,
+                    show_timeline: args.play_timeline,
+                    hold_last_frame_cs: hold,
+                },
+            ) {
+                eprintln!("Playback error: {e}");
+                process::exit(1);
+            }
+            return;
+        }
 
         if ext.eq_ignore_ascii_case("figmap") {
             // ─── .figmap playback ───────────────────────────────────
@@ -1368,9 +1486,12 @@ fn main() {
                 frame_cells,
                 fps,
                 Some(delays),
-                args.play_loop,
-                args.play_inline,
-                args.play_timeline,
+                figby::tui::player::PlayOptions {
+                    loop_playback: args.play_loop,
+                    inline: args.play_inline,
+                    show_timeline: args.play_timeline,
+                    hold_last_frame_cs: hold_last_cs,
+                },
             ) {
                 eprintln!("Playback error: {e}");
                 process::exit(1);
@@ -1413,9 +1534,12 @@ fn main() {
             gif_result.frames,
             fps,
             Some(gif_result.frame_delays),
-            args.play_loop,
-            args.play_inline,
-            args.play_timeline,
+            figby::tui::player::PlayOptions {
+                loop_playback: args.play_loop,
+                inline: args.play_inline,
+                show_timeline: args.play_timeline,
+                hold_last_frame_cs: hold_last_cs,
+            },
         ) {
             eprintln!("Playback error: {e}");
             process::exit(1);
@@ -1535,7 +1659,7 @@ fn main() {
             leaked
         })
     };
-    let write_font_output = |content: &str| match args.create_font_output {
+    let write_font_output = |content: &str| match args.output_path {
         Some(ref path) => {
             if let Err(e) = std::fs::write(path, content) {
                 eprintln!("Error writing to '{}': {}", path, e);

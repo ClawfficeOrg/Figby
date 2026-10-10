@@ -1952,3 +1952,31 @@ Three bugs found in phase merge review:
   blank — identical on pristine builds, fine headless and in
   TestBackend. Don't chase it through `dispatch.rs`; look at the live
   render path or crossterm key delivery under tmux.
+- **`--play` on a figmap drops a static light scene**: the figmap playback
+  path in `main.rs` only shades when `timeline.light_keyframes` is
+  non-empty, so a saved scene with no keyframes plays back unlit (flat
+  ANSI colours) while the TUI and the exporter both show it lit. Baked
+  pixels always resolve lighting; if that path ever needs fixing in
+  place, it is the `sorted_kfs.is_empty()` guard, not `capture_timeline_frames`.
+- **Pretty JSON is the wrong default for cell grids**: a `CanvasCell`
+  serialized the figmap way emits `{"ch":" ","fg":null,"bg":null,
+  "height":null}` — ~112 bytes for a blank cell, so a 76×26 frame costs
+  ~270 KB pretty / ~90 KB compact. Flattening to one `chars` string plus
+  a packed integer `attrs` array (colours as ints, not
+  `Color`-enum JSON) brings that to ~18 KB. When adding a bulk
+  per-pixel format, never nest the per-cell struct.
+- **`play_raw_timed` needs a tty; the static figmap path does not**:
+  a one-frame sequence must print via `export_cells_to_ansi` or
+  `--play` fails with `Device not configured (os error 6)` in any
+  pipe/CI context.
+- **Non-looping playback clears the screen on exit, so the last frame
+  never actually lands**: `RawModeGuard::drop` emits `\x1b[2J`, so a
+  player that exits the moment it renders frame N shows frame N for one
+  frame interval and then erases it. `PlayOptions::hold_last_frame_cs`
+  keeps the playhead pinned on the final frame and polls at 50ms (not a
+  whole frame interval, which overshoots a short hold by up to one
+  frame). Ignored for looping and for a paused playhead — pausing is
+  not ending.
+- **Positional bools next to each other in a player API**: `inline` /
+  `show_timeline` were adjacent positional args; adding a third made
+  transposition a live risk, so `PlayOptions` replaced them.

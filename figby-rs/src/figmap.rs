@@ -253,6 +253,53 @@ pub fn into_runtime(
     )
 }
 
+/// Small figmap builders shared with `figseq`'s tests — it needs real
+/// `.figmap` files on disk to bake, and duplicating the layer/lights setup here
+/// would let the two drift apart.
+#[cfg(test)]
+pub(crate) mod tests_support {
+    use super::*;
+    use crate::tui::canvas::CanvasCell;
+    use crate::tui::layers::Layer;
+    use ratatui::style::Color;
+
+    fn art(w: usize, h: usize) -> LayerStack {
+        let mut layer = Layer::new(w, h, "Background".to_string());
+        layer.buffer.set(
+            1,
+            1,
+            CanvasCell {
+                ch: '█',
+                fg: Some(Color::Rgb(220, 170, 60)),
+                bg: None,
+                height: Some(200),
+            },
+        );
+        LayerStack {
+            layers: vec![layer],
+            active: 0,
+            groups: Vec::new(),
+            links: Vec::new(),
+        }
+    }
+
+    pub(crate) fn write_static_figmap(path: &Path, w: usize, h: usize) {
+        save_figmap(&art(w, h), None, &[], &[], &[], path).unwrap();
+    }
+
+    /// Same art plus a bright red point light over the middle of it.
+    pub(crate) fn write_static_figmap_with_light(path: &Path, w: usize, h: usize) {
+        let lights = vec![Light::Point {
+            position: (w as f32 / 2.0, h as f32 / 2.0, 5.0),
+            intensity: 1.0,
+            color: crate::tui::lighting::Rgb(255, 70, 70),
+            attenuation: crate::tui::lighting::Attenuation::default(),
+            target: crate::tui::lighting::LightTarget::Both,
+        }];
+        save_figmap(&art(w, h), None, &lights, &[], &[], path).unwrap();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

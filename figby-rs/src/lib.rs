@@ -29,6 +29,7 @@ pub mod config;
 pub mod control;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod figmap;
+pub mod figseq;
 pub mod font;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod font_gen;

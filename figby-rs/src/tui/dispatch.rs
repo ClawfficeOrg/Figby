@@ -1311,44 +1311,10 @@ impl TuiApp {
     /// lit art keeps its hues instead of collapsing onto whichever palette
     /// swatch happens to be nearest (e.g. a Marker-shaded title lit grey).
     fn sync_art_swatches(&mut self) {
-        use std::collections::HashMap;
-        let known: std::collections::HashSet<(u8, u8, u8)> = self
-            .palette_editor
-            .swatches
-            .iter()
-            .filter_map(|s| crate::tui::theme::parse_hex_rgb(&s.hex))
-            .map(|[r, g, b]| (r, g, b))
-            .collect();
-        let mut counts: HashMap<(u8, u8, u8), usize> = HashMap::new();
-        for layer in self
-            .editor
-            .layer_stack
-            .layers
-            .iter()
-            .filter(|l| l.accepts_lighting)
-        {
-            let b = layer.buffer();
-            for y in 0..b.height() {
-                for x in 0..b.width() {
-                    if let Some(ratatui::style::Color::Rgb(r, g, bl)) =
-                        b.get(x, y).and_then(|c| c.fg)
-                    {
-                        if !known.contains(&(r, g, bl)) {
-                            *counts.entry((r, g, bl)).or_default() += 1;
-                        }
-                    }
-                }
-            }
-        }
-        let mut missing: Vec<_> = counts.into_iter().collect();
-        missing.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-        for ((r, g, b), _) in missing.into_iter().take(24) {
-            let hex = format!("#{r:02X}{g:02X}{b:02X}");
-            let mut swatch = crate::palette_import::Swatch::new(format!("Art {hex}"), hex.clone());
-            swatch.lit_hex = Some(hex);
-            self.palette_editor.swatches.push(swatch);
-        }
-        self.palette_editor.init_lighting_from_swatches();
+        crate::tui::palette_editor::sync_art_swatches(
+            &mut self.palette_editor.swatches,
+            &self.editor.layer_stack,
+        );
     }
 
     fn rebuild_lighting_from_palette(&mut self) {

@@ -39,6 +39,18 @@ Original C source lives in `c-figlet/` for reference; the Rust port lives in
   pressed instead of playing once. See
   [docs/sonnet5-review.md](docs/sonnet5-review.md) for current known
   limitations of the animation subsystem.
+- `--bake` / `.figseq`: bake a `.figmap` project into a **frame sequence** —
+  one flat rasterized screen per frame with its own hold time — and play it
+  back with `--play`. A `.figmap` is a project (layers, keyframes, lights,
+  editable text blocks); a `.figseq` is what is left once you stop editing.
+  Because baking resolves every frame to final pixels, it plays back what you
+  actually saw, including a static light scene that `--play` on a figmap
+  ignores unless the document has light *keyframes*. Roughly 10x smaller than
+  the figmap it came from (a 76×26 frame: ~270 KB → ~18 KB), and a one-frame
+  sequence prints through a pipe like any other figlet render. `--loop` and
+  `--hold-last <SECONDS>` set the sequence's repeat and end-of-playback hold —
+  by default playback ends by clearing the screen, so the last frame flashes
+  past unless you ask it to stay.
 
 ## Installation
 
@@ -118,9 +130,11 @@ figby [OPTIONS] [MESSAGE]
 | `-h` | Print help |
 | `-V` | Print version |
 | `--tui` | Launch the full-screen TUI editor (drawing, layers, animation timeline) |
-| `--play <file.gif>` | Play an animated GIF fullscreen in the terminal, then exit |
+| `--play <file.gif\|figmap\|figseq>` | Play an animated GIF, figmap or figseq fullscreen in the terminal, then exit |
 | `--play-width <N>` | Scale playback to N columns [default: fit to terminal] |
-| `--loop` | With `--play`: repeat until any key is pressed, instead of playing once |
+| `--loop` | With `--play`: repeat until any key is pressed, instead of playing once. With `--bake`: mark the sequence as looping |
+| `--hold-last <SECONDS>` | Keep the final frame on screen N seconds after a non-looping animation ends, instead of clearing immediately. With `--bake`: record it in the sequence |
+| `--bake <file.figmap>` + `--output <file.figseq>` | Bake a project into a flat frame sequence (needs `--output`) |
 
 ### Examples
 
