@@ -3315,22 +3315,19 @@ snapshot, timeline playback, recording, and clean stop. Key events over tmux
 remain unreliable for canvas painting; prefer MCP screenshot feedback and
 verify each action, or later move control inside the app event loop.
 
-### Where work gets pushed (2026-10-07)
+### Where work gets pushed (2026-10-10)
 
-Both remotes are the same person's, and the names read backwards from the usual
-convention — do not infer intent from `origin`/`upstream`:
+There is one remote: `origin` → `ClawfficeOrg/Figby`. It is the work repo and
+holds canonical `master`; local `master` tracks `origin/master`. It is also the
+repo referenced in Cargo `repository` and README URLs.
 
-- **`origin` → `ClawfficeOrg/Figby`** — **work repo.** Shared with Claude and
-  the other agents. Feature/task branches (and PRs) go here; this is the remote
-  to push to and the one referenced in Cargo `repository` and README URLs.
-- **`upstream` → `CompewterTutor/Figby`** — **personal repo.** Canonical
-  `master` lives here and local `master` tracks `upstream/master`. Not the
-  place to push agent work.
+The former personal remote (`CompewterTutor/Figby`, previously `upstream`) is
+retired and pending archive. It was fully synced with `origin` on 2026-10-10 and
+the `upstream` remote was removed from the local clone. Other clones may still
+carry an `upstream` remote; remove it and push nothing there.
 
-Convention that follows: land work on a branch, push that branch to `origin`,
-merge to `master` at phase completion (see AGENTS.md "Task Workflow"). Do not
-push straight to `master`, and do not mirror agent branches to `upstream` unless
-asked.
+Convention: land work on a branch, push that branch to `origin`, merge to
+`master` at phase completion (see AGENTS.md "Task Workflow").
 
 ### figseq baked-frame format (2026-10-07)
 
