@@ -2,6 +2,10 @@
 ## [Unreleased]
 
 ### Added
+- `figseq` workspace crate (`figby-rs/figseq`): the `.figseq` format, colour codec and `CanvasCell` split out
+  of `figby`, plus a `Player` (tick/seek/loop), a ratatui `Banner` widget and `FigSeqFile::from_json_str`, so
+  apps can embed and play banners (`include_str!`) without pulling in fonts, image or TUI dependencies.
+  `figby::figseq` re-exports it; `bake_figmap` stays in `figby`.
 - `.figseq`: a baked frame-sequence format — a series of flat rasterized screens with per-frame hold
   times, the terminal-playable counterpart to the `.figmap` project format. Cells are stored as one
   row-major `chars` string plus three integers per cell (`fg`/`bg`/`height`) instead of nested per-cell

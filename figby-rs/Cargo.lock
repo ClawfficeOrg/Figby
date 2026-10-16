@@ -899,11 +899,12 @@ dependencies = [
 
 [[package]]
 name = "figby"
-version = "6.1.0"
+version = "6.2.0"
 dependencies = [
  "clap",
  "criterion",
  "crossterm 0.28.1",
+ "figseq",
  "flate2",
  "font-kit",
  "getrandom 0.2.17",
@@ -924,6 +925,16 @@ dependencies = [
  "toml",
  "unicode-width",
  "zip",
+]
+
+[[package]]
+name = "figseq"
+version = "0.1.0"
+dependencies = [
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
