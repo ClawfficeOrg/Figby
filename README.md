@@ -51,6 +51,8 @@ Original C source lives in `c-figlet/` for reference; the Rust port lives in
   `--hold-last <SECONDS>` set the sequence's repeat and end-of-playback hold —
   by default playback ends by clearing the screen, so the last frame flashes
   past unless you ask it to stay.
+  Apps can play a `.figseq` without depending on all of `figby`: the lightweight `figseq` crate
+  (`figby-rs/figseq`) provides `FigSeqFile::from_json_str`, `Player` and a ratatui `Banner` widget.
 
 ## Installation
 

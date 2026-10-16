@@ -1,27 +1,6 @@
 #![doc = "Figby — Rust port of FIGlet (Frank, Ian & Glenn's Letters)\n\nRenders text in large ASCII art characters using FIGfont (.flf)\nand TOIlet (.tlf) font files with kerning, smushing, and multi-byte\ncharacter support."]
 
-mod canvas_inner {
-    use ratatui::style::Color;
-    use serde::{Deserialize, Serialize};
-    #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-    pub struct CanvasCell {
-        pub ch: char,
-        pub fg: Option<Color>,
-        pub bg: Option<Color>,
-        pub height: Option<u8>,
-    }
-    impl Default for CanvasCell {
-        fn default() -> Self {
-            Self {
-                ch: ' ',
-                fg: None,
-                bg: None,
-                height: None,
-            }
-        }
-    }
-}
-pub use canvas_inner::CanvasCell;
+pub use ::figseq::CanvasCell;
 
 pub mod atomic_io;
 pub mod bounded_io;

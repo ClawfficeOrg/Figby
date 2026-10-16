@@ -1,13 +1,17 @@
 [package]
 name = "figby"
-version = "6.1.0"
+version = "6.2.0"
 edition = "2021"
 description = "FIGlet deluxe: drop in rust replacement but with more time-wasting toys"
 license = "BSD-3-Clause"
 authors = ["Figby contributors"]
 repository = "https://github.com/ClawfficeOrg/Figby"
 
+[workspace]
+members = [".", "figseq"]
+
 [dependencies]
+figseq = { path = "figseq" }
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
