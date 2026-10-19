@@ -51,6 +51,9 @@
   hand-drawn / system-font title, so it no longer depends on installed FIGlet fonts.
 
 ### Fixed
+- `--play --play-inline` at the bottom of the window played a single row: the saved cursor origin had no
+  rows below it, so every relative down-move clamped to the last line and the frame collapsed onto it.
+  Playback now scrolls room for the animation in before saving the origin (6.2.1).
 - Lighting no longer fills in hand-painted shading: a lit block-shade glyph is capped at the density painted
   (`░` stays at most `░`), so gaps like the one under the bob `F` bars survive the light pool.
 - CLI `--play` lighting uses the height-aware shading too (no more rim-only lighting there).
