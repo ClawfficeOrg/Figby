@@ -52,3 +52,4 @@ work/
 assets/e2e-art/timelapse/*.figmap
 assets/e2e-art/timelapse/raw/
 assets/e2e-art/recordings/*-raw.cast
+.infisical.yaml

@@ -453,6 +453,29 @@ impl Player {
         self.idx
     }
 
+    /// How long the current frame holds before the player advances.
+    ///
+    /// The baked delay is in centiseconds; a frame with no delay behaves as one
+    /// centisecond, matching [`Player::tick`].
+    pub fn frame_delay(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(u64::from(self.seq.frames[self.idx].delay.max(1)) * 10)
+    }
+
+    /// Time left until the visible frame changes; zero once a non-looping
+    /// player has finished.
+    ///
+    /// An event loop uses this to schedule the next redraw instead of polling
+    /// at a fixed rate: `elapsed_cs` is already carried over by [`Player::tick`],
+    /// so the remainder is exact rather than an estimate.
+    pub fn next_frame_in(&self) -> std::time::Duration {
+        if self.finished {
+            return std::time::Duration::ZERO;
+        }
+        let hold = f64::from(self.seq.frames[self.idx].delay.max(1));
+        let remaining = (hold - self.elapsed_cs).max(0.0);
+        std::time::Duration::from_secs_f64(remaining / 100.0)
+    }
+
     /// Show a specific frame (clamped); resets the hold timer. Use for a
     /// static banner: `player.seek(n)` and never tick.
     pub fn seek(&mut self, idx: usize) {
@@ -766,6 +789,33 @@ mod tests {
         p.tick(Duration::from_millis(200));
         assert_eq!(p.frame_index(), 0);
         assert!(!p.is_finished());
+    }
+
+    #[test]
+    fn player_reports_the_remaining_hold_before_the_next_frame() {
+        use std::time::Duration;
+        let cells = grid(2, 1);
+        let seq = FigSeqFile::new(
+            2,
+            1,
+            vec![cells.clone(), cells.clone()],
+            Some(&[10, 20]),
+            false,
+            0,
+        );
+        let mut p = Player::new(seq);
+        assert_eq!(p.frame_delay(), Duration::from_millis(100));
+        assert_eq!(p.next_frame_in(), Duration::from_millis(100));
+        assert!(!p.tick(Duration::from_millis(40)));
+        assert_eq!(p.next_frame_in(), Duration::from_millis(60));
+        assert!(p.tick(Duration::from_millis(60)));
+        assert_eq!(p.frame_delay(), Duration::from_millis(200));
+        assert_eq!(p.next_frame_in(), Duration::from_millis(200));
+
+        // A finished non-looping player has nothing left to wait for.
+        assert!(!p.tick(Duration::from_millis(200)));
+        assert!(p.is_finished());
+        assert_eq!(p.next_frame_in(), Duration::ZERO);
     }
 
     #[test]

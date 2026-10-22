@@ -711,6 +711,20 @@ pub fn render_frame_inline(frame: &AnimationFrame, max_w: usize, max_h: usize) -
     out
 }
 
+/// Escape sequence that guarantees `box_h` rows (the cursor's own row plus
+/// `box_h - 1` below it) exist from the cursor down, scrolling the terminal if
+/// the cursor is near the bottom, and leaves the cursor back on its original
+/// row and column. Line feeds scroll at the bottom margin but never move the
+/// cursor sideways in raw mode, and cursor-up then returns to the first row of
+/// the box. Empty when the box is one row tall.
+fn inline_reserve_rows(box_h: usize) -> String {
+    let extra = box_h.saturating_sub(1);
+    if extra == 0 {
+        return String::new();
+    }
+    format!("{}\x1b[{extra}A", "\n".repeat(extra))
+}
+
 /// Raw mode playback engine.
 ///
 /// Enters raw mode (no echo, no line buffering), renders frames by writing
@@ -876,9 +890,15 @@ pub fn play_raw_timed(
         parked: Rc::clone(&parked),
     };
     if inline {
-        // Inline: save cursor as the animation origin, hide cursor,
-        // don't clear screen.
-        write!(io::stdout(), "\x1b[s\x1b[?25l")?;
+        // Inline: make vertical room first (a cursor on the bottom row has
+        // none, and relative down-moves would clamp there, collapsing the
+        // whole animation onto one row), then save the cursor as the
+        // animation origin, hide it, and don't clear the screen.
+        write!(
+            io::stdout(),
+            "{}\x1b[s\x1b[?25l",
+            inline_reserve_rows(box_h)
+        )?;
     } else {
         // Fullscreen: hide cursor, clear screen
         write!(io::stdout(), "\x1b[?25l\x1b[2J")?;
@@ -1695,6 +1715,14 @@ mod tests {
     fn test_render_frame_raw_empty() {
         let out = render_frame_raw(&vec![]);
         assert_eq!(out, "");
+    }
+
+    #[test]
+    fn test_inline_reserve_rows_scrolls_then_returns() {
+        assert_eq!(inline_reserve_rows(0), "");
+        assert_eq!(inline_reserve_rows(1), "");
+        // 8-row box: 7 line feeds to scroll room in, then 7 up to the origin.
+        assert_eq!(inline_reserve_rows(8), "\n\n\n\n\n\n\n\x1b[7A");
     }
 
     #[test]
