@@ -1225,6 +1225,7 @@ width = 80
 
     /// F-10 (GPT review): a relative symlink pointing outside the base
     /// directory must be rejected even though it passes lexical checks.
+    #[cfg(unix)]
     #[test]
     fn test_img_symlink_escape_rejected() {
         use std::os::unix::fs::symlink;

@@ -248,6 +248,22 @@ impl TimelineState {
         self.layer_names = stack.layers.iter().map(|l| l.name.clone()).collect();
     }
 
+    /// Wheel scrolling. The timeline owns the ceiling: only it knows how many
+    /// frames and layer rows it holds, and how many fit on screen. Callers pass
+    /// a direction, never a computed maximum.
+    pub fn scroll_by(&mut self, delta: isize, layer_rows: bool) {
+        if layer_rows {
+            let last = self.layer_names.len().saturating_sub(1);
+            self.layer_row_offset = self.layer_row_offset.saturating_add_signed(delta).min(last);
+        } else {
+            let last = self
+                .frames
+                .len()
+                .saturating_sub(self.cached_max_vis_frames.max(1));
+            self.scroll_offset = self.scroll_offset.saturating_add_signed(delta).min(last);
+        }
+    }
+
     /// Add a frame to the end of the timeline.
     pub fn add_frame(&mut self, frame: TimelineFrame) {
         self.frames.push(frame);

@@ -74,6 +74,13 @@ impl TuiApp {
         self.check_async_completion();
         self.ctx.throbber.tick();
 
+        // Every hit rect below is rebuilt by this pass or not at all. Clearing
+        // here is what stops a hidden panel, a hidden timeline or the welcome
+        // screen from leaving last frame's rects live for the mouse handler.
+        self.ui.tab_rects.clear();
+        self.animation.transport_rects.clear();
+        self.props_panel.clear_rects();
+
         let now = Instant::now();
         self.frame.delta_time = now.duration_since(self.frame.fx_last_tick);
         self.frame.fx_last_tick = now;
@@ -305,7 +312,6 @@ impl TuiApp {
                 };
                 (!name.is_empty()).then_some(name)
             });
-            self.props_panel.clear_rects();
             self.side_panel.render(
                 frame,
                 rp,

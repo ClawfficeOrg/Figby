@@ -123,6 +123,13 @@ After completing any implementation work:
 2. FIGfont spec compliance is non-negotiable — test against original C output
 3. Support all FIGlet 2.2.5 command-line flags
 4. UTF-8 is the native encoding — no wchar_t hacks
+5. TUI (ratatui): check the component index in
+   `../clawffice-design/skills/ratatui-modern-ui/SKILL.md` §6 (built-in, third-party, ratcn) before
+   writing a widget or a pointer handler. Ratatui built-ins are render-only and never hit-test; a
+   stateful crate (`tui-widget-list`, `ratatui-textarea`) owns its hit test, so prefer it. Where
+   chrome must stay hand-rolled, store a z-ordered layer stack of last-frame rects tested top-down,
+   and let overlays/dialogs absorb mouse events — a flat rect list lets a click land on the screen
+   behind a dialog. Name any new crate and its index row in the commit message.
 
 ## File Structure
 

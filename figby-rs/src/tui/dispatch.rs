@@ -9,6 +9,19 @@ use super::dialogs;
 use super::*;
 use super::{capture_thumbnail, rotate_drag_steps};
 
+/// The overlays that can own the pointer, highest first. One declaration,
+/// one match: see [`TuiApp::pointer_layer`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PointerLayer {
+    QuitConfirm,
+    Welcome,
+    Settings,
+    FileOps,
+    Export,
+    Rascii,
+    PaletteEditor,
+}
+
 impl TuiApp {
     fn dispatch_welcome_action(&mut self, action: welcome::WelcomeAction) {
         use welcome::WelcomeAction;
@@ -429,35 +442,132 @@ impl TuiApp {
         self.frame.dirty = true;
     }
 
-    pub(crate) fn handle_mouse_event(&mut self, mouse: MouseEvent) {
-        // Unsaved-changes dialog: intercept all mouse events
+    /// The overlay that owns the pointer this frame, top layer first.
+    ///
+    /// ratatui widgets never hit-test, so an overlay has to be declared here.
+    /// Without this, the menu bar and document tabs (drawn under every dialog)
+    /// answer clicks that were meant for the dialog.
+    fn pointer_layer(&self) -> Option<PointerLayer> {
         if self.dialogs.quit_confirm_dialog {
-            if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
-                let btns = self.dialogs.quit_confirm_buttons;
-                let can_save = self.can_save_now();
-                if btns[0].contains((mouse.column, mouse.row).into()) && can_save {
-                    self.dialogs.quit_confirm_dialog = false;
-                    let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
-                    if is_quit {
-                        self.dialogs.quit_after_save = true;
-                    }
-                    self.frame.dirty = true;
-                    self.start_save();
-                } else if btns[1].contains((mouse.column, mouse.row).into())
-                    || (btns[0].contains((mouse.column, mouse.row).into()) && !can_save)
-                {
-                    // Discard & proceed (also when Save is unavailable and
-                    // the user clicks where the save button used to be).
-                    self.dialogs.quit_confirm_dialog = false;
-                    self.frame.dirty = true;
-                    self.execute_pending_transition();
-                } else if btns[2].contains((mouse.column, mouse.row).into()) {
-                    self.dialogs.quit_confirm_dialog = false;
-                    self.dialogs.pending_transition = None;
-                    self.frame.dirty = true;
+            Some(PointerLayer::QuitConfirm)
+        } else if self.welcome.screen.show {
+            Some(PointerLayer::Welcome)
+        } else if self.dialogs.settings.settings_open {
+            Some(PointerLayer::Settings)
+        } else if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
+            Some(PointerLayer::FileOps)
+        } else if self.dialogs.export_dialog.active {
+            Some(PointerLayer::Export)
+        } else if self.dialogs.rascii_import.active {
+            Some(PointerLayer::Rascii)
+        } else if self.palette_editor.open {
+            Some(PointerLayer::PaletteEditor)
+        } else {
+            None
+        }
+    }
+
+    /// Unsaved-changes dialog: every mouse event stops here.
+    fn mouse_quit_confirm(&mut self, mouse: MouseEvent) {
+        if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
+            let btns = self.dialogs.quit_confirm_buttons;
+            let can_save = self.can_save_now();
+            if btns[0].contains((mouse.column, mouse.row).into()) && can_save {
+                self.dialogs.quit_confirm_dialog = false;
+                let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
+                if is_quit {
+                    self.dialogs.quit_after_save = true;
+                }
+                self.frame.dirty = true;
+                self.start_save();
+            } else if btns[1].contains((mouse.column, mouse.row).into())
+                || (btns[0].contains((mouse.column, mouse.row).into()) && !can_save)
+            {
+                // Discard & proceed (also when Save is unavailable and
+                // the user clicks where the save button used to be).
+                self.dialogs.quit_confirm_dialog = false;
+                self.frame.dirty = true;
+                self.execute_pending_transition();
+            } else if btns[2].contains((mouse.column, mouse.row).into()) {
+                self.dialogs.quit_confirm_dialog = false;
+                self.dialogs.pending_transition = None;
+                self.frame.dirty = true;
+            }
+        }
+    }
+
+    /// Welcome screen captures all mouse events while visible.
+    fn mouse_welcome(&mut self, mouse: MouseEvent) {
+        let recent_count = self.dialogs.recent_files.len();
+        let (action, hover_dirty) =
+            self.welcome
+                .screen
+                .handle_mouse(mouse.column, mouse.row, mouse.kind, recent_count);
+        if hover_dirty {
+            self.frame.dirty = true;
+        }
+        if let Some(action) = action {
+            self.dispatch_welcome_action(action);
+        }
+    }
+
+    /// File dialogs handle their own clicks and swallow the rest.
+    fn mouse_file_ops(&mut self, mouse: MouseEvent) {
+        let prev_mode = self.dialogs.file_ops.mode;
+        if self
+            .dialogs
+            .file_ops
+            .handle_mouse(mouse.column, mouse.row, mouse.kind)
+        {
+            self.frame.dirty = true;
+            if self.dialogs.file_ops.mode == file_ops::FileOpsMode::Idle {
+                if let Some(event) = self.complete_file_ops_dialog(prev_mode) {
+                    self.process_event(&event);
                 }
             }
-            return;
+        }
+    }
+
+    /// The palette editor is a full-screen overlay: it owns clicks, drags,
+    /// releases and hover, and nothing underneath — timeline included — sees
+    /// a wheel event while it is open.
+    fn mouse_palette_editor(&mut self, mouse: MouseEvent) {
+        if matches!(
+            mouse.kind,
+            MouseEventKind::Down(_) | MouseEventKind::Drag(_) | MouseEventKind::Up(_)
+        ) {
+            let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
+            let full = Rect::new(0, 0, cols, rows);
+            self.palette_editor
+                .handle_overlay_click(mouse.column, mouse.row, full);
+            self.frame.dirty = true;
+        }
+    }
+
+    pub(crate) fn handle_mouse_event(&mut self, mouse: MouseEvent) {
+        match self.pointer_layer() {
+            Some(PointerLayer::QuitConfirm) => {
+                self.mouse_quit_confirm(mouse);
+                return;
+            }
+            Some(PointerLayer::Welcome) => {
+                self.mouse_welcome(mouse);
+                return;
+            }
+            // Settings, export and rascii import are keyboard-complete: they own
+            // the pointer only to stop it reaching the screen behind them.
+            Some(PointerLayer::Settings)
+            | Some(PointerLayer::Export)
+            | Some(PointerLayer::Rascii) => return,
+            Some(PointerLayer::FileOps) => {
+                self.mouse_file_ops(mouse);
+                return;
+            }
+            Some(PointerLayer::PaletteEditor) => {
+                self.mouse_palette_editor(mouse);
+                return;
+            }
+            None => {}
         }
 
         // Menu bar mouse event
@@ -484,51 +594,6 @@ impl TuiApp {
                     return;
                 }
             }
-        }
-
-        // Welcome screen captures all mouse events while visible
-        if self.welcome.screen.show {
-            let recent_count = self.dialogs.recent_files.len();
-            let (action, hover_dirty) =
-                self.welcome
-                    .screen
-                    .handle_mouse(mouse.column, mouse.row, mouse.kind, recent_count);
-            if hover_dirty {
-                self.frame.dirty = true;
-            }
-            if let Some(action) = action {
-                self.dispatch_welcome_action(action);
-            }
-            return;
-        }
-
-        if self.dialogs.settings.settings_open {
-            return;
-        }
-
-        if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
-            let prev_mode = self.dialogs.file_ops.mode;
-            if self
-                .dialogs
-                .file_ops
-                .handle_mouse(mouse.column, mouse.row, mouse.kind)
-            {
-                self.frame.dirty = true;
-                if self.dialogs.file_ops.mode == file_ops::FileOpsMode::Idle {
-                    if let Some(event) = self.complete_file_ops_dialog(prev_mode) {
-                        self.process_event(&event);
-                    }
-                }
-            }
-            return;
-        }
-
-        if self.dialogs.export_dialog.active {
-            return;
-        }
-
-        if self.dialogs.rascii_import.active {
-            return;
         }
 
         // Font editor overview: glyph grid mouse click + scroll
@@ -735,42 +800,14 @@ impl TuiApp {
                             }
                         }
                         MouseEventKind::ScrollUp => {
-                            if mouse.modifiers.contains(KeyModifiers::SHIFT) {
-                                self.animation.timeline_state.layer_row_offset = self
-                                    .animation
-                                    .timeline_state
-                                    .layer_row_offset
-                                    .saturating_sub(1);
-                            } else {
-                                self.animation.timeline_state.scroll_offset = self
-                                    .animation
-                                    .timeline_state
-                                    .scroll_offset
-                                    .saturating_sub(1);
-                            }
+                            let layer_rows = mouse.modifiers.contains(KeyModifiers::SHIFT);
+                            self.animation.timeline_state.scroll_by(-1, layer_rows);
                             self.frame.dirty = true;
                             return;
                         }
                         MouseEventKind::ScrollDown => {
-                            if mouse.modifiers.contains(KeyModifiers::SHIFT) {
-                                let max_row = self
-                                    .animation
-                                    .timeline_state
-                                    .layer_names
-                                    .len()
-                                    .saturating_sub(1);
-                                self.animation.timeline_state.layer_row_offset =
-                                    (self.animation.timeline_state.layer_row_offset + 1)
-                                        .min(max_row);
-                            } else {
-                                let max_scroll =
-                                    self.animation.timeline_state.frames.len().saturating_sub(
-                                        self.animation.timeline_state.cached_max_vis_frames.max(1),
-                                    );
-                                self.animation.timeline_state.scroll_offset =
-                                    (self.animation.timeline_state.scroll_offset + 1)
-                                        .min(max_scroll);
-                            }
+                            let layer_rows = mouse.modifiers.contains(KeyModifiers::SHIFT);
+                            self.animation.timeline_state.scroll_by(1, layer_rows);
                             self.frame.dirty = true;
                             return;
                         }
@@ -809,23 +846,6 @@ impl TuiApp {
             }
         }
 
-        // Palette editor overlay open: swallow ALL mouse button clicks
-        // so the canvas underneath never paints (no pixels, no undo
-        // entry). Outside clicks dismiss the overlay; inside clicks
-        // are consumed for future swatch handling.
-        if self.palette_editor.open
-            && matches!(
-                mouse.kind,
-                MouseEventKind::Down(_) | MouseEventKind::Drag(_) | MouseEventKind::Up(_)
-            )
-        {
-            let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
-            let full = Rect::new(0, 0, cols, rows);
-            self.palette_editor
-                .handle_overlay_click(mouse.column, mouse.row, full);
-            self.frame.dirty = true;
-            return;
-        }
         if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
             if let Some(palette_rect) = mouse_fl.palette {
                 if !self.dialogs.settings.settings_open
@@ -4102,6 +4122,66 @@ mod keybind_collision_tests {
         };
         app.handle_mouse_event(miss);
         assert_eq!(app.active_doc, 0);
+    }
+
+    #[test]
+    fn test_open_dialogs_swallow_the_document_tab_click() {
+        use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+        use ratatui::layout::Rect;
+
+        // Each of these draws over the tab strip. A click at tab coordinates must
+        // stop at the overlay instead of switching the document underneath it.
+        type Open = fn(&mut TuiApp);
+        let overlays: [(&str, Open); 4] = [
+            ("settings", |a| a.dialogs.settings.settings_open = true),
+            ("export", |a| a.dialogs.export_dialog.active = true),
+            ("rascii import", |a| a.dialogs.rascii_import.active = true),
+            ("palette editor", |a| a.palette_editor.open = true),
+        ];
+        for (name, open) in overlays {
+            let mut app = app_not_font_editor();
+            app.new_document(crate::tui::documents::DocumentKind::Font);
+            assert_eq!(app.active_doc, 1, "{name}");
+            app.ui.tab_rects = vec![Rect::new(0, 1, 12, 1), Rect::new(13, 1, 12, 1)];
+            open(&mut app);
+            app.handle_mouse_event(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: 3,
+                row: 1,
+                modifiers: KeyModifiers::NONE,
+            });
+            assert_eq!(
+                app.active_doc, 1,
+                "{name} must swallow a click on the tab strip behind it"
+            );
+        }
+    }
+
+    #[test]
+    fn test_render_clears_hit_rects_it_did_not_draw_this_frame() {
+        use ratatui::layout::Rect;
+
+        let mut app = app_not_font_editor();
+        // Rects left over from a normal-mode frame.
+        app.ui.tab_rects = vec![Rect::new(0, 1, 12, 1)];
+        app.animation.transport_rects =
+            vec![(timeline::TransportButton::PlayPause, Rect::new(0, 20, 3, 1))];
+        // Zen mode draws no tab strip, no timeline and no right panel.
+        app.ui.zen_mode = true;
+
+        let backend = ratatui::backend::TestBackend::new(100, 30);
+        let mut terminal = ratatui::Terminal::new(backend).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
+
+        assert!(app.ui.tab_rects.is_empty(), "tab rects survived the render");
+        assert!(
+            app.animation.transport_rects.is_empty(),
+            "transport rects survived a render with the timeline hidden"
+        );
+        assert!(
+            app.props_panel.rects.is_empty(),
+            "props rects survived a render with the panel closed"
+        );
     }
 
     #[test]

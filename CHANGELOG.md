@@ -1,6 +1,20 @@
 # Changelog
 ## [Unreleased]
 
+### Fixed
+- TUI mouse: every overlay now owns the pointer. Settings, export, RASCII import and the palette editor
+  used to let clicks through to the menu bar and document tabs drawn underneath them, so a click on a tab
+  switched documents behind an open dialog. One `PointerLayer` decides the top layer before any chrome
+  runs.
+- TUI mouse: hit rects (`tab_rects`, `transport_rects`, `props_panel.rects`) are cleared at the start of
+  every render, so a hidden panel, a hidden timeline or the welcome screen can no longer leave last
+  frame's rects live and take ghost clicks.
+- TUI mouse: the palette editor consumes hover and wheel events, not just clicks; the timeline no longer
+  seeks underneath it.
+- TUI scroll: the timeline clamps its own scroll (`TimelineState::scroll_by`) and the keybindings overlay
+  clamps its own offset at draw, so `dispatch.rs` no longer has to know each pane's content height.
+- Tests: the two symlink tests are `#[cfg(unix)]`; the suite previously failed to compile on Windows.
+
 ### Added
 - `figseq` workspace crate (`figby-rs/figseq`): the `.figseq` format, colour codec and `CanvasCell` split out
   of `figby`, plus a `Player` (tick/seek/loop), a ratatui `Banner` widget and `FigSeqFile::from_json_str`, so

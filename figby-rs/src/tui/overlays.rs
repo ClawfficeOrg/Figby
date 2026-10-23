@@ -68,6 +68,10 @@ impl TuiApp {
             let visible = inner.height as usize;
             let max_scroll = total.saturating_sub(visible);
             let scroll = self.ui.keybindings_scroll.min(max_scroll) as u16;
+            // Write the clamp back: only this overlay knows how tall its content
+            // is, so the event handler must not be the one that decides the
+            // ceiling. Without this, overscroll makes Up feel dead for a while.
+            self.ui.keybindings_scroll = scroll as usize;
             frame.render_widget(Paragraph::new(lines).scroll((scroll, 0)), inner);
         }
 

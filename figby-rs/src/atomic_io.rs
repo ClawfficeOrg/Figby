@@ -114,6 +114,9 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
+    // `std::os::unix` is only available there; on Windows the suite failed to
+    // compile before it ever ran.
+    #[cfg(unix)]
     #[test]
     fn refuses_symlink_destination() {
         use std::os::unix::fs::symlink;
