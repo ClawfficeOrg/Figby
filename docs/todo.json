@@ -1,0 +1,339 @@
+{
+  "schema_version": "1.0.0",
+  "project": {
+    "name": "Figby",
+    "version": {
+      "milestone": "ratatui-cleanup",
+      "release_version": "6.3.0"
+    },
+    "description": "Cut hand-rolled ratatui UI where a built-in or maintained community widget fits, starting with the crossterm 0.29 baseline, then low-risk widget swaps, then shared file-browser and modal/form internals."
+  },
+  "phases": [
+    {
+      "id": "1.0",
+      "title": "Prerequisite and P0 widget swaps",
+      "goal": "Get every dependency on crossterm 0.29, then replace the clearest hand-rolled surfaces with ratatui built-ins or official community widgets: layer tree, list panels, progress bar, tab strips, keybinding scrollbar.",
+      "tasks": [
+        {
+          "id": "1.0.1",
+          "title": "Upgrade crossterm to 0.29",
+          "status": "pending",
+          "goal": "Align the direct crossterm dependency with ratatui 0.30's 0.29 backend so community crates can accept app events. Remove the duplicate 0.28 entry, fix renamed APIs, and verify keyboard and mouse handling still compile.",
+          "touches": [
+            "figby-rs/Cargo.toml",
+            "figby-rs/Cargo.lock"
+          ],
+          "success": [
+            "cargo tree -d reports one crossterm version",
+            "Cargo.lock no longer contains crossterm 0.28",
+            "cargo build, test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [],
+          "complexity": "Medium",
+          "agent": "mid_dev_agent",
+          "created_at": "2026-10-29T17:05:55Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "tests": "cargo tree -d shows one crossterm; cargo build/test/clippy/fmt all pass"
+        },
+        {
+          "id": "1.0.2",
+          "title": "Replace layer panel with tui-tree-widget",
+          "status": "pending",
+          "goal": "Port LayerPanel's grouped, collapsible layer list to tui-tree-widget while retaining the existing toolbar buttons, selection, scroll-to-active behavior, and mouse hit rects. Keep custom rendering only for the two-line layer rows if needed.",
+          "touches": [
+            "figby-rs/Cargo.toml",
+            "figby-rs/Cargo.lock",
+            "figby-rs/src/tui/layers.rs"
+          ],
+          "success": [
+            "Layer groups, collapse, active selection, and toolbar still work",
+            "The layer list renders through tui-tree-widget",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "Medium",
+          "agent": "mid_dev_agent",
+          "created_at": "2026-10-29T17:05:55Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "parallel_group": "p0-widgets",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml layers && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.0.3",
+          "title": "Use List and Scrollbar for undo and light panels",
+          "status": "pending",
+          "goal": "Replace Paragraph-based entries and manual scroll offsets in UndoPanel and LightPanel with List/ListState and ratatui Scrollbar. Preserve keyboard selection and the existing more/overflow indication.",
+          "touches": [
+            "figby-rs/src/tui/undo_panel.rs",
+            "figby-rs/src/tui/light_panel.rs"
+          ],
+          "success": [
+            "Undo history and light list render via List with a visible scrollbar",
+            "Keyboard scroll and selection behavior is unchanged",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "Low",
+          "agent": "basic_dev_agent",
+          "created_at": "2026-10-29T17:05:55Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "parallel_group": "p0-widgets",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml undo_panel light_panel && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.0.4",
+          "title": "Use Gauge for playback progress",
+          "status": "pending",
+          "goal": "Replace the hand-drawn block progress bars in AnimationPlayer's fullscreen and inline paths with Gauge or LineGauge wherever a Frame or Buffer is available. Keep String-based rendering only for raw terminal writes.",
+          "touches": [
+            "figby-rs/src/tui/player.rs"
+          ],
+          "success": [
+            "Fullscreen playback progress uses Gauge or LineGauge",
+            "Existing player tests pass",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "Low",
+          "agent": "basic_dev_agent",
+          "created_at": "2026-10-29T17:05:56Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "parallel_group": "p0-widgets",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml player && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.0.5",
+          "title": "Use built-in Tabs for document and side-panel tabs",
+          "status": "pending",
+          "goal": "Replace the manual document tab strip and side-panel tab header with ratatui Tabs. Preserve per-tab hit rects for mouse input by computing widths alongside the Tabs render.",
+          "touches": [
+            "figby-rs/src/tui/mod.rs",
+            "figby-rs/src/tui/side_panel.rs"
+          ],
+          "success": [
+            "Both tab strips render via Tabs",
+            "Mouse tab selection still works",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "Low",
+          "agent": "basic_dev_agent",
+          "created_at": "2026-10-29T17:05:56Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "parallel_group": "p0-widgets",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml side_panel && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.0.6",
+          "title": "Add Scrollbar to keybindings and scrollable overlays",
+          "status": "pending",
+          "goal": "Use ratatui Scrollbar for the keybindings overlay and other overlay scroll regions, driven by the existing keybindings_scroll state instead of ad-hoc indicators.",
+          "touches": [
+            "figby-rs/src/tui/overlays.rs",
+            "figby-rs/src/tui/app_state.rs",
+            "figby-rs/src/tui/dispatch.rs"
+          ],
+          "success": [
+            "The keybindings overlay shows a scrollbar",
+            "Arrow and PgUp/PgDn scrolling is unchanged",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "Low",
+          "agent": "basic_dev_agent",
+          "created_at": "2026-10-29T17:05:56Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "parallel_group": "p0-widgets",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml keymap overlays && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        }
+      ]
+    },
+    {
+      "id": "1.1",
+      "title": "Deduplicate file browsers and dialogs",
+      "goal": "Extract one shared file-browser component and one modal/form shell, then move the duplicated import/export/open dialogs onto them.",
+      "tasks": [
+        {
+          "id": "1.1.1",
+          "title": "Extract shared file-browser component",
+          "status": "pending",
+          "goal": "Create one internal file-browser module from the duplicated directory, path, and recent-entry rendering and selection logic in file_ops.rs, export.rs, gif_import.rs, rascii_import.rs, and system_font.rs. Preserve per-dialog filters including ZIP bundle browsing and .flf/.tlf/image filters. Evaluate ratatui-explorer or ratatui-file-picker only if they can retain those behaviors; otherwise keep the extracted component internal.",
+          "touches": [
+            "figby-rs/src/tui/file_ops.rs",
+            "figby-rs/src/tui/export.rs",
+            "figby-rs/src/tui/dialogs/gif_import.rs",
+            "figby-rs/src/tui/dialogs/rascii_import.rs",
+            "figby-rs/src/tui/dialogs/system_font.rs",
+            "figby-rs/src/tui/file_browser.rs",
+            "figby-rs/src/tui/mod.rs"
+          ],
+          "success": [
+            "All five dialogs render through the shared browser",
+            "ZIP browsing, extension filters, recent files, and mouse hit rects are preserved",
+            "No duplicated directory-entry render loops remain"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "High",
+          "agent": "pro_dev_agent",
+          "created_at": "2026-10-29T17:06:06Z",
+          "updated_at": "2026-10-29T17:06:23Z",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml file_ops export gif_import rascii_import system_font && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.1.2",
+          "title": "Add shared modal and form shell",
+          "status": "pending",
+          "goal": "Adopt tui-popup for modal framing and tui-input or rat-text for line editing behind one internal dialog shell. Support centered sizing, Clear, title, validation message, and field focus. Do not convert individual dialogs in this task.",
+          "touches": [
+            "figby-rs/src/tui/overlays.rs",
+            "figby-rs/src/tui/dialog_shell.rs",
+            "figby-rs/src/tui/mod.rs",
+            "figby-rs/Cargo.toml",
+            "figby-rs/Cargo.lock"
+          ],
+          "success": [
+            "One shell renders modal frame, fields, and errors",
+            "The input crate version matches crossterm 0.29",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.1.1"
+          ],
+          "complexity": "Medium",
+          "agent": "mid_dev_agent",
+          "created_at": "2026-10-29T17:06:06Z",
+          "updated_at": "2026-10-29T17:06:24Z",
+          "parallel_group": "dialog-refactor",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml dialog && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.1.3",
+          "title": "Move export and file-ops dialogs onto shell",
+          "status": "pending",
+          "goal": "Convert ExportDialog and FileOpsDialog to the shared browser and modal/form shell. Keep export-mode hotkeys, save filename focus, and all six file-ops modes.",
+          "touches": [
+            "figby-rs/src/tui/export.rs",
+            "figby-rs/src/tui/file_ops.rs"
+          ],
+          "success": [
+            "Export and file-ops dialogs use the shared components",
+            "All modes and hotkeys are preserved",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.1.2"
+          ],
+          "complexity": "Medium",
+          "agent": "mid_dev_agent",
+          "created_at": "2026-10-29T17:06:06Z",
+          "updated_at": "2026-10-29T17:06:24Z",
+          "parallel_group": "dialog-refactor",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml export file_ops && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.1.4",
+          "title": "Move import and option dialogs onto shell",
+          "status": "pending",
+          "goal": "Convert NewImageDialog, FontImportOptions, SystemFontPicker, GifImport, and RasciiImport to the shared browser/form shell. Keep palette previews, charset and width controls, and GIF frame options.",
+          "touches": [
+            "figby-rs/src/tui/dialogs/new_image.rs",
+            "figby-rs/src/tui/dialogs/font_import_options.rs",
+            "figby-rs/src/tui/dialogs/system_font.rs",
+            "figby-rs/src/tui/dialogs/gif_import.rs",
+            "figby-rs/src/tui/dialogs/rascii_import.rs"
+          ],
+          "success": [
+            "All listed dialogs use the shared shell and browser",
+            "No duplicated prompt or field rendering remains",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.1.2"
+          ],
+          "complexity": "Medium",
+          "agent": "mid_dev_agent",
+          "created_at": "2026-10-29T17:06:06Z",
+          "updated_at": "2026-10-29T17:06:24Z",
+          "parallel_group": "dialog-refactor",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml dialogs && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        }
+      ],
+      "prerequisites": [
+        "1.0"
+      ]
+    },
+    {
+      "id": "1.2",
+      "title": "Menu and closeout",
+      "goal": "Decide whether the mouse-aware menu stays custom or forks tui-menu, then record the outcome and shipped changes.",
+      "tasks": [
+        {
+          "id": "1.2.1",
+          "title": "Evaluate or fork tui-menu for the menu bar",
+          "status": "pending",
+          "goal": "Compare the current mouse-aware MenuBar against tui-menu 0.3.x. Keep the custom menu unless tui-menu can preserve mouse hit rects, shortcut labels, disabled state, and theme; if forking, add mouse support and keep the public MenuBar interface.",
+          "touches": [
+            "figby-rs/src/tui/menu.rs",
+            "figby-rs/src/tui/dispatch.rs",
+            "figby-rs/Cargo.toml",
+            "figby-rs/Cargo.lock"
+          ],
+          "success": [
+            "A written decision is recorded in docs/ratatui_cleanup.md",
+            "Menu keyboard and mouse behavior is unchanged",
+            "cargo test, clippy, and fmt check pass"
+          ],
+          "prerequisites": [
+            "1.0.1"
+          ],
+          "complexity": "Medium",
+          "agent": "mid_dev_agent",
+          "created_at": "2026-10-29T17:06:07Z",
+          "updated_at": "2026-10-29T17:06:24Z",
+          "tests": "cargo test --manifest-path figby-rs/Cargo.toml menu && cargo clippy --manifest-path figby-rs/Cargo.toml --all-targets -- -D warnings && cargo fmt --manifest-path figby-rs/Cargo.toml --check"
+        },
+        {
+          "id": "1.2.2",
+          "title": "Record cleanup outcome",
+          "status": "pending",
+          "goal": "Update CHANGELOG, docs/memory.md, docs/learnings.md, and docs/ratatui_cleanup.md with what shipped, what was deliberately left custom, and any fork or version caveats.",
+          "touches": [
+            "CHANGELOG.md",
+            "docs/memory.md",
+            "docs/learnings.md",
+            "docs/ratatui_cleanup.md"
+          ],
+          "success": [
+            "Docs reflect the final component inventory",
+            "A changelog entry is present",
+            "No stale recommendations remain"
+          ],
+          "prerequisites": [
+            "1.1.4",
+            "1.2.1"
+          ],
+          "complexity": "Low",
+          "agent": "basic_dev_agent",
+          "created_at": "2026-10-29T17:06:07Z",
+          "updated_at": "2026-10-29T17:06:24Z",
+          "tests": "git diff --check; confirm docs links and changelog entry"
+        }
+      ],
+      "prerequisites": [
+        "1.1"
+      ]
+    }
+  ]
+}
