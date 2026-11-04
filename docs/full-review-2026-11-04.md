@@ -32,6 +32,8 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | F11 TUI can't open Latin-1 fonts | ✅ fixed in 6.2.3, together with F7b (U+FFFD glyphs) |
 | F14 atomic writes reset permissions | ✅ fixed in 6.2.3 |
 | **N4** Esc in Save As still saved, to `./untitled.flf` with no overwrite prompt, then quit if it came from the quit prompt | ✅ found while doing F9, fixed in 6.2.3 |
+| S1 `--play-tmux` shell injection | ✅ fixed in 6.2.4. Verified end to end in tmux: the old string runs `$(…)` in a filename, the new one passes it through literally |
+| **N6** `--play-tmux` never split a pane on tmux 3.4 (`-pN` gives "size missing"), so it always fell back to daemon mode | ✅ fixed in 6.2.4 |
 | **N5** quit-prompt mouse targets were hard-coded columns, so with Save hidden a click on the Save position discarded | ✅ fixed in 6.2.3 |
 | Everything else | open |
 

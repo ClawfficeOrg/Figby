@@ -1,4 +1,18 @@
 # Changelog
+## [6.2.4] - 2026-11-04
+
+### Security
+- `--play-tmux` built the pane command as `figby --play "<path>"` and tmux ran it through the shell, so
+  `$(...)`, backticks or a `"` in a filename executed (a file named `$(cmd).gif` ran `cmd`). Every word of
+  the pane command is now single-quoted.
+
+### Fixed
+- `--play-tmux` never opened a pane on current tmux: it passed `-pN`, which tmux 3.4 rejects ("size
+  missing"), so it always fell back to daemon mode. It now uses `-l N%` and falls back to `-p N` for tmux
+  older than 3.1.
+- `--play-daemon`, `--play-tmux` and `--play-detach` forwarded only `--loop` to the player; they now also pass
+  `--play-width`, `--hold-last`, `--play-inline` and `--play-timeline`.
+
 ## [6.2.3] - 2026-11-04
 
 ### Fixed

@@ -1230,6 +1230,38 @@ fn write_output_file(path: &str, bytes: &[u8]) {
     }
 }
 
+/// Arguments for a child `figby --play` process started by `--play-daemon`,
+/// `--play-tmux` or `--play-detach`: the file plus every playback option.
+fn playback_child_args(args: &CliArgs, path: &str) -> Vec<String> {
+    let mut out = vec!["--play".to_string(), path.to_string()];
+    if args.play_loop {
+        out.push("--loop".to_string());
+    }
+    if let Some(w) = args.play_width {
+        out.push("--play-width".to_string());
+        out.push(w.to_string());
+    }
+    if let Some(s) = args.hold_last {
+        out.push("--hold-last".to_string());
+        out.push(s.to_string());
+    }
+    if args.play_inline {
+        out.push("--play-inline".to_string());
+    }
+    if args.play_timeline {
+        out.push("--play-timeline".to_string());
+    }
+    out
+}
+
+/// Quote one word for a POSIX shell: wrap in single quotes, and close,
+/// escape and reopen around each embedded `'`. Nothing is special inside
+/// single quotes, so `$(...)`, backticks, `"` and globs stay literal. The
+/// same form is also valid in fish, which tmux may use as default-shell.
+fn shell_quote(word: &str) -> String {
+    format!("'{}'", word.replace('\'', r"'\''"))
+}
+
 fn has_figlet_flags(args: &CliArgs) -> bool {
     args.flag_A
         || args.flag_D
@@ -1590,38 +1622,56 @@ fn main() {
     }
 
     // ─── Daemon/tmux/detach modes ───────────────────────────────
-    if let Some(ref path) = args.play_daemon {
+    // Each re-runs this binary with `--play <path>` plus every playback
+    // option the user gave (they used to forward only `--loop`).
+    let spawn_player = |path: &str| {
         let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
         let mut cmd = std::process::Command::new(exe);
-        cmd.arg("--play").arg(path);
-        if args.play_loop {
-            cmd.arg("--loop");
+        cmd.args(playback_child_args(&args, path));
+        cmd
+    };
+    let start_daemon = |path: &str| match spawn_player(path).spawn() {
+        Ok(child) => println!("figby playback started (PID {})", child.id()),
+        Err(e) => {
+            eprintln!("Failed to start daemon: {e}");
+            process::exit(1);
         }
-        match cmd.spawn() {
-            Ok(child) => {
-                println!("figby playback started (PID {})", child.id());
-                return;
-            }
-            Err(e) => {
-                eprintln!("Failed to start daemon: {e}");
-                process::exit(1);
-            }
-        }
+    };
+
+    if let Some(ref path) = args.play_daemon {
+        start_daemon(path);
+        return;
     }
 
     if let Some(ref path) = args.play_tmux {
-        let in_tmux = std::env::var("TMUX").is_ok();
-        if in_tmux {
+        if std::env::var("TMUX").is_ok() {
             let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
-            let mut play_cmd = format!("{} --play \"{}\"", exe.display(), path);
-            if args.play_loop {
-                play_cmd.push_str(" --loop");
-            }
+            // tmux runs the pane command through the user's shell, so every
+            // word is single-quoted. The path used to be interpolated inside
+            // double quotes, where `$(...)`, backticks and a stray `"` all
+            // still execute — a file named `$(cmd).gif` ran `cmd`.
+            let mut words = vec![shell_quote(&exe.to_string_lossy())];
+            words.extend(
+                playback_child_args(&args, path)
+                    .iter()
+                    .map(|a| shell_quote(a)),
+            );
+            let play_cmd = words.join(" ");
             let size_pct = args.play_tmux_size.unwrap_or(50).clamp(10, 90);
-            let size_arg = format!("-p{size_pct}");
-            let status = std::process::Command::new("tmux")
-                .args(["split-window", "-h", &size_arg, &play_cmd])
-                .status();
+            // `-l N%` is the tmux >= 3.1 spelling; 3.4 rejects the old
+            // `-pN` outright ("size missing"), which silently forced the
+            // daemon fallback. Older tmux only knows `-p N`.
+            let split = |size: [&str; 2]| {
+                std::process::Command::new("tmux")
+                    .args(["split-window", "-h", size[0], size[1], &play_cmd])
+                    .stderr(std::process::Stdio::null())
+                    .status()
+            };
+            let pct = size_pct.to_string();
+            let status = match split(["-l", &format!("{pct}%")]) {
+                Ok(s) if s.success() => Ok(s),
+                _ => split(["-p", &pct]),
+            };
             match status {
                 Ok(s) if s.success() => return,
                 Ok(_) => {
@@ -1632,33 +1682,12 @@ fn main() {
                 }
             }
         }
-        // Fallback: daemon mode
-        let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
-        let mut cmd = std::process::Command::new(exe);
-        cmd.arg("--play").arg(path);
-        if args.play_loop {
-            cmd.arg("--loop");
-        }
-        match cmd.spawn() {
-            Ok(child) => {
-                println!("figby playback started (PID {})", child.id());
-                return;
-            }
-            Err(e) => {
-                eprintln!("Failed to start daemon: {e}");
-                process::exit(1);
-            }
-        }
+        start_daemon(path);
+        return;
     }
 
     if let Some(ref path) = args.play_detach {
-        let exe = std::env::current_exe().unwrap_or_else(|_| "figby".into());
-        let mut cmd = std::process::Command::new(exe);
-        cmd.arg("--play").arg(path);
-        if args.play_loop {
-            cmd.arg("--loop");
-        }
-        match cmd.status() {
+        match spawn_player(path).status() {
             Ok(s) => {
                 if !s.success() {
                     process::exit(s.code().unwrap_or(1));
@@ -1887,6 +1916,76 @@ fn main() {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
+
+    // ── 2026-11-04 review S1: --play-tmux shell injection ──────────────────
+
+    #[cfg(unix)]
+    #[test]
+    fn test_shell_quote_survives_sh_and_never_executes() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("pwned");
+        let m = marker.display();
+        let payloads = [
+            format!("$(touch {m}).gif"),
+            format!("`touch {m}`.gif"),
+            format!("x\"; touch {m}; \".gif"),
+            format!("it's; touch {m} #.gif"),
+            "spaces and * globs ?.gif".to_string(),
+            "back\\slash\nnewline.gif".to_string(),
+            "'".to_string(),
+            String::new(),
+        ];
+        for p in &payloads {
+            let script = format!("printf '%s' {}", shell_quote(p));
+            let out = std::process::Command::new("sh")
+                .args(["-c", &script])
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "{p:?}");
+            assert_eq!(
+                String::from_utf8_lossy(&out.stdout),
+                *p,
+                "argv must round-trip"
+            );
+        }
+        assert!(
+            !marker.exists(),
+            "a quoted filename must never run a command"
+        );
+    }
+
+    #[test]
+    fn test_playback_child_args_forward_every_option() {
+        let args = CliArgs::try_parse_from([
+            "figby",
+            "--play-tmux",
+            "a.gif",
+            "--loop",
+            "--play-width",
+            "40",
+            "--hold-last",
+            "1.5",
+            "--play-inline",
+            "--play-timeline",
+        ])
+        .unwrap();
+        assert_eq!(
+            playback_child_args(&args, "a.gif"),
+            [
+                "--play",
+                "a.gif",
+                "--loop",
+                "--play-width",
+                "40",
+                "--hold-last",
+                "1.5",
+                "--play-inline",
+                "--play-timeline"
+            ]
+        );
+        let bare = CliArgs::try_parse_from(["figby", "--play-daemon", "b.gif"]).unwrap();
+        assert_eq!(playback_child_args(&bare, "b.gif"), ["--play", "b.gif"]);
+    }
     use figby::font::DEUTSCH_CHARS;
 
     #[test]
