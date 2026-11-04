@@ -1,4 +1,28 @@
 # Changelog
+## [6.2.6] - 2026-11-04
+
+### Fixed
+- Paragraph mode (`-p`) with a multibyte input mode lost the character at the start of each line (for example
+  `é` under `-p -C utf8`): the character read after a newline was pushed back into the *byte* reader and
+  re-decoded. It is now pushed back as a decoded character, as C does.
+- A broken UTF-8 sequence under `-C utf8` dropped the byte that broke it (a newline after a stray lead byte
+  vanished); that byte is now read normally after the U+0080 marker.
+- CI: every Linux job was failing before the first compile because `libfontconfig1-dev` (needed by
+  `font-kit`) is not on the runner image; the jobs install it. The Windows job failed on two unix-only tests
+  (`std::os::unix::fs::symlink`), now `#[cfg(unix)]`. `cargo package` failed because the `figseq` path
+  dependency had no version; it is versioned and the package job builds the whole workspace.
+- `test_cparity_table_in_sync` compared the scenario table with a hand-written list instead of the tests, so
+  five "known divergences" (21, 23, 26, 35, 37) had silently been passing. It now reads `run_tests.rs`'s
+  `#[ignore]` attributes; those rows are `active`. Row 37's input was double-escaped, so
+  `regenerate-expected.sh` rewrote `res037.txt` with the wrong output; every fixture now regenerates
+  unchanged from C.
+
+### Added
+- `scripts/cparity-diff.sh` and a `cparity` CI job: a live byte-for-byte differential against C FIGlet built
+  from `c-figlet/` (463 cases: all bundled fonts × layout flags, non-ASCII input, control files, option order).
+- README "Intentional differences from C FIGlet" replaces the stale "Known divergences" table.
+- C-parity scenario 80 (`-p -C utf8` with a multibyte character starting a line).
+
 ## [6.2.5] - 2026-11-04
 
 ### Fixed

@@ -100,9 +100,19 @@ pub fn read_utf8_char(input: &mut impl CharReader) -> Option<u32> {
             Some(b) if b & 0xC0 == 0x80 => {
                 *slot = b as u8;
             }
-            _ => {
+            Some(b) => {
+                // Not a continuation byte: the sequence is broken, but this
+                // byte starts the next character — push it back instead of
+                // dropping it ("h\xe9llo" keeps its "ll", and a newline
+                // after a stray lead byte still ends the line).
+                //
+                // Intentional divergence: C getinchr() does not validate
+                // continuation bytes and swallows them (\xc3\n → Ê, the
+                // newline lost). U+0080 is C's own "illegal" marker.
+                input.unget(b);
                 return Some(0x0080);
             }
+            None => return Some(0x0080),
         }
     }
 
@@ -452,5 +462,27 @@ mod tests {
         let mut state = HZState::default();
         let ch = read_hz_char(&mut input, &mut state);
         assert_eq!(ch, Some(b'A' as u32));
+    }
+
+    #[test]
+    fn test_utf8_broken_sequence_keeps_next_byte() {
+        let mut input = MockReader::new(b"h\xe9llo\xc3\nz");
+        let mut out = Vec::new();
+        while let Some(c) = read_utf8_char(&mut input) {
+            out.push(c);
+        }
+        assert_eq!(
+            out,
+            [
+                b'h' as u32,
+                0x80,
+                b'l' as u32,
+                b'l' as u32,
+                b'o' as u32,
+                0x80,
+                0x0A,
+                b'z' as u32
+            ]
+        );
     }
 }

@@ -17,7 +17,8 @@ Original C source lives in `c-figlet/` for reference; the Rust port lives in
 ## Features
 
 - Full FIGlet 2.2.5 CLI flag coverage (27 flags; `-F` is removed, matching C
-  FIGlet — see [Known divergences](#known-divergences-from-c-figlet))
+  FIGlet; options apply in command-line order, as with C getopt — see
+  [Intentional differences](#intentional-differences-from-c-figlet))
 - FIGfont (`.flf`) and TOIlet (`.tlf`) font support
 - Kerning and smushing (all 11 rules: H1–H6, V1–V5)
 - Multi-byte input: UTF-8, DBCS, Shift-JIS, HZ
@@ -231,31 +232,39 @@ figby -d /path/to/fonts -f myfont "Hello"
 | Deutsch mode | Yes | Yes |
 | ZIP fonts | Yes | Yes (`zip` crate) |
 | CLI flags | 27 flags | Coverage of every implemented flag |
-| Output compatibility | Baseline | Byte-identical across active differential tests |
+| Output compatibility | Baseline | Byte-identical on the fixture suite and the live C differential (see below) |
 | Memory safety | Manual | Guaranteed (Rust) |
 | Error handling | Silent fallbacks | Explicit `Result` |
 | Internal encoding | `wchar_t` / `inchr` | `char` (Unicode scalar) |
 | Global state | 20+ globals | None (encapsulated) |
 
-Figby's output is byte-identical to C FIGlet 2.2.5 across the active
-differential test suite (`figby-rs/tests/run_tests.rs`, fixtures regenerated
-from C by `scripts/regenerate-expected.sh`). A small set of known divergences
-remains intentionally ignored — see below. All other differences are
-intentional improvements in safety, clarity, and maintainability.
+Figby's output is byte-identical to C FIGlet 2.2.5 on everything we test it
+against. That comes from two sources:
 
-## Known divergences from C FIGlet
+- **Fixtures:** `figby-rs/tests/run_tests.rs` runs the scenarios in
+  `figby-rs/tests/cparity/scenarios.tsv`. Their expected output is generated
+  from C by `scripts/regenerate-expected.sh`.
+- **Live differential:** `scripts/cparity-diff.sh` builds C FIGlet from
+  `c-figlet/` and diffs it against Figby over every bundled font × layout
+  flags, non-ASCII input, control files and option order. CI runs it as the
+  `cparity` job.
 
-These behaviors differ from C FIGlet 2.2.5 and are tracked as `#[ignore]`d
-differential tests (test numbers refer to `figby-rs/tests/run_tests.rs`).
-They are real gaps to close, not intentional departures:
+There are currently no known, unintended divergences. The table in
+`scenarios.tsv` has no `known-divergence` rows, and `test_cparity_table_in_sync`
+fails if one is left in place after its test starts passing.
 
-| Test | Scenario | Status |
-|------|----------|--------|
-| 21 | Paragraph mode (`-p -w250`) | Known divergence |
-| 23 | Combined `-kpc` flags | Known divergence |
-| 26 | JIS0201 control file | Known divergence |
-| 35 | Control-character skipping | Known divergence |
-| 37 | Smush all rules (`-m191`) | Known divergence |
+## Intentional differences from C FIGlet
+
+Each of these is a C behaviour that loses data or is a bug, so Figby doesn't
+copy it:
+
+| Situation | C FIGlet 2.2.5 | Figby |
+|---|---|---|
+| `-v` | Prints the FIGlet copyright banner (same as `-I0`) | Prints `figby <version>`; use `-I0` for the banner |
+| Malformed UTF-8 under `-C utf8` | Consumes the next byte as a continuation byte without checking it (`\xc3\n` → `Ê`, and the newline is lost) | Emits U+0080 (C's own "illegal character" code), then reads the next byte normally |
+| Font file whose last line has no trailing newline | `myfgets` returns NULL, so the final glyph row is read as empty | Keeps the row |
+| 8-bit (Latin-1) bytes inside a `.flf` | Written back out as raw bytes (not valid UTF-8) | Decoded as Latin-1 and written as UTF-8 (`Ä`, not `\xC4`) |
+| No font directory installed | `standard: Unable to open font file` | Falls back to the copy of `standard` embedded in the binary |
 
 ## Project Status
 

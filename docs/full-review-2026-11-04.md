@@ -39,6 +39,12 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | F7 strict font loader | ✅ fixed in 6.2.5. 160/160 truncated-font renders match C |
 | F7c `-w 0`/`-w -5`, `-f x.flf`, `-m abc`, missing default font | ✅ fixed in 6.2.5. The embedded `standard` font is the last fallback. `-v` still prints Figby's own version, which is intentional |
 | **N7** C drops a font file's last line when it has no trailing newline (`myfgets` returns NULL), so the final glyph row renders empty | intentional divergence: Figby keeps the row. Document it in step 5 (T1) |
+| T1 tautological parity sync test | ✅ fixed in 6.2.6. It now reads `#[ignore]` from source, and a mutation check showed it catches drift |
+| N3 `res037` regenerated wrong | ✅ fixed in 6.2.6 (row 37's input was double-escaped) |
+| T3 upstream parity not in CI | ✅ done in 6.2.6: `scripts/cparity-diff.sh` plus a `cparity` job. It flags 13 diffs on the pre-step-4 binary |
+| **N8** CI was red on `master`: fontconfig missing on Linux, unix-only tests on Windows, unversioned `figseq` dependency in `cargo package`, and the wasm break (N2) | ✅ fixed in 6.2.6, verified locally. Actions hasn't run since 2026-10-07, so not yet confirmed on GitHub |
+| **N9** `-p` with a multibyte input mode lost the first character of each line | ✅ found by the new differential, fixed in 6.2.6 |
+| **N10** C's UTF-8 reader swallows the byte after a broken sequence | intentional divergence, documented in the README |
 | **N5** quit-prompt mouse targets were hard-coded columns, so with Save hidden a click on the Save position discarded | ✅ fixed in 6.2.3 |
 | Everything else | open |
 

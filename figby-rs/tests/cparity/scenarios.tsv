@@ -13,8 +13,9 @@
 # are real gaps tracked as #[ignore]d tests. `special` rows have bespoke
 # harness logic in run_tests.rs and no res file.
 #
-# Keep the status column in sync with the #[ignore] attributes in
-# run_tests.rs — test_cparity_table_in_sync asserts the two agree.
+# test_cparity_table_in_sync reads run_tests.rs itself: every
+# `known-divergence` row must be an #[ignore]d test_<num>_*, and every
+# `active` row must be a test that is NOT ignored and has a res file.
 1	-	-	special	showfigfonts (loops over fonts/)
 2	-	-	special	all fonts, default input
 3		file:longtext.txt	active	long text
@@ -35,12 +36,12 @@
 18	-oc -f tests/emboss	file:input.txt	active	TLF overlap center
 19	-WRl -f tests/emboss	file:input.txt	active	TLF full width flush left RTL
 20	-	-	special	- -d <tempdir> (temp dir)
-21	-p -w250	file:input.txt	known-divergence	paragraph mode
+21	-p -w250	file:input.txt	active	paragraph mode
 22	-w5	file:input.txt	active	short line
-23	-kpc -f small	file:input.txt	known-divergence	combined -kpc flags
+23	-kpc -f small	file:input.txt	active	combined -kpc flags
 24	-	-	special	list control files
 25	-f banner -C fonts/uskata.flc	lit:ABCDE	active	uskata control
-26	-f banner -C fonts/jis0201.flc	lit:\xb1\xb2\xb3\xb4\xb5	known-divergence	JIS0201 control
+26	-f banner -C fonts/jis0201.flc	lit:\xb1\xb2\xb3\xb4\xb5	active	JIS0201 control
 27	-f tests/flowerpower -R	file:input.txt	active	RTL smushing flowerpower
 28	-f standard	lit:	active	empty input
 29	-f standard	lit:X	active	single char
@@ -49,9 +50,9 @@
 32	-f standard -E	lit:[\\]	active	deutsch disabled
 33	-f standard -X	lit:Hello	active	default direction
 34	-f standard -N	lit:test	active	multibyte disable
-35	-f standard	lit:a\x01b\x02c\n	known-divergence	control char skipping
+35	-f standard	lit:a\x01b\x02c\n	active	control char skipping
 36	-	-	special	various widths (4 sub-runs)
-37	-f standard -m191	lit:/\\\\	known-divergence	smush all rules
+37	-f standard -m191	lit:/\\	active	smush all rules
 38	-f small -k	lit:Hello World	active	kern small font
 39	-f standard -o	lit:Hi	active	overlap standard
 40	-f standard -WR	lit:abc	active	full width RTL smush
@@ -84,3 +85,4 @@
 77	-f standard -C upper -N -C utf8	lit:h\xc3\xa9\n	active	-N clears earlier -C files
 78	-f standard -m abc	lit:Hello	active	-m non-numeric is 0 (kerning), as with atoi
 79	-f standard -k -s -k	lit:Hello	active	repeated flags: last occurrence wins
+80	-f standard -p -C utf8	lit:a\n\xc3\xa9b\n\n\xc3\xa4\xc3\xb6\n	active	paragraph mode keeps a multibyte char that starts a line

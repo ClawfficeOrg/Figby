@@ -141,6 +141,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
+    #[cfg(unix)] // std::os::unix symlinks: this broke the Windows CI build
     #[test]
     fn refuses_symlink_destination() {
         use std::os::unix::fs::symlink;

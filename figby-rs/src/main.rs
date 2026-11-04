@@ -1149,8 +1149,12 @@ fn run(config: CliConfig, message: Vec<String>) {
         }
     };
 
+    let mut pending_char: Option<u32> = None;
     loop {
-        let c = match next_char(&mut input, &mut control_state, &mut hz_state) {
+        let c = match pending_char
+            .take()
+            .or_else(|| next_char(&mut input, &mut control_state, &mut hz_state))
+        {
             Some(c) => c,
             None => {
                 if outlinelen != 0 {
@@ -1183,7 +1187,11 @@ fn run(config: CliConfig, message: Vec<String>) {
                     if !is_ws {
                         c = b' ' as u32;
                     }
-                    input.unget(c2);
+                    // Push back the *decoded* character (C getinchr_buffer).
+                    // Ungetting it into the byte reader re-decoded it as a
+                    // raw byte, so a multibyte character starting a line
+                    // vanished in `-p -C utf8` mode.
+                    pending_char = Some(c2);
                 }
             }
         }

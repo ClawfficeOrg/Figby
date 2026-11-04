@@ -644,6 +644,18 @@ fn test_79_repeated_flag_last_wins() {
     scenario(79, &["-f", "standard", "-k", "-s", "-k"], b"Hello");
 }
 
+#[test]
+fn test_80_paragraph_mode_multibyte_line_start() {
+    // `-p` peeks past each newline and pushed the decoded character back into
+    // the byte reader, so a UTF-8 character starting a line was re-decoded
+    // as a raw byte and lost.
+    scenario(
+        80,
+        &["-f", "standard", "-p", "-C", "utf8"],
+        "a\néb\n\näö\n".as_bytes(),
+    );
+}
+
 /// F7: a font that stops after the 95 ASCII glyphs (no Deutsch block) or
 /// mid-glyph must load, as in C, and render its ASCII text unchanged.
 #[test]
@@ -819,13 +831,14 @@ fn test_55_wide_center_justification() {
     );
 }
 
-/// Cross-check that the authoritative C-parity scenario table
+/// Cross-check the authoritative C-parity scenario table
 /// (`tests/cparity/scenarios.tsv`, single source of truth — GPT review F-27)
-/// stays in sync with the `#[ignore]` status of these tests:
+/// against the tests in THIS file, read from source so the check is real
+/// (it used to compare the table with a hand-maintained list, and drifted):
 ///
-/// - every `known-divergence` row must be an ignored test here;
-/// - every fixture-backed `active` row must have a `tests/resNNN.txt` file;
-/// - every `active` row must NOT be ignored (no silent regression).
+/// - every `known-divergence` row must be an `#[ignore]`d `test_<num>_*`;
+/// - every `active` row must be a `test_<num>_*` that is not ignored and
+///   has a `tests/resNNN.txt` file.
 #[test]
 fn test_cparity_table_in_sync() {
     let root = repo_root();
@@ -833,13 +846,26 @@ fn test_cparity_table_in_sync() {
     let table = std::fs::read_to_string(&table_path)
         .unwrap_or_else(|_| panic!("missing scenario table: {:?}", table_path));
 
-    // The tests currently ignored for C divergence — must match the
-    // table's `known-divergence` rows exactly.
-    let ignored_for_divergence: &[u32] = &[21, 23, 26, 35, 37];
+    // test number -> ignored?, scanned from this file's own source.
+    let source = include_str!("run_tests.rs");
+    let mut tests: std::collections::BTreeMap<u32, bool> = Default::default();
+    let mut pending_ignore = false;
+    for line in source.lines() {
+        let t = line.trim();
+        if t.starts_with("#[ignore") {
+            pending_ignore = true;
+        } else if let Some(rest) = t.strip_prefix("fn test_") {
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            if let (Ok(n), true) = (digits.parse::<u32>(), rest[digits.len()..].starts_with('_')) {
+                tests.insert(n, pending_ignore);
+            }
+            pending_ignore = false;
+        } else if !t.starts_with("#[") && !t.starts_with("//") && !t.is_empty() {
+            pending_ignore = false;
+        }
+    }
 
-    let mut divergences: Vec<u32> = Vec::new();
-    let mut active: Vec<u32> = Vec::new();
-
+    let mut problems = Vec::new();
     for line in table.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('#') {
@@ -851,33 +877,35 @@ fn test_cparity_table_in_sync() {
             .unwrap()
             .parse()
             .unwrap_or_else(|e| panic!("bad test number in table row: {line:?} ({e})"));
-        let _args = fields.next().unwrap();
-        let _input = fields.next().unwrap();
-        let status = fields.next().unwrap();
-        match status {
-            "known-divergence" => divergences.push(num),
-            "active" => active.push(num),
-            "special" => {}
-            other => panic!("unknown status {other:?} in table row {line:?}"),
+        let status = fields
+            .nth(2)
+            .unwrap_or_else(|| panic!("short row {line:?}"));
+        match (status, tests.get(&num)) {
+            ("known-divergence", Some(true)) | ("special", _) => {}
+            ("known-divergence", Some(false)) => problems.push(format!(
+                "{num}: marked known-divergence but test_{num}_* is not #[ignore]d \
+                 (it passes? mark the row active)"
+            )),
+            ("active", Some(false)) => {
+                let res = root.join(format!("tests/res{num:03}.txt"));
+                if !res.exists() {
+                    problems.push(format!(
+                        "{num}: active but {res:?} is missing (run scripts/regenerate-expected.sh)"
+                    ));
+                }
+            }
+            ("active", Some(true)) => problems.push(format!(
+                "{num}: active but test_{num}_* is #[ignore]d (silent regression)"
+            )),
+            ("active" | "known-divergence", None) => {
+                problems.push(format!("{num}: no test_{num}_* in run_tests.rs"))
+            }
+            (other, _) => problems.push(format!("{num}: unknown status {other:?}")),
         }
     }
-
-    divergences.sort_unstable();
-    assert_eq!(
-        divergences, ignored_for_divergence,
-        "scenario table `known-divergence` rows must match the ignored tests \
-         (enable a test here once it passes, or mark it known-divergence in \
-         the table when it is newly failing)"
+    assert!(
+        problems.is_empty(),
+        "scenario table out of sync:\n  {}",
+        problems.join("\n  ")
     );
-
-    for num in &active {
-        let res = root.join(format!("tests/res{:03}.txt", num));
-        assert!(
-            res.exists(),
-            "active scenario {} has no expected-output file {:?} \
-             (run scripts/regenerate-expected.sh)",
-            num,
-            res
-        );
-    }
 }

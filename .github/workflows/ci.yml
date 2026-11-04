@@ -66,6 +66,9 @@ jobs:
           done
           exit $missing
 
+      - name: Install system libraries (fontconfig for font-kit)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfontconfig1-dev
+
       - name: cargo clippy (locked)
         run: cargo clippy --locked --manifest-path figby-rs/Cargo.toml --all-targets --all-features -- -D warnings
 
@@ -78,6 +81,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: dtolnay/rust-toolchain@1.97.1
+      - name: Install system libraries (fontconfig for font-kit)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfontconfig1-dev
       - name: Strict rustdoc (broken intra-doc links are errors)
         run: RUSTDOCFLAGS="-D warnings" cargo doc --locked --manifest-path figby-rs/Cargo.toml --no-deps
 
@@ -87,11 +92,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: dtolnay/rust-toolchain@1.97.1
+      - name: Install system libraries (fontconfig for font-kit)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfontconfig1-dev
       - name: cargo package verification
-        run: cargo package --locked --manifest-path figby-rs/Cargo.toml
+        # --workspace: figby depends on the figseq crate, which is not on
+        # crates.io yet; packaging both together verifies figby against the
+        # local figseq instead of failing to resolve it.
+        run: cargo package --locked --manifest-path figby-rs/Cargo.toml --workspace
       - name: cargo publish dry-run (release tags)
         if: startsWith(github.ref, 'refs/tags/')
-        run: cargo publish --locked --manifest-path figby-rs/Cargo.toml --dry-run
+        run: cargo publish --locked --manifest-path figby-rs/Cargo.toml --workspace --dry-run
 
   msrv:
     name: MSRV check
@@ -99,6 +109,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: dtolnay/rust-toolchain@1.97.1
+      - name: Install system libraries (fontconfig for font-kit)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfontconfig1-dev
       - name: cargo check (locked, all targets)
         run: cargo check --locked --manifest-path figby-rs/Cargo.toml --all-targets
 
@@ -141,6 +153,22 @@ jobs:
         run: cargo check --locked --manifest-path figby-rs/Cargo.toml --target wasm32-unknown-unknown
       - name: cargo clippy (wasm32, locked, no-deps)
         run: cargo clippy --locked --manifest-path figby-rs/Cargo.toml --target wasm32-unknown-unknown --no-deps -- -D warnings
+
+  cparity:
+    # Byte-for-byte differential against the reference C FIGlet 2.2.5 built
+    # from c-figlet/: every bundled font x layout flags, non-ASCII input,
+    # control files and option order. Catches divergences no fixture covers.
+    name: C FIGlet parity (differential)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - name: Install system libraries (fontconfig for font-kit)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfontconfig1-dev
+      - name: cargo build (locked)
+        run: cargo build --locked --manifest-path figby-rs/Cargo.toml --bin figby
+      - name: diff against C FIGlet
+        run: scripts/cparity-diff.sh figby-rs/target/debug/figby
 
   audit:
     name: cargo audit
