@@ -1,4 +1,19 @@
 # Changelog
+## [6.2.7] - 2026-11-04
+
+### Changed
+- Rendering is linear in line length. Each glyph used to re-collect every output row into a `Vec<char>` and
+  back into a `String`, so one long line was quadratic: a 33,000-character line at `-w 400000` took 35.7 s
+  (release; ~10 min debug) against C FIGlet's 2.9 s. It now takes 0.028 s left-to-right and 0.036 s
+  right-to-left (C: 10.2 s), with byte-identical output.
+- New `render::OutputLine` (rows as `VecDeque<char>`, with `add_char`/`split`) holds the line under
+  construction; the CLI, the TUI Text tool and templates use it. `add_char`, `split_line` and
+  `calc_smush_amount` keep their signatures as wrappers over the same core.
+
+### Added
+- `long_line_ltr_11k` / `long_line_rtl_11k` benchmarks, an equivalence test between `OutputLine` and the
+  `Vec<String>` wrappers across smush modes and directions, and a loose linear-time guard test.
+
 ## [6.2.6] - 2026-11-04
 
 ### Fixed

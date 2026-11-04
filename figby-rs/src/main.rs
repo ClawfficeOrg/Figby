@@ -8,7 +8,7 @@ use figby::control::{self, CharReader};
 use figby::font::{self, FIGfont};
 use figby::image_input;
 use figby::input;
-use figby::render::{add_char, lookup_char, render_line, split_line, Justification};
+use figby::render::{lookup_char, render_line, Justification, OutputLine};
 use figby::smush::SmushMode;
 use figby::template;
 use std::io::{self, IsTerminal, Read, Write};
@@ -957,25 +957,19 @@ fn run_image(config: ImageOptions) {
 
 #[allow(clippy::ptr_arg, clippy::too_many_arguments)]
 fn flush_output_line(
-    output_rows: &mut Vec<String>,
+    line: &mut OutputLine,
     font: &FIGfont,
     justification: Justification,
     output_width: usize,
     char_buffer: &mut Vec<u32>,
-    outlinelen: &mut usize,
-    prev_width: &mut usize,
     out: &mut impl Write,
 ) {
-    let rendered = render_line(output_rows, font.hardblank, justification, output_width);
+    let rendered = render_line(&line.to_rows(), font.hardblank, justification, output_width);
     for row in &rendered {
         let _ = writeln!(out, "{}", row);
     }
-    for row in output_rows.iter_mut() {
-        row.clear();
-    }
+    line.clear();
     char_buffer.clear();
-    *outlinelen = 0;
-    *prev_width = 0;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1113,10 +1107,10 @@ fn run(config: CliConfig, message: Vec<String>) {
     let output_width = config.outputwidth as usize;
     let height = font.charheight as usize;
 
-    let mut output_rows = vec![String::new(); height];
+    // The line under construction; see render::OutputLine for why it is not
+    // a Vec<String> (that made long lines quadratic).
+    let mut line = OutputLine::new(height);
     let mut char_buffer: Vec<u32> = Vec::new();
-    let mut outlinelen: usize = 0;
-    let mut prev_width: usize = 0;
     let mut wordbreakmode: i32 = 0;
     let mut last_was_eol_flag: bool = false;
 
@@ -1157,15 +1151,13 @@ fn run(config: CliConfig, message: Vec<String>) {
         {
             Some(c) => c,
             None => {
-                if outlinelen != 0 {
+                if !line.is_empty() {
                     flush_output_line(
-                        &mut output_rows,
+                        &mut line,
                         &font,
                         justification,
                         output_width,
                         &mut char_buffer,
-                        &mut outlinelen,
-                        &mut prev_width,
                         &mut out,
                     );
                 }
@@ -1235,29 +1227,18 @@ fn run(config: CliConfig, message: Vec<String>) {
 
             if c == b'\n' as u32 {
                 flush_output_line(
-                    &mut output_rows,
+                    &mut line,
                     &font,
                     justification,
                     output_width,
                     &mut char_buffer,
-                    &mut outlinelen,
-                    &mut prev_width,
                     &mut out,
                 );
                 wordbreakmode = 0;
                 break;
             }
 
-            if add_char(
-                &font,
-                c,
-                &mut output_rows,
-                &mut outlinelen,
-                &mut prev_width,
-                smush_mode,
-                rtl,
-                outlinelen_limit,
-            ) {
+            if line.add_char(&font, c, smush_mode, rtl, outlinelen_limit) {
                 char_buffer.push(c);
                 if c != b' ' as u32 {
                     wordbreakmode = if wordbreakmode >= 2 { 3 } else { 1 };
@@ -1267,7 +1248,7 @@ fn run(config: CliConfig, message: Vec<String>) {
                 break;
             }
 
-            if outlinelen == 0 {
+            if line.is_empty() {
                 // Raw-char path: char wider than empty line
                 let mut dummy = 0;
                 let ch = lookup_char(&font, c, &mut dummy);
@@ -1294,16 +1275,9 @@ fn run(config: CliConfig, message: Vec<String>) {
             // addchar failed — need to flush current line and retry
             if c == b' ' as u32 {
                 if wordbreakmode == 2 {
-                    if let Some((part1_rows, part2_start)) = split_line(
-                        &font,
-                        &char_buffer,
-                        &mut output_rows,
-                        &mut outlinelen,
-                        &mut prev_width,
-                        smush_mode,
-                        rtl,
-                        outlinelen_limit,
-                    ) {
+                    if let Some((part1_rows, part2_start)) =
+                        line.split(&font, &char_buffer, smush_mode, rtl, outlinelen_limit)
+                    {
                         let rendered =
                             render_line(&part1_rows, font.hardblank, justification, output_width);
                         for row in &rendered {
@@ -1312,25 +1286,21 @@ fn run(config: CliConfig, message: Vec<String>) {
                         char_buffer.drain(..part2_start);
                     } else {
                         flush_output_line(
-                            &mut output_rows,
+                            &mut line,
                             &font,
                             justification,
                             output_width,
                             &mut char_buffer,
-                            &mut outlinelen,
-                            &mut prev_width,
                             &mut out,
                         );
                     }
                 } else {
                     flush_output_line(
-                        &mut output_rows,
+                        &mut line,
                         &font,
                         justification,
                         output_width,
                         &mut char_buffer,
-                        &mut outlinelen,
-                        &mut prev_width,
                         &mut out,
                     );
                 }
@@ -1340,16 +1310,9 @@ fn run(config: CliConfig, message: Vec<String>) {
 
             // Non-space char that didn't fit — retry after flush/split
             if wordbreakmode >= 2 {
-                if let Some((part1_rows, part2_start)) = split_line(
-                    &font,
-                    &char_buffer,
-                    &mut output_rows,
-                    &mut outlinelen,
-                    &mut prev_width,
-                    smush_mode,
-                    rtl,
-                    outlinelen_limit,
-                ) {
+                if let Some((part1_rows, part2_start)) =
+                    line.split(&font, &char_buffer, smush_mode, rtl, outlinelen_limit)
+                {
                     let rendered =
                         render_line(&part1_rows, font.hardblank, justification, output_width);
                     for row in &rendered {
@@ -1358,25 +1321,21 @@ fn run(config: CliConfig, message: Vec<String>) {
                     char_buffer.drain(..part2_start);
                 } else {
                     flush_output_line(
-                        &mut output_rows,
+                        &mut line,
                         &font,
                         justification,
                         output_width,
                         &mut char_buffer,
-                        &mut outlinelen,
-                        &mut prev_width,
                         &mut out,
                     );
                 }
             } else {
                 flush_output_line(
-                    &mut output_rows,
+                    &mut line,
                     &font,
                     justification,
                     output_width,
                     &mut char_buffer,
-                    &mut outlinelen,
-                    &mut prev_width,
                     &mut out,
                 );
             }

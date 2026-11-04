@@ -45,6 +45,7 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | **N8** CI was red on `master`: fontconfig missing on Linux, unix-only tests on Windows, unversioned `figseq` dependency in `cargo package`, and the wasm break (N2) | ✅ fixed in 6.2.6, verified locally. Actions hasn't run since 2026-10-07, so not yet confirmed on GitHub |
 | **N9** `-p` with a multibyte input mode lost the first character of each line | ✅ found by the new differential, fixed in 6.2.6 |
 | **N10** C's UTF-8 reader swallows the byte after a broken sequence | intentional divergence, documented in the README |
+| P1 quadratic rendering | ✅ fixed in 6.2.7: a 33k-char line now takes 0.028 s (was 35.7 s; C takes 2.9 s), and RTL 0.036 s (C 10.2 s). Output is byte-identical (cparity 463/463) |
 | **N5** quit-prompt mouse targets were hard-coded columns, so with Save hidden a click on the Save position discarded | ✅ fixed in 6.2.3 |
 | Everything else | open |
 

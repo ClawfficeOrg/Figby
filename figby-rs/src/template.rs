@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use crate::font::{load_font, FIGfont, FontError};
-use crate::render::{add_char, render_line, Justification};
+use crate::render::{render_line, Justification, OutputLine};
 use crate::smush::SmushMode;
 
 /// Errors from template parsing/rendering.
@@ -351,28 +351,14 @@ fn render_text_line(
     let smush_mode = SmushMode::new(font.full_layout as u32);
     let limit = output_width.saturating_sub(1);
 
-    let mut rows = vec![String::new(); height];
-    let mut outlinelen = 0;
-    let mut prev_width = 0;
-
+    let mut line = OutputLine::new(height);
     for c in text.chars() {
-        let code = c as u32;
-        let ok = add_char(
-            font,
-            code,
-            &mut rows,
-            &mut outlinelen,
-            &mut prev_width,
-            smush_mode,
-            rtl,
-            limit,
-        );
-        if !ok {
+        if !line.add_char(font, c as u32, smush_mode, rtl, limit) {
             break;
         }
     }
 
-    render_line(&rows, font.hardblank, justification, output_width)
+    render_line(&line.to_rows(), font.hardblank, justification, output_width)
 }
 
 /// Render multi-line text through FIGlet, one FIGlet line per text line.

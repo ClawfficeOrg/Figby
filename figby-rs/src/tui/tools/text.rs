@@ -1,5 +1,5 @@
 use crate::font::{load_font, FIGfont};
-use crate::render::{add_char, Justification};
+use crate::render::{Justification, OutputLine};
 use crate::smush::SmushMode;
 use crate::tui::canvas::{CanvasBuffer, CanvasCell, TextOverlay};
 use crossterm::event::{KeyCode, KeyModifiers};
@@ -262,9 +262,7 @@ impl TextToolState {
         if height == 0 {
             return None;
         }
-        let mut output_rows = vec![String::new(); height];
-        let mut outlinelen = 0;
-        let mut prev_width = 0;
+        let mut line = OutputLine::new(height);
         let mode = if font.full_layout >= 0 {
             SmushMode::new(font.full_layout as u32)
         } else {
@@ -273,19 +271,10 @@ impl TextToolState {
         let limit = 9999;
 
         for c in self.text_buffer.chars() {
-            let code = c as u32;
-            add_char(
-                font,
-                code,
-                &mut output_rows,
-                &mut outlinelen,
-                &mut prev_width,
-                mode,
-                false,
-                limit,
-            );
+            line.add_char(font, c as u32, mode, false, limit);
         }
 
+        let output_rows = line.to_rows();
         let width = output_rows[0].chars().count();
         if width == 0 {
             return None;

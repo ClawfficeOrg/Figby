@@ -5,7 +5,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use figby::font::{parse_tlf_font, FIGcharacter, FIGfont};
 use figby::render::{
-    add_char, calc_smush_amount, lookup_char, render_line, split_line, Justification,
+    add_char, calc_smush_amount, lookup_char, render_line, split_line, Justification, OutputLine,
 };
 use figby::smush::{smush_horizontal, SmushMode};
 
@@ -321,6 +321,28 @@ fn bench_full_pipeline(c: &mut Criterion) {
     });
 }
 
+/// One very long line (`-w` huge): the case that used to be quadratic.
+fn bench_long_line(c: &mut Criterion) {
+    let font = standard_font();
+    let mode = SmushMode::new(font.full_layout as u32);
+    let text: Vec<u32> = "abcdefghij "
+        .repeat(1000)
+        .chars()
+        .map(|c| c as u32)
+        .collect();
+    for (name, rtl) in [("long_line_ltr_11k", false), ("long_line_rtl_11k", true)] {
+        c.bench_function(name, |b| {
+            b.iter(|| {
+                let mut line = OutputLine::new(font.charheight as usize);
+                for &code in &text {
+                    line.add_char(font, code, mode, rtl, usize::MAX);
+                }
+                black_box(line.to_rows())
+            });
+        });
+    }
+}
+
 criterion_group!(
     benches,
     bench_font_load,
@@ -332,5 +354,6 @@ criterion_group!(
     bench_render_line,
     bench_split_line,
     bench_full_pipeline,
+    bench_long_line,
 );
 criterion_main!(benches);

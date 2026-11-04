@@ -2,6 +2,7 @@
 
 use crate::font::{FIGcharacter, FIGfont};
 use crate::smush::{smush_horizontal, SmushMode};
+use std::collections::VecDeque;
 
 static BLANK_GLYPH: std::sync::OnceLock<FIGcharacter> = std::sync::OnceLock::new();
 
@@ -22,36 +23,200 @@ pub fn lookup_char<'a>(
     ch
 }
 
-fn last_non_space(s: &str, fallback_pos: usize, fallback_char: char) -> (usize, char) {
-    let chars: Vec<char> = s.chars().collect();
-    for (i, &c) in chars.iter().enumerate().rev() {
-        if c != ' ' {
-            return (i, c);
-        }
-    }
-    (fallback_pos, fallback_char)
+/// One FIGlet output line under construction: a row of characters per font
+/// row, plus the C `outlinelen` / `previouscharwidth` state.
+///
+/// Rows are `VecDeque<char>` so adding a glyph costs only the overlap and the
+/// glyph itself, in both directions: left-to-right appends at the back,
+/// right-to-left prepends at the front. The `Vec<String>` API
+/// ([`add_char`], [`split_line`]) re-collected every row on every character,
+/// which made one long line quadratic with a large constant (a 33,000-char
+/// line took 35 s against C's 3.5 s).
+#[derive(Debug, Clone, Default)]
+pub struct OutputLine {
+    rows: Vec<VecDeque<char>>,
+    outlinelen: usize,
+    prev_width: usize,
 }
 
-fn first_non_space(s: &str, fallback_pos: usize, fallback_char: char) -> (usize, char) {
-    for (i, c) in s.chars().enumerate() {
-        if c != ' ' {
-            return (i, c);
+impl OutputLine {
+    /// An empty line with `height` rows (the font's `charheight`).
+    pub fn new(height: usize) -> Self {
+        Self {
+            rows: vec![VecDeque::new(); height],
+            outlinelen: 0,
+            prev_width: 0,
         }
     }
-    (fallback_pos, fallback_char)
+
+    /// Rebuild from the `Vec<String>` representation used by [`add_char`].
+    pub fn from_parts(rows: &[String], outlinelen: usize, prev_width: usize) -> Self {
+        Self {
+            rows: rows.iter().map(|r| r.chars().collect()).collect(),
+            outlinelen,
+            prev_width,
+        }
+    }
+
+    /// Current line length in columns (C `outlinelen`).
+    pub fn len(&self) -> usize {
+        self.outlinelen
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.outlinelen == 0
+    }
+
+    /// Width of the last glyph added (C `previouscharwidth`).
+    pub fn prev_width(&self) -> usize {
+        self.prev_width
+    }
+
+    /// Empty every row and reset the line state (C `clearline()`).
+    pub fn clear(&mut self) {
+        for row in &mut self.rows {
+            row.clear();
+        }
+        self.outlinelen = 0;
+        self.prev_width = 0;
+    }
+
+    /// The rows as strings, e.g. for [`render_line`].
+    pub fn to_rows(&self) -> Vec<String> {
+        self.rows.iter().map(|r| r.iter().collect()).collect()
+    }
+
+    /// Append a character, applying kerning/smushing. Returns `false` (and
+    /// changes nothing) if it would exceed `outlinelen_limit`.
+    ///
+    /// Mirrors C `addchar()` in figlet.c:1497-1537.
+    pub fn add_char(
+        &mut self,
+        font: &FIGfont,
+        code: u32,
+        mode: SmushMode,
+        right2left: bool,
+        outlinelen_limit: usize,
+    ) -> bool {
+        let mut curr_width = 0;
+        let ch = lookup_char(font, code, &mut curr_width);
+        let curr: Vec<Vec<char>> = ch.rows().iter().map(|r| r.chars().collect()).collect();
+
+        let smush = smush_amount(
+            &self.rows,
+            &curr,
+            self.outlinelen,
+            curr_width,
+            self.prev_width,
+            mode,
+            font.hardblank,
+            right2left,
+        );
+
+        if self.outlinelen + curr_width - smush > outlinelen_limit {
+            return false;
+        }
+
+        for (row_idx, curr_chars) in curr.iter().enumerate() {
+            if row_idx >= self.rows.len() {
+                self.rows.push(VecDeque::new());
+            }
+            let out = &mut self.rows[row_idx];
+            if right2left {
+                // New row = glyph (smushed with the first `smush` output
+                // columns) + output[smush..]. Built at the front of the deque.
+                let mut temp = curr_chars.clone();
+                let overlap = smush.min(curr_chars.len()).min(out.len());
+                for (k, &rch) in out.iter().enumerate().take(overlap) {
+                    let col = curr_width.saturating_sub(smush).saturating_add(k);
+                    if col < temp.len() {
+                        if let Some(s) =
+                            smush_horizontal(temp[col], rch, mode, font.hardblank, right2left)
+                        {
+                            temp[col] = s;
+                        }
+                    }
+                }
+                for _ in 0..smush.min(out.len()) {
+                    out.pop_front();
+                }
+                for &c in temp.iter().rev() {
+                    out.push_front(c);
+                }
+            } else {
+                // Smush the last `smush` output columns with the glyph's
+                // first ones, then append the rest of the glyph.
+                let overlap = smush.min(curr_chars.len());
+                for (k, &rch) in curr_chars.iter().enumerate().take(overlap) {
+                    // C: column = outlinelen - smush + k, clamped at 0.
+                    let col =
+                        (self.outlinelen as isize - smush as isize + k as isize).max(0) as usize;
+                    if col < out.len() {
+                        if let Some(s) =
+                            smush_horizontal(out[col], rch, mode, font.hardblank, right2left)
+                        {
+                            out[col] = s;
+                        }
+                    }
+                }
+                if smush < curr_chars.len() {
+                    out.extend(&curr_chars[smush..]);
+                }
+            }
+        }
+
+        self.outlinelen = self.rows.first().map_or(0, VecDeque::len);
+        self.prev_width = curr_width;
+        true
+    }
+
+    /// Split at the last word break, as C `splitline()`: returns the rows of
+    /// the first part, and leaves the second part (re-added) in `self`.
+    /// `part2_start` is the index in `char_buffer` where the second part
+    /// begins. `None` if there is no word break.
+    ///
+    /// Mirrors C `splitline()` in figlet.c:1623-1658.
+    pub fn split(
+        &mut self,
+        font: &FIGfont,
+        char_buffer: &[u32],
+        mode: SmushMode,
+        right2left: bool,
+        outlinelen_limit: usize,
+    ) -> Option<(Vec<String>, usize)> {
+        let (part1_len, part2_start) = word_break(char_buffer)?;
+        let mut part1 = OutputLine::new(font.charheight as usize);
+        for &code in &char_buffer[..part1_len] {
+            part1.add_char(font, code, mode, right2left, outlinelen_limit);
+        }
+        self.clear();
+        for &code in &char_buffer[part2_start..] {
+            self.add_char(font, code, mode, right2left, outlinelen_limit);
+        }
+        Some((part1.to_rows(), part2_start))
+    }
 }
 
-/// Maximum overlap between current character and output line.
-///
-/// For each row, find last non-space in output and first non-space
-/// in current character. Minimum across all rows determines the
-/// smush amount. Handles left-to-right and right-to-left.
-///
-/// Mirror of C `smushamt()` in figlet.c:1446-1485.
+/// `(part1_len, part2_start)` for the last run of spaces in `char_buffer`.
+fn word_break(char_buffer: &[u32]) -> Option<(usize, usize)> {
+    let space = b' ' as u32;
+    let lastspace = char_buffer.iter().rposition(|&c| c == space)?;
+    let part1_len = char_buffer[..lastspace]
+        .iter()
+        .rposition(|&c| c != space)
+        .map_or(0, |i| i + 1);
+    Some((part1_len, lastspace + 1))
+}
+
+/// Maximum overlap between the current glyph and the output line: the C
+/// `smushamt()` core shared by [`OutputLine::add_char`] and
+/// [`calc_smush_amount`]. Every scan starts at the edge where the two meet,
+/// so the cost is the glyph width plus the facing run of spaces, never the
+/// whole line.
 #[allow(clippy::too_many_arguments)]
-pub fn calc_smush_amount(
-    output_rows: &[String],
-    curr_rows: &[String],
+fn smush_amount(
+    output_rows: &[VecDeque<char>],
+    curr_rows: &[Vec<char>],
     outlinelen: usize,
     currcharwidth: usize,
     prevcharwidth: usize,
@@ -65,25 +230,32 @@ pub fn calc_smush_amount(
 
     let mut maxsmush = currcharwidth;
 
-    for (output_row, curr_row) in output_rows.iter().zip(curr_rows.iter()) {
+    for (out, curr) in output_rows.iter().zip(curr_rows.iter()) {
         let (linebd, ch1, charbd, ch2) = if right2left {
-            let out_len = output_row.chars().count();
-            if maxsmush > out_len {
-                maxsmush = out_len;
+            if maxsmush > out.len() {
+                maxsmush = out.len();
             }
-
-            let (charbd, c1) = last_non_space(curr_row, 0, ' ');
-            // All-space row: C stops on the terminator, i.e. at the row's own
-            // length (equal to outlinelen unless rows are ragged).
-            let (linebd, c2) = first_non_space(output_row, out_len, '\0');
-
+            // Last non-space of the glyph (C stops at 0 with ch1 = row[0]).
+            let (charbd, c1) = curr
+                .iter()
+                .rposition(|&c| c != ' ')
+                .map_or((0, ' '), |i| (i, curr[i]));
+            // First non-space of the output; an all-space row stops on the
+            // terminator, i.e. at the row's own length.
+            let (linebd, c2) = out
+                .iter()
+                .position(|&c| c != ' ')
+                .map_or((out.len(), '\0'), |i| (i, out[i]));
             (linebd, c1, charbd, c2)
         } else {
-            let (linebd, c1) = last_non_space(output_row, 0, ' ');
-            // As above: the row's own length, which differs from the glyph
-            // width only for short rows (e.g. a font truncated mid-glyph).
-            let (charbd, c2) = first_non_space(curr_row, curr_row.chars().count(), '\0');
-
+            let (linebd, c1) = out
+                .iter()
+                .rposition(|&c| c != ' ')
+                .map_or((0, ' '), |i| (i, out[i]));
+            let (charbd, c2) = curr
+                .iter()
+                .position(|&c| c != ' ')
+                .map_or((curr.len(), '\0'), |i| (i, curr[i]));
             (linebd, c1, charbd, c2)
         };
 
@@ -106,7 +278,6 @@ pub fn calc_smush_amount(
         };
 
         let amt = amt.max(0) as usize;
-
         if amt < maxsmush {
             maxsmush = amt;
         }
@@ -115,12 +286,49 @@ pub fn calc_smush_amount(
     maxsmush
 }
 
+/// Maximum overlap between current character and output line.
+///
+/// For each row, find last non-space in output and first non-space
+/// in current character. Minimum across all rows determines the
+/// smush amount. Handles left-to-right and right-to-left.
+///
+/// Mirror of C `smushamt()` in figlet.c:1446-1485. `String` wrapper over the
+/// shared core; [`OutputLine`] uses the core directly.
+#[allow(clippy::too_many_arguments)]
+pub fn calc_smush_amount(
+    output_rows: &[String],
+    curr_rows: &[String],
+    outlinelen: usize,
+    currcharwidth: usize,
+    prevcharwidth: usize,
+    mode: SmushMode,
+    hardblank: char,
+    right2left: bool,
+) -> usize {
+    let out: Vec<VecDeque<char>> = output_rows.iter().map(|r| r.chars().collect()).collect();
+    let curr: Vec<Vec<char>> = curr_rows.iter().map(|r| r.chars().collect()).collect();
+    smush_amount(
+        &out,
+        &curr,
+        outlinelen,
+        currcharwidth,
+        prevcharwidth,
+        mode,
+        hardblank,
+        right2left,
+    )
+}
+
 /// Append a character to the output line, applying kerning/smushing.
 ///
 /// Mirrors C `addchar()` in figlet.c:1497-1537.
 /// `output_rows` must be pre-initialized with `font.charheight` empty strings
 /// before the first call. Returns `true` if the character was added,
 /// `false` if the output line length would exceed `outlinelen_limit`.
+///
+/// Convenience wrapper over [`OutputLine::add_char`] for callers that keep
+/// short lines as strings (it converts the line each call); long lines should
+/// use [`OutputLine`] directly.
 #[allow(clippy::too_many_arguments)]
 pub fn add_char(
     font: &FIGfont,
@@ -132,84 +340,13 @@ pub fn add_char(
     right2left: bool,
     outlinelen_limit: usize,
 ) -> bool {
-    let old_prev_width = *prev_width;
-    let ch = lookup_char(font, code, prev_width);
-    let curr_width = *prev_width;
-    let curr_rows = ch.rows();
-
-    let smush = calc_smush_amount(
-        output_rows,
-        curr_rows,
-        *outlinelen,
-        curr_width,
-        old_prev_width,
-        mode,
-        font.hardblank,
-        right2left,
-    );
-
-    if *outlinelen + curr_width - smush > outlinelen_limit {
-        *prev_width = old_prev_width;
+    let mut line = OutputLine::from_parts(output_rows, *outlinelen, *prev_width);
+    if !line.add_char(font, code, mode, right2left, outlinelen_limit) {
         return false;
     }
-
-    for (row_idx, curr_row) in curr_rows.iter().enumerate() {
-        let out_chars: Vec<char> = if row_idx < output_rows.len() {
-            output_rows[row_idx].chars().collect()
-        } else {
-            Vec::new()
-        };
-        let curr_chars: Vec<char> = curr_row.chars().collect();
-
-        let result: String = if right2left {
-            let mut temp = curr_chars.clone();
-            let overlap = smush.min(curr_chars.len()).min(out_chars.len());
-            for (k, rch) in out_chars.iter().enumerate().take(overlap) {
-                let col = curr_width.saturating_sub(smush).saturating_add(k);
-                if col < temp.len() {
-                    let lch = temp[col];
-                    if let Some(smushed) =
-                        smush_horizontal(lch, *rch, mode, font.hardblank, right2left)
-                    {
-                        temp[col] = smushed;
-                    }
-                }
-            }
-            if smush < out_chars.len() {
-                temp.extend(&out_chars[smush..]);
-            }
-            temp.into_iter().collect()
-        } else {
-            let mut out = out_chars;
-            let overlap = smush.min(curr_chars.len());
-            for (k, rch) in curr_chars.iter().enumerate().take(overlap) {
-                let col = ((*outlinelen as isize)
-                    .saturating_sub(smush as isize)
-                    .saturating_add(k as isize))
-                .max(0) as usize;
-                if col < out.len() {
-                    let lch = out[col];
-                    if let Some(smushed) =
-                        smush_horizontal(lch, *rch, mode, font.hardblank, right2left)
-                    {
-                        out[col] = smushed;
-                    }
-                }
-            }
-            if smush < curr_chars.len() {
-                out.extend(&curr_chars[smush..]);
-            }
-            out.into_iter().collect()
-        };
-
-        if row_idx < output_rows.len() {
-            output_rows[row_idx] = result;
-        } else {
-            output_rows.push(result);
-        }
-    }
-
-    *outlinelen = output_rows[0].chars().count();
+    *output_rows = line.to_rows();
+    *outlinelen = line.outlinelen;
+    *prev_width = line.prev_width;
     true
 }
 
@@ -223,6 +360,8 @@ pub fn add_char(
 /// is the index in `char_buffer` where the second part begins (caller uses
 /// this to truncate its buffer). `output_rows`, `outlinelen`, and `prev_width`
 /// are updated to reflect only part2.
+///
+/// `String` wrapper over [`OutputLine::split`].
 #[allow(clippy::too_many_arguments)]
 pub fn split_line(
     font: &FIGfont,
@@ -234,72 +373,12 @@ pub fn split_line(
     right2left: bool,
     outlinelen_limit: usize,
 ) -> Option<(Vec<String>, usize)> {
-    let buflen = char_buffer.len();
-    if buflen == 0 {
-        return None;
-    }
-
-    let mut gotspace = false;
-    let mut lastspace = buflen - 1;
-    let mut part1_end: isize = -1;
-
-    for i in (0..buflen).rev() {
-        if !gotspace && char_buffer[i] == b' ' as u32 {
-            gotspace = true;
-            lastspace = i;
-        }
-        if gotspace && char_buffer[i] != b' ' as u32 {
-            part1_end = i as isize;
-            break;
-        }
-    }
-
-    if !gotspace {
-        return None;
-    }
-
-    let part1_len = (part1_end + 1) as usize;
-    let part2_start = lastspace + 1;
-
-    let part1_codes = &char_buffer[..part1_len];
-    let part2_codes = &char_buffer[part2_start..];
-
-    let height = font.charheight as usize;
-    let mut part1_rows = vec![String::new(); height];
-    let mut p1_len = 0;
-    let mut p1_prev = 0;
-    for &code in part1_codes {
-        add_char(
-            font,
-            code,
-            &mut part1_rows,
-            &mut p1_len,
-            &mut p1_prev,
-            mode,
-            right2left,
-            outlinelen_limit,
-        );
-    }
-
-    *outlinelen = 0;
-    *prev_width = 0;
-    for row in output_rows.iter_mut() {
-        row.clear();
-    }
-    for &code in part2_codes {
-        add_char(
-            font,
-            code,
-            output_rows,
-            outlinelen,
-            prev_width,
-            mode,
-            right2left,
-            outlinelen_limit,
-        );
-    }
-
-    Some((part1_rows, part2_start))
+    let mut line = OutputLine::from_parts(output_rows, *outlinelen, *prev_width);
+    let result = line.split(font, char_buffer, mode, right2left, outlinelen_limit)?;
+    *output_rows = line.to_rows();
+    *outlinelen = line.outlinelen;
+    *prev_width = line.prev_width;
+    Some(result)
 }
 
 /// Output justification mode.
@@ -1328,5 +1407,67 @@ mod tests {
         let rows = render_string(&font, "");
         assert!(!rows.is_empty());
         assert_eq!(rows.len(), font.charheight as usize);
+    }
+
+    // --- 2026-11-04 review P1: long lines must stay linear ---
+
+    fn standard() -> FIGfont {
+        let font_str = String::from_utf8_lossy(include_bytes!("../assets/fonts/standard.flf"));
+        crate::font::parse_tlf_font(&font_str).unwrap()
+    }
+
+    #[test]
+    fn test_output_line_matches_string_wrapper() {
+        // OutputLine and the Vec<String> wrappers share one core; check they
+        // agree across smush modes and both directions, including splits.
+        let font = standard();
+        let text: Vec<u32> = "Hello, World! [\\]{|}~ 0123 /\\ <>"
+            .chars()
+            .map(|c| c as u32)
+            .collect();
+        for layout in [0u32, 64, 128, font.full_layout as u32, 128 | 63] {
+            let mode = SmushMode::new(layout);
+            for rtl in [false, true] {
+                let mut line = OutputLine::new(font.charheight as usize);
+                let mut rows = vec![String::new(); font.charheight as usize];
+                let (mut len, mut prev) = (0, 0);
+                for &code in &text {
+                    let a = line.add_char(&font, code, mode, rtl, 60);
+                    let b = add_char(&font, code, &mut rows, &mut len, &mut prev, mode, rtl, 60);
+                    assert_eq!(a, b);
+                    if !a {
+                        let sa = line.split(&font, &text, mode, rtl, 60);
+                        let sb =
+                            split_line(&font, &text, &mut rows, &mut len, &mut prev, mode, rtl, 60);
+                        assert_eq!(sa, sb);
+                        break;
+                    }
+                }
+                assert_eq!(line.to_rows(), rows, "layout {layout} rtl {rtl}");
+                assert_eq!((line.len(), line.prev_width()), (len, prev));
+            }
+        }
+    }
+
+    #[test]
+    fn test_long_line_is_linear() {
+        // A 22,000-glyph line took minutes in a debug build when every glyph
+        // re-collected every row; linear work finishes in well under a second
+        // even unoptimized. The bound is deliberately loose for slow CI.
+        let font = standard();
+        let mode = SmushMode::new(font.full_layout as u32);
+        for rtl in [false, true] {
+            let start = std::time::Instant::now();
+            let mut line = OutputLine::new(font.charheight as usize);
+            for code in "abcdefghij ".repeat(2000).chars() {
+                assert!(line.add_char(&font, code as u32, mode, rtl, usize::MAX));
+            }
+            assert!(line.len() > 50_000, "{}", line.len());
+            let elapsed = start.elapsed();
+            assert!(
+                elapsed < std::time::Duration::from_secs(20),
+                "rtl={rtl}: {elapsed:?} for 22k glyphs — rendering went quadratic again?"
+            );
+        }
     }
 }
