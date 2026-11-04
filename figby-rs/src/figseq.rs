@@ -1,9 +1,15 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 pub use ::figseq::*;
 
 // ── bake: figmap → figseq ──────────────────────────────────────────────────
+//
+// Baking needs the TUI compositor, lighting and `figmap`, none of which exist
+// on wasm32, so the bake items are native-only. The format itself
+// (re-exported from the `figseq` crate above) is available everywhere.
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug)]
 pub enum BakeError {
     Figmap(crate::figmap::FigmapError),
@@ -12,6 +18,7 @@ pub enum BakeError {
     NoLayers,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl std::fmt::Display for BakeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -22,14 +29,17 @@ impl std::fmt::Display for BakeError {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl std::error::Error for BakeError {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl From<crate::figmap::FigmapError> for BakeError {
     fn from(e: crate::figmap::FigmapError) -> Self {
         BakeError::Figmap(e)
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl From<FigSeqError> for BakeError {
     fn from(e: FigSeqError) -> Self {
         BakeError::FigSeq(e)
@@ -39,7 +49,9 @@ impl From<FigSeqError> for BakeError {
 /// Lighting parameters used when a figmap carries lights. These match
 /// `LightingState::default()`; a figmap does not store them, so a bake uses the
 /// defaults rather than inventing per-document values.
+#[cfg(not(target_arch = "wasm32"))]
 const BAKE_MAX_SHADOW_DISTANCE: u16 = 50;
+#[cfg(not(target_arch = "wasm32"))]
 const BAKE_HEIGHT_SCALE: f32 = 0.5;
 
 /// Flatten a `.figmap` into a frame sequence.
@@ -63,6 +75,7 @@ pub struct PlaybackIntent {
     pub hold_last_frame_cs: u16,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn bake_figmap(
     figmap_path: &Path,
     out_path: Option<&Path>,

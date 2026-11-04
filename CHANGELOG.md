@@ -13,6 +13,10 @@
   reports `Unable to open control file`.
 - `--to-file` and `--output` were ignored for normal text rendering and templates; output now goes to the file
   (written atomically) instead of stdout.
+- The wasm32 build compiled neither the library nor the binary (the CI `wasm` job was red): `figseq` baking,
+  `palette_import` and two `main.rs` lighting helpers reached into the native-only `tui` module, and wasm clippy
+  rejected `drop(File)` in `atomic_io`. Baking is now native-only and `parse_hex_rgb` lives in `palette_import`
+  (re-exported from `tui::theme`).
 
 ### Added
 - C-parity scenarios 66–69 (Latin-1 input, `-C utf8`, bare `-C` names, `.flc` suffix) with fixtures generated

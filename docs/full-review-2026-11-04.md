@@ -15,6 +15,25 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 
 ---
 
+## Fix status
+
+| Item | Status |
+|---|---|
+| F1 Latin-1 input | ✅ fixed in 6.2.2 (`control.rs` G1 default `0x80`) |
+| F2 `-C utf8` no-op | ✅ fixed in 6.2.2 (`run()` dispatches on `ControlState::multibyte`) |
+| F3 `-C name` lookup | ✅ fixed in 6.2.2 (`control::resolve_control_file`) |
+| F6 `--to-file` / `--output` | ✅ fixed in 6.2.2 (text and templates, atomic write) |
+| T2 regression scenarios | ✅ partly done: scenarios 66–69, plus `--to-file` and missing-control-file tests |
+| **N1** SS2/SS3 restored GL/GR *before* decoding the shifted char | ✅ found and fixed while doing F1. The old `0x01` default had hidden it |
+| **N2** wasm32 build broken on `HEAD` (lib and bin), so the CI `wasm` job was red | ✅ fixed in 6.2.2 |
+| **N3** `tests/res037.txt` no longer matches C output for `-m191` | open, part of T1 (stale known-divergence bookkeeping) |
+| Everything else | open |
+
+Upstream `run-tests.sh` with Figby now fails only 001 and 002, the same as C
+with this `fonts/` directory.
+
+---
+
 ## 1. Verdict
 
 The mechanical gates are green and the codebase is clearly hardened. The

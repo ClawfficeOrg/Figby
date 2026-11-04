@@ -1,3 +1,7 @@
+// On wasm32 `main` only runs `figby::web`; the FIGlet CLI below is native-only
+// and would otherwise trip dead-code lints in the wasm clippy job.
+#![cfg_attr(target_arch = "wasm32", allow(dead_code, unused_imports))]
+
 use clap::Parser;
 use figby::config::{self, FigbyConfig};
 use figby::control::{self, CharReader};
@@ -822,6 +826,7 @@ fn flush_output_line(
     *prev_width = 0;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Build a heightfield from a composite CanvasBuffer (for lighting normal map).
 fn heightfield_from_composite(buf: &figby::tui::canvas::CanvasBuffer) -> Vec<Vec<f32>> {
     (0..buf.height())
@@ -836,6 +841,7 @@ fn heightfield_from_composite(buf: &figby::tui::canvas::CanvasBuffer) -> Vec<Vec
         .collect()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Apply luminance shading to a composite, producing lit CanvasCells.
 fn apply_luminance_to_composite(
     buf: &figby::tui::canvas::CanvasBuffer,

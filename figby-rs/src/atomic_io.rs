@@ -65,13 +65,18 @@ pub fn atomic_write(dest: &Path, data: &[u8]) -> io::Result<()> {
     }
     let tmp_path =
         tmp_path.ok_or_else(|| io::Error::new(io::ErrorKind::AlreadyExists, "no temp name"))?;
-    let mut file = file.expect("loop produced a file when tmp_path is set");
+    let file = file.expect("loop produced a file when tmp_path is set");
 
     let result = (|| -> io::Result<()> {
-        file.write_all(data)?;
-        file.flush()?;
-        file.sync_all()?;
-        drop(file);
+        // Scoped so the handle is closed before the rename (required on
+        // Windows). A block rather than `drop(file)`: on wasm32 `File` has
+        // no Drop impl and clippy rejects the explicit drop.
+        {
+            let mut file = file;
+            file.write_all(data)?;
+            file.flush()?;
+            file.sync_all()?;
+        }
         // Rename does not follow symlinks: it replaces the directory
         // entry itself, so even a race-created symlink at `dest` is
         // replaced wholesale rather than written through.

@@ -1,5 +1,35 @@
 use serde::{Deserialize, Serialize};
 
+/// Parse an RGB triple from a hex color string (`#RGB` or `#RRGGBB`).
+///
+/// ASCII-validates before any slicing, so non-ASCII input (e.g. `"éx"`)
+/// returns `None` instead of panicking on an interior byte boundary
+/// (GPT review F-17). Lives here, outside `tui`,
+/// so palette import also builds for wasm32; `tui::theme` re-exports it.
+pub fn parse_hex_rgb(hex: &str) -> Option<[u8; 3]> {
+    let hex = hex.trim().trim_start_matches('#');
+    if hex.is_empty() || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    match hex.len() {
+        6 => Some([
+            u8::from_str_radix(&hex[0..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..4], 16).ok()?,
+            u8::from_str_radix(&hex[4..6], 16).ok()?,
+        ]),
+        3 => {
+            let bytes = hex.as_bytes();
+            let expand = |c: u8| -> Option<u8> {
+                let pair = [c, c];
+                let s = core::str::from_utf8(&pair).ok()?;
+                u8::from_str_radix(s, 16).ok()
+            };
+            Some([expand(bytes[0])?, expand(bytes[1])?, expand(bytes[2])?])
+        }
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Swatch {
     pub name: String,
@@ -28,7 +58,7 @@ impl Swatch {
 
     /// Compute default shadow color as fg * 0.3
     pub fn default_shadow_hex(hex: &str) -> String {
-        let [r, g, b] = match crate::tui::theme::parse_hex_rgb(hex) {
+        let [r, g, b] = match parse_hex_rgb(hex) {
             Some(rgb) => rgb,
             None => return "#000000".to_string(),
         };
@@ -122,7 +152,7 @@ pub fn import_swatches(content: &[u8], format: ImportFormat) -> Result<Vec<Swatc
 
 fn normalize_hex(hex: &str) -> String {
     let hex = hex.trim().trim_start_matches('#');
-    match crate::tui::theme::parse_hex_rgb(hex) {
+    match parse_hex_rgb(hex) {
         Some([r, g, b]) => format!("#{r:02X}{g:02X}{b:02X}"),
         None => "#000000".to_string(),
     }
