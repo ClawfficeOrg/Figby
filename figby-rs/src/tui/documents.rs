@@ -118,6 +118,7 @@ impl Document {
             selection_state: tools::selection::SelectionState::default(),
             line_state: tools::line::LineState::default(),
             selection_polygon_points: Vec::new(),
+            figmap_path: None,
         };
         editor.recomposite_canvas();
 
@@ -196,11 +197,17 @@ impl TuiApp {
 
     fn live_title(editor: &EditorState) -> String {
         let name = editor.font_editor.font_storage_name.trim();
-        if name.is_empty() {
-            String::from("Untitled")
-        } else {
-            name.to_string()
+        if !name.is_empty() {
+            return name.to_string();
         }
+        // Image/animation documents are named after their .figmap file.
+        editor
+            .figmap_path
+            .as_deref()
+            .and_then(|p| p.file_stem())
+            .and_then(|s| s.to_str())
+            .map(str::to_string)
+            .unwrap_or_else(|| String::from("Untitled"))
     }
 
     pub fn document_count(&self) -> usize {

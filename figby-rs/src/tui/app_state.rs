@@ -126,6 +126,10 @@ pub struct EditorState {
     pub selection_state: tools::selection::SelectionState,
     pub line_state: tools::line::LineState,
     pub selection_polygon_points: Vec<(i16, i16)>,
+    /// Where this image/animation document was last saved or opened as a
+    /// `.figmap`. Lets Save (and the unsaved-changes dialog) write in place
+    /// instead of always going through Save As.
+    pub figmap_path: Option<std::path::PathBuf>,
 }
 
 impl EditorState {
@@ -1511,6 +1515,7 @@ impl TuiApp {
                     selection_state: tools::selection::SelectionState::default(),
                     line_state: tools::line::LineState::default(),
                     selection_polygon_points: Vec::new(),
+                    figmap_path: None,
                 };
                 editor.recomposite_canvas();
                 editor
@@ -1693,6 +1698,7 @@ mod editor_state_tests {
             selection_state: tools::selection::SelectionState::default(),
             line_state: tools::line::LineState::default(),
             selection_polygon_points: Vec::new(),
+            figmap_path: None,
         }
     }
 

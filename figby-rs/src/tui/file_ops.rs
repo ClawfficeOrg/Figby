@@ -171,6 +171,10 @@ pub struct FileOpsDialog {
     /// naturally mismatches on the next Enter and re-arms.
     pub overwrite_armed: Option<PathBuf>,
     pub hide_dotfiles: bool,
+    /// Set by [`FileOpsDialog::close`] (Esc / cancel) and cleared whenever a
+    /// dialog opens, so the caller can tell "closed by confirming" from
+    /// "dismissed". Without it a cancelled Save As still ran the save.
+    pub dismissed: bool,
     pub browsing_zip: bool,
     pub current_zip_path: PathBuf,
     pub theme: Theme,
@@ -194,6 +198,7 @@ impl FileOpsDialog {
             selected_entry: 0,
             error_message: String::new(),
             hide_dotfiles: true,
+            dismissed: false,
             browsing_zip: false,
             current_zip_path: PathBuf::new(),
             theme: Theme::default(),
@@ -204,6 +209,7 @@ impl FileOpsDialog {
     }
 
     pub fn enter_open(&mut self, recent: &[PathBuf]) {
+        self.dismissed = false;
         self.mode = FileOpsMode::Open;
         self.path_buffer.clear();
         self.path_armed = false;
@@ -224,6 +230,7 @@ impl FileOpsDialog {
     }
 
     pub fn enter_import_font(&mut self) {
+        self.dismissed = false;
         self.mode = FileOpsMode::ImportFont;
         self.path_buffer.clear();
         self.path_armed = false;
@@ -236,6 +243,7 @@ impl FileOpsDialog {
     }
 
     pub fn enter_import_gif(&mut self) {
+        self.dismissed = false;
         self.mode = FileOpsMode::ImportGif;
         self.path_buffer.clear();
         self.path_armed = false;
@@ -248,6 +256,7 @@ impl FileOpsDialog {
     }
 
     pub fn enter_open_image(&mut self) {
+        self.dismissed = false;
         self.mode = FileOpsMode::OpenImage;
         self.path_buffer.clear();
         self.path_armed = false;
@@ -264,6 +273,7 @@ impl FileOpsDialog {
     /// newly created, never-saved font) — typically the font's in-memory
     /// name, falling back to "untitled".
     pub fn enter_save_as(&mut self, current: Option<&Path>, default_name: &str) {
+        self.dismissed = false;
         self.enter_save_as_with_extension(current, default_name, "flf");
     }
 
@@ -277,6 +287,7 @@ impl FileOpsDialog {
         default_name: &str,
         ext: &str,
     ) {
+        self.dismissed = false;
         self.mode = FileOpsMode::SaveAs;
         match current {
             Some(p) => {
@@ -303,6 +314,7 @@ impl FileOpsDialog {
     }
 
     pub fn close(&mut self) {
+        self.dismissed = true;
         self.mode = FileOpsMode::Idle;
         self.path_buffer.clear();
         self.filename_buffer.clear();

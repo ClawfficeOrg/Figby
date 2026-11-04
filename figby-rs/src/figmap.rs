@@ -189,7 +189,9 @@ pub fn save_figmap(
     };
 
     let json = serde_json::to_string_pretty(&figmap)?;
-    std::fs::write(path, json)?;
+    // Atomic replace: a crash or full disk mid-save must not truncate the
+    // user's project, and a symlinked destination is refused, not followed.
+    crate::atomic_io::atomic_write(path, json.as_bytes())?;
     Ok(())
 }
 
@@ -325,6 +327,30 @@ mod tests {
             groups: Vec::new(),
             links: Vec::new(),
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_figmap_refuses_symlink_and_leaves_no_temp_files() {
+        // F8: saves used std::fs::write — non-atomic and symlink-following.
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("elsewhere.txt");
+        std::fs::write(&target, b"keep me").unwrap();
+        let link = dir.path().join("project.figmap");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(save_figmap(&make_test_layers(), None, &[], &[], &[], &link).is_err());
+        assert_eq!(std::fs::read(&target).unwrap(), b"keep me");
+
+        let dest = dir.path().join("real.figmap");
+        save_figmap(&make_test_layers(), None, &[], &[], &[], &dest).unwrap();
+        save_figmap(&make_test_layers(), None, &[], &[], &[], &dest).unwrap();
+        assert!(load_figmap(&dest).is_ok());
+        let leftovers = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().starts_with(".figby_tmp_"))
+            .count();
+        assert_eq!(leftovers, 0);
     }
 
     #[test]

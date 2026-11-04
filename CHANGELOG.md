@@ -1,4 +1,28 @@
 # Changelog
+## [6.2.3] - 2026-11-04
+
+### Fixed
+- Unsaved-changes dialog in image/animation/lighting documents: **Enter or Y discarded the work and quit**
+  (Save was "unavailable" and fell through to discard). Save is now always offered there: it writes the
+  document's `.figmap` in place, or opens Save As, and the quit/close/new proceeds once the save succeeds.
+  Enter/Y never discard; only N does.
+- Esc in the Save As dialog still ran the save on the cleared fields, writing the font to `./untitled.flf`
+  with no overwrite prompt (and then quitting, if the dialog came from the quit prompt). Cancelling any file
+  dialog no longer acts on it, and a cancelled Save As cancels the transition waiting on it. Esc in the
+  legacy GIF picker no longer opens the GIF importer.
+- Unsaved-changes dialog mouse targets were hard-coded columns and sat on the wrong labels when Save was
+  hidden or the label read "continue"; they are now measured from the rendered text.
+- `.figmap` and `.figseq` saves used a plain `fs::write` (not crash-safe, followed symlinks); both now
+  replace the file atomically and refuse a symlinked destination.
+- Atomic saves no longer reset an existing file's permissions (a `0600` file stayed `0600`).
+- The TUI could not open the bundled `bubble`, `digital` and `term` fonts ("stream did not contain valid
+  UTF-8"), and the CLI printed `�` for their Latin-1 Deutsch glyphs. Font files are now decoded as UTF-8 when
+  valid, else ISO-8859-1, through one shared loader (`font::load_font_file`) for the CLI and the editor.
+
+### Changed
+- Image documents remember their `.figmap` path (opened or saved), so Save writes in place and the tab is
+  named after the file. Save / Save As in image modes go to `.figmap` instead of doing nothing.
+
 ## [6.2.2] - 2026-11-04
 
 ### Fixed

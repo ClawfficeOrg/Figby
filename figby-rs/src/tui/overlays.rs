@@ -205,8 +205,7 @@ impl TuiApp {
             } else {
                 "continue"
             };
-            let can_save =
-                self.ui.mode == AppMode::FontEditor && self.editor.font_editor.font.is_some();
+            let can_save = self.can_save_now();
             let hint = if can_save {
                 format!(
                     "  [Y] Save and {proceed_label}   [N] Discard and {proceed_label}   [C] Cancel"
@@ -241,30 +240,24 @@ impl TuiApp {
                     Style::default().add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
-                Line::from(hint),
+                Line::from(hint.clone()),
             ];
             frame.render_widget(Paragraph::new(lines), inner);
-            // Store button rects for mouse hit-testing
-            self.dialogs.quit_confirm_buttons = [
-                Rect {
-                    x: inner.x + 2,
-                    y: inner.y + 3,
-                    width: 3,
-                    height: 1,
-                },
-                Rect {
-                    x: inner.x + 22,
-                    y: inner.y + 3,
-                    width: 3,
-                    height: 1,
-                },
-                Rect {
-                    x: inner.x + 45,
-                    y: inner.y + 3,
-                    width: 3,
-                    height: 1,
-                },
-            ];
+            // Store button rects for mouse hit-testing, measured from the
+            // hint itself so they track the label text (Save hidden,
+            // "quit" vs "continue"). A missing button gets an empty rect.
+            let button = |label: &str| -> Rect {
+                match hint.find(label) {
+                    Some(col) => Rect {
+                        x: inner.x + col as u16,
+                        y: inner.y + 3,
+                        width: label.len() as u16,
+                        height: 1,
+                    },
+                    None => Rect::default(),
+                }
+            };
+            self.dialogs.quit_confirm_buttons = [button("[Y]"), button("[N]"), button("[C]")];
         }
     }
 }

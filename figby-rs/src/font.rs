@@ -625,6 +625,36 @@ pub const DEFAULT_FONT_DIRS: &[&str] = &[
     "/usr/share/figlet",       // Linux (system-wide)
 ];
 
+/// Decode font file text: UTF-8 when the bytes are valid UTF-8, otherwise
+/// ISO-8859-1. Classic FIGfonts are 8-bit files — several bundled ones
+/// (`bubble`, `digital`, `term`) store their Deutsch glyphs as Latin-1
+/// bytes — and lossy UTF-8 decoding turned every such byte into U+FFFD.
+pub fn decode_font_text(bytes: &[u8]) -> String {
+    match std::str::from_utf8(bytes) {
+        Ok(s) => s.to_owned(),
+        Err(_) => bytes.iter().map(|&b| char::from(b)).collect(),
+    }
+}
+
+/// Parse a font from the raw bytes of a font file: a plain `.flf`/`.tlf`,
+/// or a ZIP archive whose first entry is one.
+pub fn parse_font_file_bytes(bytes: &[u8]) -> Result<FIGfont, FontError> {
+    let content = if is_zip_bytes(bytes) {
+        decode_font_text(&extract_first_zip_entry(bytes)?)
+    } else {
+        decode_font_text(bytes)
+    };
+    parse_font_bytes(&content)
+}
+
+/// Read (bounded) and parse the font file at exactly `path`. This is the
+/// path-based twin of [`load_font`], shared by the TUI's Open dialog so the
+/// CLI and editor accept the same files.
+pub fn load_font_file(path: &Path) -> Result<FIGfont, FontError> {
+    let bytes = read_font_bytes(&path.to_string_lossy())?;
+    parse_font_file_bytes(&bytes)
+}
+
 /// Load a font by name from one or more font directories.
 ///
 /// For each directory in `fontdirs`, tries `dir/name.flf`, then `dir/name.tlf`.
@@ -635,15 +665,7 @@ pub fn load_font(name: &str, fontdirs: &[&str]) -> Result<FIGfont, FontError> {
     let candidates = font_candidates(name, fontdirs);
     for path in &candidates {
         match read_font_bytes(path) {
-            Ok(bytes) => {
-                let content = if is_zip_bytes(&bytes) {
-                    let extracted = extract_first_zip_entry(&bytes)?;
-                    String::from_utf8_lossy(&extracted).into_owned()
-                } else {
-                    String::from_utf8_lossy(&bytes).into_owned()
-                };
-                return parse_font_bytes(&content);
-            }
+            Ok(bytes) => return parse_font_file_bytes(&bytes),
             Err(FontError::IoError(_)) => continue,
             Err(e) => return Err(e),
         }
@@ -657,6 +679,27 @@ pub fn load_font(name: &str, fontdirs: &[&str]) -> Result<FIGfont, FontError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_decode_font_text_utf8_and_latin1() {
+        assert_eq!(decode_font_text("Ä@".as_bytes()), "Ä@");
+        // Not valid UTF-8 → every byte is its Latin-1 code point.
+        assert_eq!(decode_font_text(b"\xc4@ \xd6"), "Ä@ Ö");
+    }
+
+    #[test]
+    fn test_load_font_file_latin1_bundled_fonts() {
+        // bubble/digital/term store their Deutsch glyphs as Latin-1 bytes;
+        // the TUI's read_to_string refused them and the CLI printed U+FFFD.
+        for name in ["bubble", "digital", "term"] {
+            let path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../fonts"))
+                .join(format!("{name}.flf"));
+            let font = load_font_file(&path).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let glyph = font.chars.get(&196).expect("Ä glyph").rows().concat();
+            assert!(glyph.contains('Ä'), "{name}: {glyph:?}");
+            assert!(!glyph.contains('\u{FFFD}'), "{name}: {glyph:?}");
+        }
+    }
 
     #[test]
     fn test_figcharacter_default() {

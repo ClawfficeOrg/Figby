@@ -3377,14 +3377,16 @@ fn test_new_file_cancel_keeps_document() {
     assert!(!app.ui.should_quit);
 }
 
-/// F-08 (GPT review): in image mode there is no save path, so the
-/// confirm dialog's Save option acts as Discard — the transition must
-/// still proceed instead of hanging forever (the old bug: Save & Quit
-/// did nothing outside the font editor).
+/// F-08 / 2026-11-04 review F9: in image mode the confirm dialog's Save
+/// option must actually save — it used to act as Discard, so Y (and the
+/// default Enter) quietly threw the drawing away. Y now opens Save As for
+/// a `.figmap`; confirming a path saves, then the quit proceeds.
 #[test]
-fn test_quit_save_option_in_image_mode_proceeds() {
+fn test_quit_save_option_in_image_mode_saves_then_quits() {
     use crossterm::event::KeyCode;
+    use figby::tui::file_ops::FileOpsMode;
     use figby::tui::{AppMode, TuiApp};
+    let dir = tempfile::tempdir().unwrap();
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.ui.mode = AppMode::ImageEditor;
@@ -3393,12 +3395,20 @@ fn test_quit_save_option_in_image_mode_proceeds() {
     app.trigger_quit();
     assert!(app.dialogs.quit_confirm_dialog);
 
-    // Y where saving is impossible → treated as discard, quit proceeds.
     app.handle_key_event(KeyCode::Char('y'));
-    assert!(
-        app.ui.should_quit,
-        "quit must not hang when save is unavailable"
-    );
+    assert!(!app.ui.should_quit, "Save must not discard and quit");
+    assert_eq!(app.dialogs.file_ops.mode, FileOpsMode::SaveAs);
+
+    // Point the dialog at a temp dir and confirm.
+    app.dialogs.file_ops.path_buffer = dir.path().to_string_lossy().into_owned();
+    app.dialogs.file_ops.filename_buffer = "quit-save.figmap".to_string();
+    app.handle_key_event(KeyCode::Enter);
+
+    let saved = dir.path().join("quit-save.figmap");
+    assert!(saved.exists(), "save must write the .figmap");
+    assert!(figby::figmap::load_figmap(&saved).is_ok());
+    assert!(!app.editor.unsaved);
+    assert!(app.ui.should_quit, "quit proceeds after a successful save");
 }
 
 /// F-08 (GPT review): font editor content edits mark the document dirty;

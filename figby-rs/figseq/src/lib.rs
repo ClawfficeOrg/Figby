@@ -547,8 +547,67 @@ impl ratatui::widgets::Widget for Banner<'_> {
 pub fn save_figseq(seq: &FigSeqFile, path: &Path) -> Result<(), FigSeqError> {
     seq.validate()?;
     let json = serde_json::to_vec(seq)?;
-    std::fs::write(path, json)?;
+    write_atomic(path, &json)?;
     Ok(())
+}
+
+/// Replace `dest` with `data` via a temp file in the same directory plus a
+/// rename, so a crash mid-write never leaves a truncated sequence. Refuses
+/// a symlinked destination rather than writing through it, and keeps an
+/// existing file's permissions.
+///
+/// This mirrors `figby::atomic_io::atomic_write`; it is duplicated (small,
+/// private) because this crate deliberately does not depend on `figby`.
+fn write_atomic(dest: &Path, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    if dest.is_symlink() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("refusing to overwrite symlink {}", dest.display()),
+        ));
+    }
+    let parent = match dest.parent() {
+        Some(p) if !p.as_os_str().is_empty() => p,
+        _ => Path::new("."),
+    };
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let mut opened = None;
+    for attempt in 0..64u32 {
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let candidate =
+            parent.join(format!(".figseq_tmp_{}_{n}_{attempt}", std::process::id()));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(f) => {
+                opened = Some((candidate, f));
+                break;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    let (tmp, file) = opened.ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::AlreadyExists, "no temp file name")
+    })?;
+    let result = (|| -> std::io::Result<()> {
+        {
+            let mut file = file;
+            file.write_all(data)?;
+            file.sync_all()?;
+        }
+        if let Ok(meta) = std::fs::metadata(dest) {
+            std::fs::set_permissions(&tmp, meta.permissions())?;
+        }
+        std::fs::rename(&tmp, dest)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result
 }
 
 /// Read and validate a `.figseq` file.
@@ -852,5 +911,34 @@ mod tests {
     }
     fn grid(w: usize, h: usize) -> Vec<Vec<CanvasCell>> {
         vec![vec![CanvasCell::default(); w]; h]
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_figseq_is_atomic_and_refuses_symlinks() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let cells = vec![vec![CanvasCell::default(); 2]; 2];
+        let seq = FigSeqFile::new(2, 2, vec![cells], None, false, 0);
+        let dest = dir.path().join("a.figseq");
+        std::fs::write(&dest, b"old").unwrap();
+        std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o640)).unwrap();
+        save_figseq(&seq, &dest).unwrap();
+        assert!(load_figseq(&dest).is_ok());
+        let mode = std::fs::metadata(&dest).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o640, "existing permissions kept");
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().starts_with(".figseq_tmp_"))
+            .collect();
+        assert!(leftovers.is_empty(), "no temp files left behind");
+
+        let target = dir.path().join("target.txt");
+        std::fs::write(&target, b"keep me").unwrap();
+        let link = dir.path().join("link.figseq");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(save_figseq(&seq, &link).is_err());
+        assert_eq!(std::fs::read(&target).unwrap(), b"keep me");
     }
 }

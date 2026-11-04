@@ -143,11 +143,19 @@ impl TuiApp {
         }
     }
 
+    /// Whether Save targets the font (vs. a `.figmap` project). Font
+    /// editing and the ASCII preview of a loaded font save the font; image,
+    /// animation and lighting work saves as a `.figmap`.
+    pub fn save_target_is_font(&self) -> bool {
+        self.ui.mode == AppMode::FontEditor
+            || (self.ui.mode == AppMode::AsciiPreview && self.editor.font_editor.font.is_some())
+    }
+
     /// Whether a "save and proceed" option can actually save right now.
-    /// Image sessions have no direct save path (they export), so the
-    /// confirm dialog must not offer a no-op Save (GPT review F-08).
+    /// A font document needs a loaded font; anything else can always be
+    /// saved as a `.figmap` (in place, or through Save As).
     pub fn can_save_now(&self) -> bool {
-        self.ui.mode == AppMode::FontEditor && self.editor.font_editor.font.is_some()
+        !self.save_target_is_font() || self.editor.font_editor.font.is_some()
     }
 
     /// Run the transition that was waiting behind the unsaved-changes

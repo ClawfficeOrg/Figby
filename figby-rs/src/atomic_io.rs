@@ -77,6 +77,12 @@ pub fn atomic_write(dest: &Path, data: &[u8]) -> io::Result<()> {
             file.flush()?;
             file.sync_all()?;
         }
+        // Keep the destination's mode: the temp file was created with the
+        // default (umask) permissions, so saving over a 0600 file would
+        // otherwise silently widen it.
+        if let Ok(meta) = std::fs::metadata(dest) {
+            std::fs::set_permissions(&tmp_path, meta.permissions())?;
+        }
         // Rename does not follow symlinks: it replaces the directory
         // entry itself, so even a race-created symlink at `dest` is
         // replaced wholesale rather than written through.
@@ -115,6 +121,22 @@ mod tests {
         let dest = dir.join("out.bin");
         atomic_write(&dest, b"old content").unwrap();
         atomic_write(&dest, b"new").unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), b"new");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preserves_existing_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp_dir();
+        std::fs::create_dir_all(&dir).unwrap();
+        let dest = dir.join("secret.txt");
+        std::fs::write(&dest, b"old").unwrap();
+        std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o600)).unwrap();
+        atomic_write(&dest, b"new").unwrap();
+        let mode = std::fs::metadata(&dest).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
         assert_eq!(std::fs::read(&dest).unwrap(), b"new");
         std::fs::remove_dir_all(&dir).unwrap();
     }

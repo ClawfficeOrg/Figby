@@ -27,6 +27,12 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | **N1** SS2/SS3 restored GL/GR *before* decoding the shifted char | ✅ found and fixed while doing F1. The old `0x01` default had hidden it |
 | **N2** wasm32 build broken on `HEAD` (lib and bin), so the CI `wasm` job was red | ✅ fixed in 6.2.2 |
 | **N3** `tests/res037.txt` no longer matches C output for `-m191` | open, part of T1 (stale known-divergence bookkeeping) |
+| F8 non-atomic figmap/figseq saves | ✅ fixed in 6.2.3 |
+| F9 no Save on quit outside the font editor | ✅ fixed in 6.2.3. It was worse than reported: **Enter/Y discarded the work** |
+| F11 TUI can't open Latin-1 fonts | ✅ fixed in 6.2.3, together with F7b (U+FFFD glyphs) |
+| F14 atomic writes reset permissions | ✅ fixed in 6.2.3 |
+| **N4** Esc in Save As still saved, to `./untitled.flf` with no overwrite prompt, then quit if it came from the quit prompt | ✅ found while doing F9, fixed in 6.2.3 |
+| **N5** quit-prompt mouse targets were hard-coded columns, so with Save hidden a click on the Save position discarded | ✅ fixed in 6.2.3 |
 | Everything else | open |
 
 Upstream `run-tests.sh` with Figby now fails only 001 and 002, the same as C

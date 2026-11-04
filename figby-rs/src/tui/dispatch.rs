@@ -435,7 +435,7 @@ impl TuiApp {
             if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
                 let btns = self.dialogs.quit_confirm_buttons;
                 let can_save = self.can_save_now();
-                if btns[0].contains((mouse.column, mouse.row).into()) && can_save {
+                if can_save && btns[0].contains((mouse.column, mouse.row).into()) {
                     self.dialogs.quit_confirm_dialog = false;
                     let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
                     if is_quit {
@@ -443,11 +443,8 @@ impl TuiApp {
                     }
                     self.frame.dirty = true;
                     self.start_save();
-                } else if btns[1].contains((mouse.column, mouse.row).into())
-                    || (btns[0].contains((mouse.column, mouse.row).into()) && !can_save)
-                {
-                    // Discard & proceed (also when Save is unavailable and
-                    // the user clicks where the save button used to be).
+                } else if btns[1].contains((mouse.column, mouse.row).into()) {
+                    // Discard & proceed — only ever from the [N] button.
                     self.dialogs.quit_confirm_dialog = false;
                     self.frame.dirty = true;
                     self.execute_pending_transition();
@@ -1378,19 +1375,19 @@ impl TuiApp {
         if self.dialogs.quit_confirm_dialog {
             match code {
                 KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => {
-                    self.dialogs.quit_confirm_dialog = false;
-                    self.frame.dirty = true;
-                    let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
+                    // Save & proceed. When there is nothing that can be
+                    // saved the key does nothing: Enter is the default key
+                    // and must never silently discard work (it used to).
                     if self.can_save_now() {
-                        if is_quit {
+                        self.dialogs.quit_confirm_dialog = false;
+                        self.frame.dirty = true;
+                        if self.dialogs.pending_transition == Some(PendingDocAction::Quit) {
                             self.dialogs.quit_after_save = true;
                         }
-                        // The pending transition stays armed; it runs when
-                        // SaveComplete reports an unchanged successful save.
+                        // The pending transition stays armed; it runs once
+                        // the save succeeds (async SaveComplete for fonts,
+                        // immediately for .figmap).
                         self.start_save();
-                    } else {
-                        // Nothing to save with — treat as discard.
-                        self.execute_pending_transition();
                     }
                 }
                 KeyCode::Char('n') | KeyCode::Char('N') => {
@@ -2282,7 +2279,13 @@ impl TuiApp {
     }
 
     fn start_save(&mut self) {
-        if self.ui.mode != AppMode::FontEditor {
+        if !self.save_target_is_font() {
+            // Image/animation documents save as a .figmap project: in place
+            // when the document already has a path, else via Save As.
+            match self.editor.figmap_path.clone() {
+                Some(path) => self.perform_save(Some(path)),
+                None => self.start_save_as_figmap(),
+            }
             return;
         }
         if let Some(ref path) = self.editor.font_editor.current_path {
@@ -2359,7 +2362,8 @@ impl TuiApp {
     }
 
     fn start_save_as(&mut self) {
-        if self.ui.mode != AppMode::FontEditor {
+        if !self.save_target_is_font() {
+            self.start_save_as_figmap();
             return;
         }
         let default_name = if self.editor.font_editor.font_storage_name.is_empty() {
@@ -2379,9 +2383,16 @@ impl TuiApp {
     /// mode — image/animation sessions otherwise had no path to the
     /// `.figmap` branch of `perform_save`, which keys off the extension.
     fn start_save_as_figmap(&mut self) {
+        let current = self.editor.figmap_path.clone();
+        let name = current
+            .as_deref()
+            .and_then(|p| p.file_stem())
+            .and_then(|s| s.to_str())
+            .unwrap_or("untitled")
+            .to_string();
         self.dialogs
             .file_ops
-            .enter_save_as_with_extension(None, "untitled", "figmap");
+            .enter_save_as_with_extension(current.as_deref(), &name, "figmap");
         self.frame.dirty = true;
     }
 
@@ -2390,6 +2401,18 @@ impl TuiApp {
     /// (Enter) or mouse (click). `prev_mode` is the mode the dialog was in
     /// just before it closed.
     fn complete_file_ops_dialog(&mut self, prev_mode: file_ops::FileOpsMode) -> Option<AppEvent> {
+        // Esc / cancel closes the dialog too; that must not act on the
+        // (just cleared) buffers. A cancelled Save As used to save to
+        // ./untitled.flf, and the legacy GIF picker opened the importer.
+        if std::mem::take(&mut self.dialogs.file_ops.dismissed) {
+            if prev_mode == file_ops::FileOpsMode::SaveAs {
+                // The quit/close/new waiting on this save is abandoned too.
+                self.dialogs.quit_after_save = false;
+                self.dialogs.pending_transition = None;
+            }
+            self.frame.dirty = true;
+            return None;
+        }
         // Capture the dialog's target path BEFORE perform_save runs: the
         // dialog is already Idle here, and selected_path() keys off the
         // live mode — reading it late resolves the SaveAs split
@@ -2547,9 +2570,19 @@ impl TuiApp {
             match result {
                 Ok(()) => {
                     self.editor.unsaved = false;
+                    self.editor.figmap_path = Some(path);
+                    self.ctx.last_save_time = std::time::Instant::now();
+                    self.dialogs.file_ops.error_message.clear();
                     self.frame.dirty = true;
+                    // Synchronous save: run the quit/close/new that was
+                    // waiting behind the unsaved-changes dialog now.
+                    if self.dialogs.quit_after_save || self.dialogs.pending_transition.is_some() {
+                        self.execute_pending_transition();
+                    }
                 }
                 Err(e) => {
+                    // Leave any pending transition armed: the dialog reopens
+                    // for a retry, and Esc there disarms it.
                     self.dialogs.file_ops.error_message = format!("Failed to save figmap: {e}");
                     self.dialogs.file_ops.mode = file_ops::FileOpsMode::SaveAs;
                 }
@@ -2612,10 +2645,12 @@ impl TuiApp {
         let path_clone = path.clone();
         std::thread::spawn(move || {
             let result = (|| -> Result<(crate::font::FIGfont, std::path::PathBuf), String> {
-                let content = std::fs::read_to_string(&path_clone)
-                    .map_err(|e| format!("Cannot read file: {e}"))?;
-                let font = crate::font::parse_tlf_font(&content)
-                    .map_err(|e| format!("Parse error: {e}"))?;
+                // Same reader as the CLI: bounded, ZIP-aware, and Latin-1
+                // tolerant (read_to_string rejected 8-bit fonts outright).
+                let font = crate::font::load_font_file(&path_clone).map_err(|e| match e {
+                    crate::font::FontError::IoError(io) => format!("Cannot read file: {io}"),
+                    other => format!("Parse error: {other}"),
+                })?;
                 Ok((font, path_clone))
             })();
             let _ = tx.send(AsyncResult::OpenComplete(result));
@@ -2668,6 +2703,7 @@ impl TuiApp {
                 // an empty canvas with only the layer names visible).
                 self.editor.recomposite_canvas();
                 self.editor.unsaved = false;
+                self.editor.figmap_path = Some(path.to_path_buf());
                 self.frame.dirty = true;
                 self.frame.force_full_redraw = true;
                 None
@@ -2708,7 +2744,7 @@ impl TuiApp {
                         (|| -> Result<(crate::font::FIGfont, std::path::PathBuf), String> {
                             let bytes = crate::font::read_zip_entry(&zip_path, &entry_name)
                                 .map_err(|e| format!("ZIP read error: {e}"))?;
-                            let content = String::from_utf8_lossy(&bytes).into_owned();
+                            let content = crate::font::decode_font_text(&bytes);
                             let font = crate::font::parse_tlf_font(&content)
                                 .map_err(|e| format!("Parse error: {e}"))?;
                             Ok((font, zip_path))
@@ -4059,6 +4095,143 @@ mod keybind_collision_tests {
             app.dialogs.settings.settings_open,
             "S must not be consumed by toolbox catch-all"
         );
+    }
+
+    // --- 2026-11-04 review F9: unsaved-changes dialog must never lose work ---
+
+    #[test]
+    fn test_esc_in_save_as_does_not_save() {
+        // Regression: Esc closed the Save As dialog, complete_file_ops_dialog
+        // then ran perform_save on the cleared buffers — i.e. a silent save
+        // to ./untitled.flf with no overwrite guard.
+        let mut app = app_font_editor_overview();
+        app.editor.unsaved = true;
+        app.start_save_as();
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Idle
+        );
+        assert!(
+            !app.ctx.throbber.is_active() && app.dialogs.pending_save_revision.is_none(),
+            "cancelling Save As must not start a save"
+        );
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_cancelled_save_as_from_quit_prompt_disarms_quit() {
+        use crate::tui::app_state::PendingDocAction;
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE));
+        // No figmap path yet: Save goes through Save As.
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(!app.ui.should_quit);
+        assert!(!app.dialogs.quit_after_save);
+        assert_eq!(app.dialogs.pending_transition, None::<PendingDocAction>);
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_enter_in_quit_prompt_never_discards_image_work() {
+        // Regression: in image mode Save was "unavailable", so Enter/Y fell
+        // through to "treat as discard" and quit, dropping the drawing.
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        assert!(app.can_save_now(), "image documents save as .figmap");
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(!app.ui.should_quit, "Enter must not discard and quit");
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_save_and_quit_image_document_writes_figmap() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("art.figmap");
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.editor.figmap_path = Some(path.clone());
+        app.trigger_quit();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE));
+        assert!(
+            path.exists(),
+            "save must land at the document's figmap path"
+        );
+        assert!(crate::figmap::load_figmap(&path).is_ok());
+        assert!(!app.editor.unsaved);
+        assert!(app.ui.should_quit, "successful save then quits");
+    }
+
+    #[test]
+    fn test_figmap_save_as_remembers_path_for_next_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("remember.figmap");
+        let mut app = app_not_font_editor();
+        app.perform_save(Some(path.clone()));
+        assert_eq!(app.editor.figmap_path.as_deref(), Some(path.as_path()));
+        // Ctrl+S now saves in place instead of reopening Save As.
+        std::fs::remove_file(&path).unwrap();
+        app.editor.unsaved = true;
+        app.start_save();
+        assert!(path.exists());
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Idle
+        );
+        assert_eq!(app.doc_title(app.active_doc), "remember");
+    }
+
+    #[test]
+    fn test_quit_prompt_buttons_track_label_text() {
+        // Hit boxes used to be hard-coded at columns 2/22/45, so with Save
+        // hidden (or "continue" instead of "quit") they sat on the wrong
+        // labels. Check every rect covers the label it acts for.
+        fn check(app: &mut TuiApp) {
+            let mut terminal =
+                ratatui::Terminal::new(ratatui::backend::TestBackend::new(120, 40)).unwrap();
+            terminal.draw(|f| app.render(f)).unwrap();
+            let buf = terminal.backend().buffer().clone();
+            for (rect, label) in app
+                .dialogs
+                .quit_confirm_buttons
+                .iter()
+                .zip(["[Y]", "[N]", "[C]"])
+            {
+                if rect.width == 0 {
+                    continue;
+                }
+                let text: String = (rect.x..rect.x + rect.width)
+                    .map(|x| buf[(x, rect.y)].symbol().to_string())
+                    .collect();
+                assert_eq!(text, label);
+            }
+        }
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        check(&mut app);
+        assert!(
+            app.dialogs.quit_confirm_buttons[0].width > 0,
+            "image docs offer Save"
+        );
+
+        let mut font_app = TuiApp::new();
+        font_app.welcome.screen.show = false;
+        font_app.editor.unsaved = true;
+        font_app.request_transition(crate::tui::app_state::PendingDocAction::NewFileSession);
+        check(&mut font_app); // no font loaded: Save hidden, "continue" labels
+        assert_eq!(font_app.dialogs.quit_confirm_buttons[0].width, 0);
     }
 
     #[test]
