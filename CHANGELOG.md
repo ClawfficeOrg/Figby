@@ -1,4 +1,26 @@
 # Changelog
+## [6.2.5] - 2026-11-04
+
+### Fixed
+- FIGlet options now apply in command-line order, as C getopt does: the last one wins. Previously a fixed
+  code order decided, so `-c -l` centered, `-s -k` ignored `-k`, `-o -W` overlapped, `-E -D` left Deutsch off
+  and `-w N -t` always used `N`. Repeating an option (`-k -s -k`, `-f a -f b`) is accepted instead of
+  rejected.
+- `-C` can be given more than once; the control files apply in order, and `-N` clears the ones named before
+  it (C `clearcfilelist()`).
+- Fonts that end early (for example no Deutsch block, or cut off mid-glyph) load as in C, with the missing
+  rows empty, instead of failing with "unexpected end of font data".
+- `-w`, `-m` and `-I` are read like C `atoi`: `-w 0` / `-w -5` are ignored instead of producing one glyph per
+  line or an argument error, and `-m abc` means `-m 0`.
+- `-f slant.flf` / `-f name.tlf` strip the suffix, as C does.
+- `-m` help described the modes wrongly (`-1` is full width and `0` is kerning).
+
+### Added
+- With no font directory installed (a fresh `cargo install`), the default `standard` font falls back to the
+  copy embedded in the binary. Other fonts still need to be installed.
+- C-parity scenarios 70–79 (argv order, repeats, `-w 0`, `-f x.flf`, multiple `-C`, `-N`, `-m abc`) with
+  fixtures from C FIGlet 2.2.5, plus truncated-font and embedded-font tests.
+
 ## [6.2.4] - 2026-11-04
 
 ### Security

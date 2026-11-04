@@ -574,6 +574,156 @@ fn test_69_control_name_with_flc_suffix() {
     assert_eq!(output, expected_output(69));
 }
 
+// ── 2026-11-04 review F4/F5/F7c: C getopt semantics (fixtures from C) ─────
+
+fn scenario(n: u32, args: &[&str], input: &[u8]) {
+    let output = run_figby(args, Some(input));
+    assert_eq!(
+        output,
+        expected_output(n),
+        "scenario {n}: figby {}",
+        args.join(" ")
+    );
+}
+
+#[test]
+fn test_70_last_justification_wins() {
+    scenario(70, &["-f", "standard", "-c", "-l"], b"Hi");
+}
+
+#[test]
+fn test_71_kerning_after_font_default() {
+    scenario(71, &["-f", "standard", "-s", "-k"], b"Hello");
+}
+
+#[test]
+fn test_72_full_width_after_overlap() {
+    scenario(72, &["-f", "standard", "-o", "-W"], b"Hello");
+}
+
+#[test]
+fn test_73_deutsch_after_disable() {
+    scenario(73, &["-f", "standard", "-E", "-D"], b"[\\]");
+}
+
+#[test]
+fn test_74_zero_width_ignored() {
+    scenario(74, &["-f", "standard", "-w", "0"], b"Hello World\n");
+}
+
+#[test]
+fn test_75_font_suffix_stripped() {
+    scenario(75, &["-f", "slant.flf"], b"Hi");
+}
+
+#[test]
+fn test_76_multiple_control_files() {
+    scenario(
+        76,
+        &["-f", "standard", "-C", "upper", "-C", "utf8"],
+        "hé\n".as_bytes(),
+    );
+}
+
+#[test]
+fn test_77_n_clears_earlier_control_files() {
+    scenario(
+        77,
+        &["-f", "standard", "-C", "upper", "-N", "-C", "utf8"],
+        "hé\n".as_bytes(),
+    );
+}
+
+#[test]
+fn test_78_non_numeric_smush_mode_is_zero() {
+    scenario(78, &["-f", "standard", "-m", "abc"], b"Hello");
+}
+
+#[test]
+fn test_79_repeated_flag_last_wins() {
+    scenario(79, &["-f", "standard", "-k", "-s", "-k"], b"Hello");
+}
+
+/// F7: a font that stops after the 95 ASCII glyphs (no Deutsch block) or
+/// mid-glyph must load, as in C, and render its ASCII text unchanged.
+#[test]
+fn test_truncated_font_loads_like_c() {
+    let root = repo_root();
+    let full = std::fs::read_to_string(root.join("fonts/standard.flf")).unwrap();
+    let lines: Vec<&str> = full.lines().collect();
+    let header: Vec<&str> = lines[0].split_whitespace().collect();
+    let height: usize = header[1].parse().unwrap();
+    let comments: usize = header[5].parse().unwrap();
+    let ascii_end = 1 + comments + 95 * height;
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("nodeutsch.flf"),
+        lines[..ascii_end].join("\n") + "\n",
+    )
+    .unwrap();
+    // Cut 3 rows into a glyph, too.
+    std::fs::write(
+        dir.path().join("midglyph.flf"),
+        lines[..1 + comments + 40 * height + 3].join("\n") + "\n",
+    )
+    .unwrap();
+    let render = |font_dir: &std::path::Path, font: &str, text: &str| {
+        let out = Command::new(figby_binary())
+            .args(["-d", font_dir.to_str().unwrap(), "-f", font, text])
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{font}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        out.stdout
+    };
+    let fonts = root.join("fonts");
+    assert_eq!(
+        render(dir.path(), "nodeutsch", "Hello World"),
+        render(&fonts, "standard", "Hello World")
+    );
+    // Glyphs before the cut ('!' .. 'G') are intact.
+    assert_eq!(
+        render(dir.path(), "midglyph", "ABC"),
+        render(&fonts, "standard", "ABC")
+    );
+}
+
+/// F7c: with no font directory at all (a fresh `cargo install`), the default
+/// font comes from the binary.
+#[test]
+fn test_default_font_embedded_fallback() {
+    let root = repo_root();
+    let empty = tempfile::tempdir().unwrap();
+    let out = Command::new(figby_binary())
+        .current_dir(empty.path())
+        .env("FIGLET_FONTDIR", empty.path())
+        .arg("Hi")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let expected = Command::new(figby_binary())
+        .env("FIGLET_FONTDIR", root.join("fonts"))
+        .args(["-f", "standard", "Hi"])
+        .output()
+        .unwrap();
+    assert_eq!(out.stdout, expected.stdout);
+    // Other fonts still have to exist.
+    let missing = Command::new(figby_binary())
+        .current_dir(empty.path())
+        .env("FIGLET_FONTDIR", empty.path())
+        .args(["-f", "slant", "Hi"])
+        .output()
+        .unwrap();
+    assert!(!missing.status.success());
+}
+
 #[test]
 fn test_missing_control_file_fails() {
     let root = repo_root();

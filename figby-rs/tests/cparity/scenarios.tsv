@@ -74,3 +74,13 @@
 67	-f standard -C utf8	lit:h\xc3\xa9llo w\xc3\xb6rld \xc3\x9f\n	active	UTF-8 input mode from control file (bare -C name)
 68	-f banner -C uskata	lit:ABCDE	active	bare -C name resolved in font dir
 69	-f standard -C utf8.flc	lit:\xc3\xa4\xc3\xb6\xc3\xbc	active	-C name with .flc suffix
+70	-f standard -c -l	lit:Hi	active	argv order: last justification wins
+71	-f standard -s -k	lit:Hello	active	argv order: -k after -s is kerning
+72	-f standard -o -W	lit:Hello	active	argv order: -W after -o is full width
+73	-f standard -E -D	lit:[\\]	active	argv order: -D after -E enables Deutsch
+74	-f standard -w 0	lit:Hello World\n	active	-w below 1 is ignored (C atoi semantics)
+75	-f slant.flf	lit:Hi	active	-f strips a .flf suffix
+76	-f standard -C upper -C utf8	lit:h\xc3\xa9\n	active	multiple -C files apply in order
+77	-f standard -C upper -N -C utf8	lit:h\xc3\xa9\n	active	-N clears earlier -C files
+78	-f standard -m abc	lit:Hello	active	-m non-numeric is 0 (kerning), as with atoi
+79	-f standard -k -s -k	lit:Hello	active	repeated flags: last occurrence wins

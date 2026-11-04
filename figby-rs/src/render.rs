@@ -73,12 +73,16 @@ pub fn calc_smush_amount(
             }
 
             let (charbd, c1) = last_non_space(curr_row, 0, ' ');
-            let (linebd, c2) = first_non_space(output_row, outlinelen, '\0');
+            // All-space row: C stops on the terminator, i.e. at the row's own
+            // length (equal to outlinelen unless rows are ragged).
+            let (linebd, c2) = first_non_space(output_row, out_len, '\0');
 
             (linebd, c1, charbd, c2)
         } else {
             let (linebd, c1) = last_non_space(output_row, 0, ' ');
-            let (charbd, c2) = first_non_space(curr_row, currcharwidth, '\0');
+            // As above: the row's own length, which differs from the glyph
+            // width only for short rows (e.g. a font truncated mid-glyph).
+            let (charbd, c2) = first_non_space(curr_row, curr_row.chars().count(), '\0');
 
             (linebd, c1, charbd, c2)
         };

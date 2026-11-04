@@ -18,6 +18,8 @@ const VERSION_INT: i32 = 20205;
 const VERSION: &str = "2.2.5";
 const DATE: &str = "31 May 2012";
 const FONTFILE_MAGIC: &str = "flf2";
+/// FIGlet's `standard` font, used only when no font directory has one.
+const EMBEDDED_STANDARD_FONT: &str = include_str!("../assets/fonts/standard.flf");
 const TOILETFILE_MAGIC: &str = "tlf2";
 
 #[derive(Debug, Clone)]
@@ -175,7 +177,7 @@ struct CliConfig {
     fontdirname: String,
     fontname: String,
     multibyte: u32,
-    controlfile: Option<String>,
+    controlfiles: Vec<String>,
     to_file: Option<String>,
     color_mode: Option<String>,
 }
@@ -194,7 +196,7 @@ impl Default for CliConfig {
             fontdirname: "/usr/share/figlet".to_string(),
             fontname: "standard".to_string(),
             multibyte: 0,
-            controlfile: None,
+            controlfiles: Vec::new(),
             to_file: None,
             color_mode: None,
         }
@@ -205,6 +207,8 @@ impl Default for CliConfig {
 #[derive(Parser, Debug)]
 #[command(
     name = "figby",
+    // FIGlet options may repeat; as with C getopt, the last one wins.
+    args_override_self = true,
     about = "Rust port of FIGlet — ASCII art banner generator",
     long_about = "FIGby is a Rust port of FIGlet 2.2.5 (Frank, Ian & Glenn's Letters).\nRenders text in large characters using FIGfont (.flf) and TOIlet (.tlf)\nfont files with kerning, smushing, and multi-byte character support."
 )]
@@ -264,21 +268,29 @@ struct CliArgs {
         short = 'I',
         help = "Print info code (0=copyright, 1=version, 2=fontdir, 3=font, 4=width, 5=formats)"
     )]
-    infocode: Option<i32>,
+    infocode: Option<String>,
     #[arg(
         short = 'm',
         allow_hyphen_values = true,
-        help = "Set smush mode (-1=kerning, 0=default, >0=smush with mode)"
+        help = "Set layout mode (-2=font default, -1=full width, 0=kerning, >0=smush rules)"
     )]
-    smushmode_arg: Option<i32>,
-    #[arg(short = 'w', help = "Set output width in columns [default: 80]")]
-    outputwidth_arg: Option<u32>,
+    smushmode_arg: Option<String>,
+    #[arg(
+        short = 'w',
+        allow_hyphen_values = true,
+        help = "Set output width in columns [default: 80]; values below 1 are ignored, as in C"
+    )]
+    outputwidth_arg: Option<String>,
     #[arg(short = 'd', help = "Font directory path")]
     fontdir: Option<String>,
     #[arg(short = 'f', help = "Font name to use [default: standard]")]
     fontname_arg: Option<String>,
-    #[arg(short = 'C', help = "Path to control file (.flc)")]
-    controlfile: Option<String>,
+    #[arg(
+        short = 'C',
+        action = clap::ArgAction::Append,
+        help = "Control file (.flc), looked up in the font directory; repeatable, applied in order (-N clears earlier ones)"
+    )]
+    controlfile: Vec<String>,
     #[arg(
         long = "create-font",
         help = "Generate a FIGfont from a system font by name"
@@ -420,6 +432,110 @@ struct CliArgs {
     play_detach: Option<String>,
     #[arg(help = "Text to render (reads from stdin if omitted)")]
     message: Vec<String>,
+    /// FIGlet options in command-line order, filled by [`parse_cli`]. C
+    /// FIGlet applies options as getopt returns them, so `-c -l` is left
+    /// and `-s -k` is kerning; empty means "use the fixed fallback order".
+    #[arg(skip)]
+    order: Vec<CliEvent>,
+}
+
+/// One order-sensitive FIGlet option occurrence (see `CliArgs::order`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CliEvent {
+    /// A flag or single-valued option, by clap id (its field name).
+    Opt(&'static str),
+    /// One `-C` occurrence.
+    Control(String),
+}
+
+/// FIGlet options whose relative order matters, by clap id. Everything
+/// else (-A, -v, -I, -F, the long Figby options) is order-independent.
+const ORDERED_OPTS: &[&str] = &[
+    "flag_D",
+    "flag_E",
+    "flag_X",
+    "flag_L",
+    "flag_R",
+    "flag_x",
+    "flag_l",
+    "flag_c",
+    "flag_r",
+    "flag_p",
+    "flag_n",
+    "flag_N",
+    "flag_W",
+    "flag_k",
+    "flag_o",
+    "flag_S",
+    "flag_s",
+    "smushmode_arg",
+    "flag_t",
+    "outputwidth_arg",
+    "fontdir",
+    "fontname_arg",
+];
+
+/// Parse the command line and record the order of FIGlet options.
+fn parse_cli<I, T>(argv: I) -> Result<CliArgs, clap::Error>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    use clap::parser::ValueSource;
+    use clap::{CommandFactory, FromArgMatches};
+    let matches = CliArgs::command().try_get_matches_from(argv)?;
+    let mut args = CliArgs::from_arg_matches(&matches)?;
+    let mut events: Vec<(usize, CliEvent)> = Vec::new();
+    for &id in ORDERED_OPTS {
+        if matches.value_source(id) != Some(ValueSource::CommandLine) {
+            continue;
+        }
+        // args_override_self keeps only the last occurrence, which is the
+        // one that decides the outcome.
+        if let Some(idx) = matches.indices_of(id).and_then(|mut i| i.next_back()) {
+            events.push((idx, CliEvent::Opt(id)));
+        }
+    }
+    if let (Some(idx), Some(vals)) = (
+        matches.indices_of("controlfile"),
+        matches.get_many::<String>("controlfile"),
+    ) {
+        for (i, v) in idx.zip(vals) {
+            events.push((i, CliEvent::Control(v.clone())));
+        }
+    }
+    events.sort_by_key(|(i, _)| *i);
+    args.order = events.into_iter().map(|(_, e)| e).collect();
+    Ok(args)
+}
+
+/// C `atoi()`: optional leading whitespace and sign, then digits; anything
+/// unparsable is 0. FIGlet reads `-w`, `-m` and `-I` this way, so `-w abc`
+/// and `-m x` are accepted (as 0) rather than rejected.
+fn c_atoi(s: &str) -> i64 {
+    let t = s.trim_start();
+    let (neg, digits) = match t.as_bytes().first() {
+        Some(b'-') => (true, &t[1..]),
+        Some(b'+') => (false, &t[1..]),
+        _ => (false, t),
+    };
+    let mut n: i64 = 0;
+    for b in digits.bytes().take_while(u8::is_ascii_digit) {
+        n = n.saturating_mul(10).saturating_add(i64::from(b - b'0'));
+    }
+    if neg {
+        -n
+    } else {
+        n
+    }
+}
+
+/// `-f name.flf` / `-f name.tlf` → `name`, as C does while parsing `-f`.
+fn strip_font_suffix(name: &str) -> String {
+    name.strip_suffix(".flf")
+        .or_else(|| name.strip_suffix(".tlf"))
+        .unwrap_or(name)
+        .to_string()
 }
 
 impl CliConfig {
@@ -443,113 +559,149 @@ impl CliConfig {
             config.cmdinput = true;
         }
 
-        if args.flag_D {
-            config.deutschflag = true;
-        }
-        if args.flag_E {
-            config.deutschflag = false;
-        }
-
-        if args.flag_X {
-            config.right2left = -1;
-        }
-        if args.flag_L {
-            config.right2left = 0;
-        }
-        if args.flag_R {
-            config.right2left = 1;
-        }
-
-        if args.flag_x {
-            config.justification = -1;
-        }
-        if args.flag_l {
-            config.justification = 0;
-        }
-        if args.flag_c {
-            config.justification = 1;
-        }
-        if args.flag_r {
-            config.justification = 2;
-        }
-
-        if args.flag_p {
-            config.paragraphflag = true;
-        }
-        if args.flag_n {
-            config.paragraphflag = false;
-        }
-
-        if args.flag_N {
-            config.multibyte = 0;
-        }
-
-        if args.flag_W {
-            config.smushmode = 0;
-            config.smushoverride = SmushOverride::Yes;
-        }
-        if args.flag_k {
-            config.smushmode = 64;
-            config.smushoverride = SmushOverride::Yes;
-        }
-        if args.flag_o {
-            config.smushmode = 128;
-            config.smushoverride = SmushOverride::Yes;
-        }
-        if args.flag_S {
-            config.smushmode = 128;
-            config.smushoverride = SmushOverride::Force;
-        }
-        if args.flag_s {
-            config.smushoverride = SmushOverride::No;
-        }
-
-        if let Some(val) = args.smushmode_arg {
-            if val < -1 {
-                config.smushoverride = SmushOverride::No;
-            } else if val == -1 {
-                config.smushmode = 0;
-                config.smushoverride = SmushOverride::Yes;
-            } else if val == 0 {
-                config.smushmode = 64;
-                config.smushoverride = SmushOverride::Yes;
-            } else {
-                config.smushmode = (val as u32 & 63) | 128;
-                config.smushoverride = SmushOverride::Yes;
-            }
-        }
-
-        if args.flag_t {
-            if let Some(cols) = get_columns() {
-                if cols > 0 {
-                    config.outputwidth = cols as u32;
-                }
-            }
-        }
-
-        if let Some(val) = args.outputwidth_arg {
-            config.outputwidth = val;
-        }
-
+        // C reads FIGLET_FONTDIR before getopt, so a later -d still wins.
         if let Ok(val) = std::env::var("FIGLET_FONTDIR") {
             if !val.is_empty() {
                 config.fontdirname = val;
             }
         }
 
-        if let Some(val) = args.fontdir {
-            config.fontdirname = val;
+        // Replay the FIGlet options in command-line order (C getopt
+        // semantics). Structs built without parse_cli (unit tests) fall back
+        // to a fixed order: every present option in ORDERED_OPTS order, then
+        // the -C files.
+        let events: Vec<CliEvent> = if args.order.is_empty() {
+            let mut ev: Vec<CliEvent> = ORDERED_OPTS
+                .iter()
+                .filter(|id| args.is_present(id))
+                .map(|id| CliEvent::Opt(id))
+                .collect();
+            ev.extend(args.controlfile.iter().cloned().map(CliEvent::Control));
+            ev
+        } else {
+            args.order.clone()
+        };
+        for event in events {
+            match event {
+                CliEvent::Control(name) => {
+                    let name = name.strip_suffix(".flc").unwrap_or(&name).to_string();
+                    config.controlfiles.push(name);
+                }
+                CliEvent::Opt(id) => config.apply_opt(id, &args),
+            }
         }
 
-        if let Some(val) = args.fontname_arg {
-            config.fontname = val;
-        }
-
-        config.controlfile = args.controlfile;
         // `--to-file` and `--output` are synonyms for text rendering.
         config.to_file = args.to_file.or(args.output_path);
 
         config
+    }
+
+    /// Apply one FIGlet option, exactly as C's getopt switch does.
+    fn apply_opt(&mut self, id: &str, args: &CliArgs) {
+        match id {
+            "flag_D" => self.deutschflag = true,
+            "flag_E" => self.deutschflag = false,
+            "flag_X" => self.right2left = -1,
+            "flag_L" => self.right2left = 0,
+            "flag_R" => self.right2left = 1,
+            "flag_x" => self.justification = -1,
+            "flag_l" => self.justification = 0,
+            "flag_c" => self.justification = 1,
+            "flag_r" => self.justification = 2,
+            "flag_p" => self.paragraphflag = true,
+            "flag_n" => self.paragraphflag = false,
+            "flag_N" => {
+                // C clearcfilelist(): drops the control files named so far.
+                self.controlfiles.clear();
+                self.multibyte = 0;
+            }
+            "flag_W" => {
+                self.smushmode = 0;
+                self.smushoverride = SmushOverride::Yes;
+            }
+            "flag_k" => {
+                self.smushmode = 64;
+                self.smushoverride = SmushOverride::Yes;
+            }
+            "flag_o" => {
+                self.smushmode = 128;
+                self.smushoverride = SmushOverride::Yes;
+            }
+            "flag_S" => {
+                self.smushmode = 128;
+                self.smushoverride = SmushOverride::Force;
+            }
+            "flag_s" => self.smushoverride = SmushOverride::No,
+            "smushmode_arg" => {
+                let val = args.smushmode_arg.as_deref().map_or(0, c_atoi);
+                if val < -1 {
+                    self.smushoverride = SmushOverride::No;
+                } else {
+                    self.smushmode = match val {
+                        -1 => 0,
+                        0 => 64,
+                        v => (v as u32 & 63) | 128,
+                    };
+                    self.smushoverride = SmushOverride::Yes;
+                }
+            }
+            "flag_t" => {
+                if let Some(cols) = get_columns() {
+                    if cols > 0 {
+                        self.outputwidth = cols as u32;
+                    }
+                }
+            }
+            "outputwidth_arg" => {
+                let cols = args.outputwidth_arg.as_deref().map_or(0, c_atoi);
+                if cols > 0 {
+                    self.outputwidth = cols.min(i64::from(u32::MAX)) as u32;
+                }
+            }
+            "fontdir" => {
+                if let Some(ref d) = args.fontdir {
+                    self.fontdirname = d.clone();
+                }
+            }
+            "fontname_arg" => {
+                if let Some(ref f) = args.fontname_arg {
+                    self.fontname = strip_font_suffix(f);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl CliArgs {
+    /// Whether an order-sensitive option (by clap id) was given.
+    fn is_present(&self, id: &str) -> bool {
+        match id {
+            "flag_D" => self.flag_D,
+            "flag_E" => self.flag_E,
+            "flag_X" => self.flag_X,
+            "flag_L" => self.flag_L,
+            "flag_R" => self.flag_R,
+            "flag_x" => self.flag_x,
+            "flag_l" => self.flag_l,
+            "flag_c" => self.flag_c,
+            "flag_r" => self.flag_r,
+            "flag_p" => self.flag_p,
+            "flag_n" => self.flag_n,
+            "flag_N" => self.flag_N,
+            "flag_W" => self.flag_W,
+            "flag_k" => self.flag_k,
+            "flag_o" => self.flag_o,
+            "flag_S" => self.flag_S,
+            "flag_s" => self.flag_s,
+            "smushmode_arg" => self.smushmode_arg.is_some(),
+            "flag_t" => self.flag_t,
+            "outputwidth_arg" => self.outputwidth_arg.is_some(),
+            "fontdir" => self.fontdir.is_some(),
+            "fontname_arg" => self.fontname_arg.is_some(),
+            _ => false,
+        }
     }
 }
 
@@ -901,31 +1053,40 @@ fn run(config: CliConfig, message: Vec<String>) {
     dirs.extend(font::DEFAULT_FONT_DIRS);
     let font = match font::load_font(&config.fontname, &dirs) {
         Ok(f) => f,
+        // A fresh `cargo install` has no font directory at all; the default
+        // font ships inside the binary so plain `figby Hi` still works.
+        Err(_) if config.fontname == "standard" => {
+            match font::parse_tlf_font(EMBEDDED_STANDARD_FONT) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Error: embedded standard font: {e}");
+                    process::exit(1);
+                }
+            }
+        }
         Err(e) => {
             eprintln!("Error: {e}");
             process::exit(1);
         }
     };
 
-    let mut control_state = match config.controlfile {
-        Some(ref name) => {
-            // Resolve like C FIGopen(): `<fontdir>/<name>.flc`, then `<name>.flc`.
-            let path = match control::resolve_control_file(name, &dirs) {
-                Some(p) => p,
-                None => {
-                    eprintln!("Error: {name}: Unable to open control file");
-                    process::exit(1);
-                }
-            };
-            let mut state = control::ControlState::default();
-            if let Err(e) = control::read_control(&path, &mut state) {
-                eprintln!("Error reading control file: {e}");
+    // Control files apply in command-line order into one state, like C's
+    // readcontrolfiles(): commands accumulate, the last input mode wins.
+    let mut control_state = control::ControlState::default();
+    for name in &config.controlfiles {
+        // Resolve like C FIGopen(): `<fontdir>/<name>.flc`, then `<name>.flc`.
+        let path = match control::resolve_control_file(name, &dirs) {
+            Some(p) => p,
+            None => {
+                eprintln!("Error: {name}: Unable to open control file");
                 process::exit(1);
             }
-            state
+        };
+        if let Err(e) = control::read_control(&path, &mut control_state) {
+            eprintln!("Error reading control file: {e}");
+            process::exit(1);
         }
-        None => control::ControlState::default(),
-    };
+    }
 
     let smush_mode = match config.smushoverride {
         SmushOverride::No => SmushMode::new(font.full_layout as u32),
@@ -1287,7 +1448,7 @@ fn has_figlet_flags(args: &CliArgs) -> bool {
         || args.outputwidth_arg.is_some()
         || args.fontdir.is_some()
         || args.fontname_arg.is_some()
-        || args.controlfile.is_some()
+        || !args.controlfile.is_empty()
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1297,8 +1458,9 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    let args = CliArgs::parse();
-    let infocode = args.infocode;
+    let args = parse_cli(std::env::args_os()).unwrap_or_else(|e| e.exit());
+    // `-I` is read with atoi in C, so `-I x` means 0.
+    let infocode = args.infocode.as_deref().map(|s| c_atoi(s) as i32);
 
     // `--hold-last` is in seconds on the command line and centiseconds in every
     // on-disk timing field (the GIF convention this codebase already uses).
@@ -1817,7 +1979,12 @@ fn main() {
         };
 
         let term_width = get_columns().unwrap_or(80) as u32;
-        let override_width = args.outputwidth_arg;
+        let override_width = args
+            .outputwidth_arg
+            .as_deref()
+            .map(c_atoi)
+            .filter(|w| *w > 0)
+            .map(|w| w.min(i64::from(u32::MAX)) as u32);
 
         let config = template::RenderConfig {
             font_dir,
@@ -1916,6 +2083,68 @@ fn main() {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
+
+    // ── 2026-11-04 review F4/F5/F7c: C getopt semantics ────────────────────
+
+    fn cfg(argv: &[&str]) -> CliConfig {
+        CliConfig::from_args(parse_cli(argv).unwrap())
+    }
+
+    #[test]
+    fn test_parse_cli_last_option_wins_in_argv_order() {
+        assert_eq!(cfg(&["figby", "-c", "-l"]).justification, 0);
+        assert_eq!(cfg(&["figby", "-l", "-c"]).justification, 1);
+        assert_eq!(
+            cfg(&["figby", "-s", "-k"]).smushoverride,
+            SmushOverride::Yes
+        );
+        assert_eq!(cfg(&["figby", "-k", "-s"]).smushoverride, SmushOverride::No);
+        assert!(cfg(&["figby", "-E", "-D"]).deutschflag);
+        assert!(!cfg(&["figby", "-D", "-E"]).deutschflag);
+        assert_eq!(cfg(&["figby", "-L", "-R"]).right2left, 1);
+        assert_eq!(cfg(&["figby", "-w", "30", "-w", "50"]).outputwidth, 50);
+        assert_eq!(
+            cfg(&["figby", "-f", "big", "-f", "slant.flf"]).fontname,
+            "slant"
+        );
+        // Combined short flags keep their order too.
+        assert_eq!(cfg(&["figby", "-cl"]).justification, 0);
+        assert_eq!(cfg(&["figby", "-lc"]).justification, 1);
+    }
+
+    #[test]
+    fn test_parse_cli_control_files_and_n() {
+        assert_eq!(
+            cfg(&["figby", "-C", "upper", "-C", "utf8.flc"]).controlfiles,
+            ["upper", "utf8"]
+        );
+        assert_eq!(
+            cfg(&["figby", "-C", "upper", "-N", "-C", "utf8"]).controlfiles,
+            ["utf8"]
+        );
+        assert!(cfg(&["figby", "-C", "upper", "-N"]).controlfiles.is_empty());
+    }
+
+    #[test]
+    fn test_width_and_mode_use_c_atoi() {
+        assert_eq!(cfg(&["figby", "-w", "0"]).outputwidth, 80);
+        assert_eq!(cfg(&["figby", "-w", "-5"]).outputwidth, 80);
+        assert_eq!(cfg(&["figby", "-w", "abc"]).outputwidth, 80);
+        assert_eq!(cfg(&["figby", "-w", "40x"]).outputwidth, 40);
+        let m = cfg(&["figby", "-m", "abc"]);
+        assert_eq!((m.smushmode, m.smushoverride), (64, SmushOverride::Yes));
+        assert_eq!(c_atoi("  -12z"), -12);
+        assert_eq!(c_atoi("+7"), 7);
+        assert_eq!(c_atoi(""), 0);
+        assert_eq!(c_atoi("99999999999999999999999"), i64::MAX);
+    }
+
+    #[test]
+    fn test_strip_font_suffix() {
+        assert_eq!(strip_font_suffix("slant.flf"), "slant");
+        assert_eq!(strip_font_suffix("tests/emboss.tlf"), "tests/emboss");
+        assert_eq!(strip_font_suffix("big"), "big");
+    }
 
     // ── 2026-11-04 review S1: --play-tmux shell injection ──────────────────
 
@@ -2132,7 +2361,7 @@ mod tests {
     #[test]
     fn test_flag_I_infocode() {
         let args = CliArgs::try_parse_from(["figby", "-I", "3"]).unwrap();
-        assert_eq!(args.infocode, Some(3));
+        assert_eq!(args.infocode.as_deref(), Some("3"));
     }
 
     #[test]
@@ -2181,7 +2410,7 @@ mod tests {
     #[test]
     fn test_flag_C_controlfile() {
         let args = CliArgs::try_parse_from(["figby", "-C", "my.flc"]).unwrap();
-        assert_eq!(args.controlfile, Some("my.flc".to_string()));
+        assert_eq!(args.controlfile, vec!["my.flc".to_string()]);
     }
 
     #[test]

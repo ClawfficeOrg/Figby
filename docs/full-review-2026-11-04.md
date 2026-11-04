@@ -34,6 +34,11 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | **N4** Esc in Save As still saved, to `./untitled.flf` with no overwrite prompt, then quit if it came from the quit prompt | ✅ found while doing F9, fixed in 6.2.3 |
 | S1 `--play-tmux` shell injection | ✅ fixed in 6.2.4. Verified end to end in tmux: the old string runs `$(…)` in a filename, the new one passes it through literally |
 | **N6** `--play-tmux` never split a pane on tmux 3.4 (`-pN` gives "size missing"), so it always fell back to daemon mode | ✅ fixed in 6.2.4 |
+| F5 argv-order precedence | ✅ fixed in 6.2.5, via clap indices (`parse_cli`) and C's getopt switch (`apply_opt`) |
+| F4 multiple `-C`, `-N` clearing | ✅ fixed in 6.2.5 |
+| F7 strict font loader | ✅ fixed in 6.2.5. 160/160 truncated-font renders match C |
+| F7c `-w 0`/`-w -5`, `-f x.flf`, `-m abc`, missing default font | ✅ fixed in 6.2.5. The embedded `standard` font is the last fallback. `-v` still prints Figby's own version, which is intentional |
+| **N7** C drops a font file's last line when it has no trailing newline (`myfgets` returns NULL), so the final glyph row renders empty | intentional divergence: Figby keeps the row. Document it in step 5 (T1) |
 | **N5** quit-prompt mouse targets were hard-coded columns, so with Save hidden a click on the Save position discarded | ✅ fixed in 6.2.3 |
 | Everything else | open |
 

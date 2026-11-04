@@ -184,48 +184,36 @@ fn strip_endmarks(line: &str) -> String {
 /// Returns the unconsumed slice of lines (for subsequent codetag parsing).
 /// Each character reads `font.charheight` rows, stripping endmarks via
 /// `strip_endmarks()`. Stores parsed glyphs in `font.chars` keyed by char code.
+///
+/// Like C `readfontchar()`, a file that ends early is not an error: every row
+/// past end-of-file is empty. Fonts that stop after the 95 ASCII glyphs (no
+/// Deutsch block) are common in the wild and load fine in C FIGlet.
 pub fn parse_char_data<'a>(
     font: &mut FIGfont,
     lines: &'a [String],
 ) -> Result<&'a [String], FontError> {
     let height = font.charheight as usize;
     let mut cursor = 0;
-
-    // ASCII chars 32–126 (95 characters)
-    for code in 32..=126 {
-        if cursor + height > lines.len() {
-            let parsed = cursor / height;
-            return Err(FontError::ParseError(format!(
-                "unexpected end of font data: parsed {} ASCII chars, need {} more rows for code {}",
-                parsed, height, code
-            )));
-        }
-        let rows: Vec<String> = lines[cursor..cursor + height]
-            .iter()
-            .map(|l| strip_endmarks(l))
-            .collect();
+    for code in (32..=126).chain(DEUTSCH_CHARS) {
+        let rows = read_glyph_rows(lines, &mut cursor, height);
         font.chars.insert(code, FIGcharacter::from(rows));
-        cursor += height;
     }
-
-    // Deutsch chars
-    for &code in &DEUTSCH_CHARS {
-        if cursor + height > lines.len() {
-            let parsed = cursor / height - 95; // subtract ASCII chars
-            return Err(FontError::ParseError(format!(
-                "unexpected end of font data: parsed {} Deutsch chars, need {} more rows for code {}",
-                parsed, height, code
-            )));
-        }
-        let rows: Vec<String> = lines[cursor..cursor + height]
-            .iter()
-            .map(|l| strip_endmarks(l))
-            .collect();
-        font.chars.insert(code, FIGcharacter::from(rows));
-        cursor += height;
-    }
-
     Ok(&lines[cursor..])
+}
+
+/// Read one glyph's `height` rows starting at `*cursor`, padding with empty
+/// rows past the end of `lines` (C: `myfgets() == NULL` → empty line).
+fn read_glyph_rows(lines: &[String], cursor: &mut usize, height: usize) -> Vec<String> {
+    let mut rows = Vec::with_capacity(height);
+    for _ in 0..height {
+        rows.push(
+            lines
+                .get(*cursor)
+                .map_or_else(String::new, |l| strip_endmarks(l)),
+        );
+        *cursor = (*cursor + 1).min(lines.len());
+    }
+    rows
 }
 
 /// Parse the header line of a FIGfont (.flf) file.
@@ -380,29 +368,13 @@ pub fn parse_codetagged(font: &mut FIGfont, lines: &[String]) -> Result<(), Font
             break;
         };
 
-        if cursor + 1 + height > lines.len() {
-            return Err(FontError::ParseError(format!(
-                "truncated codetagged char: code {} at line {}, need {} rows, got {}",
-                code,
-                cursor,
-                height,
-                lines.len() - cursor - 1
-            )));
-        }
-
         cursor += 1;
-
+        // A glyph cut off by end-of-file gets empty rows, as in C.
+        let rows = read_glyph_rows(lines, &mut cursor, height);
         if code == -1 {
-            cursor += height;
             continue;
         }
-
-        let rows: Vec<String> = lines[cursor..cursor + height]
-            .iter()
-            .map(|l| strip_endmarks(l))
-            .collect();
         font.chars.insert(code as u32, FIGcharacter::from(rows));
-        cursor += height;
     }
 
     Ok(())
@@ -1040,25 +1012,21 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_char_data_too_few_lines() {
+    fn test_parse_char_data_too_few_lines_pads_like_c() {
+        // C readfontchar() treats rows past EOF as empty instead of failing.
         let height = 2;
-        // Only provide 10 lines — not enough for even 1 char (needs height=2)
-        let fixture: Vec<String> = (0..10).map(|i| format!("line{i}@")).collect();
+        let fixture: Vec<String> = (0..11).map(|i| format!("line{i}@")).collect();
         let mut font = FIGfont {
             charheight: height,
             ..FIGfont::default()
         };
-        let result = parse_char_data(&mut font, &fixture);
-        assert!(result.is_err(), "should fail with too few lines");
-        match &result {
-            Err(FontError::ParseError(msg)) => {
-                assert!(
-                    msg.contains("unexpected end of font data"),
-                    "error should mention end of font data, got: {msg}"
-                );
-            }
-            other => panic!("expected ParseError, got: {other:?}"),
-        }
+        let remaining = parse_char_data(&mut font, &fixture).expect("short font still loads");
+        assert!(remaining.is_empty());
+        assert_eq!(font.chars[&32].rows(), ["line0", "line1"]);
+        // Code 37 ('%') gets the 11th line and one empty row.
+        assert_eq!(font.chars[&37].rows(), ["line10", ""]);
+        assert_eq!(font.chars[&126].rows(), ["", ""]);
+        assert_eq!(font.chars.len(), 95 + 7, "every required glyph exists");
     }
 
     #[test]
@@ -1209,25 +1177,16 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_codetagged_truncated() {
+    fn test_parse_codetagged_truncated_pads_like_c() {
         let height = 3;
-        // Tag line + only 1 row instead of 3
+        // Tag line + only 1 row instead of 3: C fills the rest with "".
         let fixture: Vec<String> = vec!["100".to_string(), "only_one_row@".to_string()];
         let mut font = FIGfont {
             charheight: height,
             ..FIGfont::default()
         };
-        let result = parse_codetagged(&mut font, &fixture);
-        assert!(result.is_err(), "should fail on truncated data");
-        match &result {
-            Err(FontError::ParseError(msg)) => {
-                assert!(
-                    msg.contains("truncated"),
-                    "error should mention truncated, got: {msg}"
-                );
-            }
-            other => panic!("expected ParseError, got: {other:?}"),
-        }
+        parse_codetagged(&mut font, &fixture).expect("truncated tail still loads");
+        assert_eq!(font.chars[&100].rows(), ["only_one_row", "", ""]);
     }
 
     #[test]
