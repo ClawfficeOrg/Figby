@@ -1,4 +1,23 @@
 # Changelog
+## [6.2.2] - 2026-11-04
+
+### Fixed
+- Latin-1 / high-byte input rendered as the wrong ASCII glyphs (`é` printed as `i`, UTF-8 `é` as `C)`): the
+  default ISO 2022 G1 set was `0x01` instead of C's `0x80`.
+- ISO 2022 single shifts (SS2/SS3) now decode the next character with G2/G3 before restoring GL/GR, as C does;
+  previously the shift was undone before the character was decoded.
+- `-C utf8` (and every control-file input mode: `u`, `b`, `h`, `j`, `g`) was parsed but never applied, so UTF-8
+  input could not be enabled from the CLI.
+- `-C <name>` is resolved like C `FIGopen()`: `<fontdir>/<name>.flc`, then `<name>.flc`, with a trailing `.flc`
+  stripped first. `-C uskata` / `-C jis0201` (upstream tests 025/026) work again; a missing control file now
+  reports `Unable to open control file`.
+- `--to-file` and `--output` were ignored for normal text rendering and templates; output now goes to the file
+  (written atomically) instead of stdout.
+
+### Added
+- C-parity scenarios 66–69 (Latin-1 input, `-C utf8`, bare `-C` names, `.flc` suffix) with fixtures generated
+  from C FIGlet 2.2.5, plus tests for `--to-file`/`--output` and a missing control file.
+
 ## [Unreleased]
 
 ### Added

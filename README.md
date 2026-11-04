@@ -124,7 +124,7 @@ figby [OPTIONS] [MESSAGE]
 | `-I <code>` | Display info (0=usage, 1=version, 2=fontdir, 3=font, 4=width, 5=formats) |
 | `-D` | Deutsch mode (map `[\]` to Ä/Ö/Ü, `{|}~` to ä/ö/ü/ß) |
 | `-E` | Disable Deutsch mode |
-| `-C <file>` | Control file (`.flc`) for character mapping |
+| `-C <name>` | Control file (`.flc`): a bare name like `utf8` is looked up in the font directory, as in C |
 | `-p` | Paragraph mode |
 | `-n` | No paragraph mode |
 | `-A` | Read input from stdin (positional args also work) |
@@ -137,6 +137,7 @@ figby [OPTIONS] [MESSAGE]
 | `--loop` | With `--play`: repeat until any key is pressed, instead of playing once. With `--bake`: mark the sequence as looping |
 | `--hold-last <SECONDS>` | Keep the final frame on screen N seconds after a non-looping animation ends, instead of clearing immediately. With `--bake`: record it in the sequence |
 | `--bake <file.figmap>` + `--output <file.figseq>` | Bake a project into a flat frame sequence (needs `--output`) |
+| `--output <file>` / `--to-file <file>` | Write rendered text or template output to a file (atomically) instead of stdout |
 
 ### Examples
 
@@ -223,7 +224,7 @@ figby -d /path/to/fonts -f myfont "Hello"
 | Kerning | Yes | Yes |
 | Smushing (H1–H6) | Yes | Yes |
 | Smushing (V1–V5) | Yes | Yes |
-| Multi-byte (UTF-8) | Optional flag | Native |
+| Multi-byte (UTF-8) | `-C utf8` | `-C utf8` (same as C); internal encoding is Unicode |
 | Multi-byte (DBCS/SJIS/HZ) | Yes | Yes |
 | Control files | Yes | Yes |
 | ISO 2022 | Yes | Yes |
@@ -261,7 +262,7 @@ They are real gaps to close, not intentional departures:
 Active development — a safe, idiomatic Rust FIGlet port that has grown into
 a full ASCII-art TUI editor.
 
-**Version identity:** the Cargo package version (currently `6.0.x`, see
+**Version identity:** the Cargo package version (currently `6.2.x`, see
 `CHANGELOG.md`) is the canonical release version. `7.0.x` git tags are
 milestone markers for the animation-editor line, not package versions — the
 package continued on the `6.0.x` hardening line after `7.0.0-rc.1`.

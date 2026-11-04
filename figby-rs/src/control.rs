@@ -33,7 +33,9 @@ impl Default for ControlState {
         Self {
             commands: Vec::new(),
             multibyte: 0,
-            gn: [0x00, 0x01, 0, 0],
+            // G1 is the Latin-1 right half (C figlet.c: `gn[1] = 0x80`), so
+            // a GR byte 0xA0-0xFF maps to itself in iso2022().
+            gn: [0x00, 0x80, 0, 0],
             gndbl: [false; 4],
             gl: 0,
             gr: 1,
@@ -160,27 +162,32 @@ impl ControlState {
                 }
             }
 
-            // A printable character: unwind any pending GL/GR saves
-            // (LIFO — outermost save wins), then emit it.
+            // A printable character: decode it with the shifted GL/GR still
+            // in effect, THEN unwind any pending SS2/SS3 saves (LIFO —
+            // outermost save wins). C does the same: the single shift
+            // recurses into iso2022() and restores gl/gr on the way out.
+            let decoded = if (0x21..=0x7E).contains(&ch) {
+                if self.gndbl[self.gl as usize] {
+                    let ch2 = input.next().unwrap_or(0);
+                    self.gn[self.gl as usize] | (ch << 8) | ch2
+                } else {
+                    self.gn[self.gl as usize] | ch
+                }
+            } else if (0xA0..=0xFF).contains(&ch) {
+                if self.gndbl[self.gr as usize] {
+                    let ch2 = input.next().unwrap_or(0);
+                    self.gn[self.gr as usize] | (ch << 8) | ch2
+                } else {
+                    self.gn[self.gr as usize] | (ch & !0x80)
+                }
+            } else {
+                ch
+            };
             while let Some((gl, gr)) = saved_gl_gr.pop() {
                 self.gl = gl;
                 self.gr = gr;
             }
-            if (0x21..=0x7E).contains(&ch) {
-                if self.gndbl[self.gl as usize] {
-                    let ch2 = input.next().unwrap_or(0);
-                    return Some(self.gn[self.gl as usize] | (ch << 8) | ch2);
-                }
-                return Some(self.gn[self.gl as usize] | ch);
-            }
-            if (0xA0..=0xFF).contains(&ch) {
-                if self.gndbl[self.gr as usize] {
-                    let ch2 = input.next().unwrap_or(0);
-                    return Some(self.gn[self.gr as usize] | (ch << 8) | ch2);
-                }
-                return Some(self.gn[self.gr as usize] | (ch & !0x80));
-            }
-            return Some(ch);
+            return Some(decoded);
         }
     }
 }
@@ -433,6 +440,39 @@ fn charset_define<R: Read>(
     Ok(())
 }
 
+/// Control-file suffix appended during lookup (C `CONTROLFILESUFFIX`).
+pub const CONTROL_FILE_SUFFIX: &str = ".flc";
+
+/// Candidate paths for a `-C` argument, in the order C `FIGopen()` tries them.
+///
+/// A trailing `.flc` is stripped first (C does this while parsing `-C`).
+/// A name without a directory separator is looked up as `<dir>/<name>.flc`
+/// in each font directory; then `<name>.flc` relative to the CWD is tried.
+/// The argument exactly as given comes last, so a control file with a
+/// non-`.flc` name keeps working as it did before name lookup existed.
+pub fn control_candidates(name: &str, fontdirs: &[&str]) -> Vec<std::path::PathBuf> {
+    let stem = name.strip_suffix(CONTROL_FILE_SUFFIX).unwrap_or(name);
+    let has_sep = stem.contains('/') || stem.contains('\\');
+    let file = format!("{stem}{CONTROL_FILE_SUFFIX}");
+    let mut out = Vec::new();
+    if !has_sep {
+        for dir in fontdirs {
+            out.push(Path::new(dir).join(&file));
+        }
+    }
+    out.push(std::path::PathBuf::from(&file));
+    out.push(std::path::PathBuf::from(name));
+    out
+}
+
+/// Resolve a `-C` argument to an existing control file (see
+/// [`control_candidates`]). Returns `None` if no candidate exists.
+pub fn resolve_control_file(name: &str, fontdirs: &[&str]) -> Option<std::path::PathBuf> {
+    control_candidates(name, fontdirs)
+        .into_iter()
+        .find(|p| p.is_file())
+}
+
 pub fn read_control<P: AsRef<Path>>(path: P, state: &mut ControlState) -> Result<(), ControlError> {
     let file = File::open(path.as_ref())?;
     let mut reader = ByteReader::new(BufReader::new(file));
@@ -613,7 +653,7 @@ mod tests {
         let state = ControlState::default();
         assert!(state.commands.is_empty());
         assert_eq!(state.multibyte, 0);
-        assert_eq!(state.gn, [0x00, 0x01, 0, 0]);
+        assert_eq!(state.gn, [0x00, 0x80, 0, 0]);
         assert_eq!(state.gndbl, [false; 4]);
         assert_eq!(state.gl, 0);
         assert_eq!(state.gr, 1);
@@ -1172,7 +1212,8 @@ mod tests {
         let mut state = test_state();
         let mut input = MockReader::new(&[b'A', 0x0E, b'B', 0x0F, b'C']);
         assert_eq!(state.iso2022(&mut input), Some(0x41));
-        assert_eq!(state.iso2022(&mut input), Some(0x43));
+        // SO selects G1 (Latin-1 right half): 0x80 | 'B' — C figlet gives 0xC2.
+        assert_eq!(state.iso2022(&mut input), Some(0xC2));
         assert_eq!(state.iso2022(&mut input), Some(0x43));
         assert_eq!(state.iso2022(&mut input), None);
     }
@@ -1343,5 +1384,70 @@ mod tests {
         let ch = state.iso2022(&mut reader).expect("should emit char");
         assert_eq!(ch, b'B' as u32);
         assert_eq!(state.gl, 0);
+    }
+
+    #[test]
+    fn test_iso2022_default_gr_is_latin1() {
+        // Regression: G1 defaulted to 0x01, so 0xE9 (é) became 0x69 ('i')
+        // and 0xC3 became 'C'. C figlet maps GR bytes to themselves.
+        let mut state = test_state();
+        let mut input = MockReader::new(&[0xC3, 0xA9, 0xE9, 0xFF, 0xA0]);
+        assert_eq!(state.iso2022(&mut input), Some(0xC3));
+        assert_eq!(state.iso2022(&mut input), Some(0xA9));
+        assert_eq!(state.iso2022(&mut input), Some(0xE9));
+        assert_eq!(state.iso2022(&mut input), Some(0xFF));
+        assert_eq!(state.iso2022(&mut input), Some(0xA0));
+        assert_eq!(state.iso2022(&mut input), None);
+    }
+
+    #[test]
+    fn test_control_candidates_bare_name_searches_fontdirs() {
+        let c = control_candidates("uskata", &["/a", "/b"]);
+        assert_eq!(
+            c,
+            vec![
+                std::path::PathBuf::from("/a/uskata.flc"),
+                std::path::PathBuf::from("/b/uskata.flc"),
+                std::path::PathBuf::from("uskata.flc"),
+                std::path::PathBuf::from("uskata"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_control_candidates_strips_flc_suffix() {
+        let c = control_candidates("utf8.flc", &["/a"]);
+        assert_eq!(c[0], std::path::PathBuf::from("/a/utf8.flc"));
+        assert_eq!(c[1], std::path::PathBuf::from("utf8.flc"));
+    }
+
+    #[test]
+    fn test_control_candidates_path_skips_fontdirs() {
+        let c = control_candidates("fonts/upper.flc", &["/a"]);
+        assert_eq!(c[0], std::path::PathBuf::from("fonts/upper.flc"));
+        assert!(c.iter().all(|p| !p.starts_with("/a")));
+    }
+
+    #[test]
+    fn test_resolve_control_file_by_name() {
+        let found = resolve_control_file("uskata", &[FONTS_DIR]).expect("uskata.flc in fonts/");
+        assert!(found.ends_with("uskata.flc"));
+        assert!(resolve_control_file("no-such-control-file", &[FONTS_DIR]).is_none());
+    }
+
+    #[test]
+    fn test_iso2022_ss2_decodes_next_char_with_g2() {
+        // SS2 (0x8E) invokes G2 for exactly one character. With G2 set to a
+        // 94-char set 'I' (JIS X 0201 katakana), 'A' must decode through G2,
+        // and the following 'A' through the restored G0.
+        let mut state = test_state();
+        state.gn[2] = (b'I' as u32) << 16;
+        let mut input = MockReader::new(&[0x8E, b'A', b'A']);
+        assert_eq!(
+            state.iso2022(&mut input),
+            Some(((b'I' as u32) << 16) | 0x41)
+        );
+        assert_eq!(state.iso2022(&mut input), Some(0x41));
+        assert_eq!((state.gl, state.gr), (0, 1));
     }
 }

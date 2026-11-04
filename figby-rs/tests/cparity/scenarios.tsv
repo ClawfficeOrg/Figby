@@ -70,3 +70,7 @@
 53	-	-	special	control file extended charset (assertions only)
 54	-	-	special	paragraph narrow width (assertions only)
 55	-	-	special	wide center justification (assertions only)
+66	-f standard	lit:h\xe9llo \xc3\xa9\n	active	Latin-1 high bytes via default ISO 2022 G1
+67	-f standard -C utf8	lit:h\xc3\xa9llo w\xc3\xb6rld \xc3\x9f\n	active	UTF-8 input mode from control file (bare -C name)
+68	-f banner -C uskata	lit:ABCDE	active	bare -C name resolved in font dir
+69	-f standard -C utf8.flc	lit:\xc3\xa4\xc3\xb6\xc3\xbc	active	-C name with .flc suffix

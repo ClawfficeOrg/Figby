@@ -539,6 +539,74 @@ fn test_50_big_font_rtl() {
     assert_eq!(output, expected_output(50));
 }
 
+// ── 2026-11-04 review: F1/F2/F3 parity regressions (fixtures from C) ──────
+
+#[test]
+fn test_66_latin1_high_bytes() {
+    // Default ISO 2022 state: G1 is Latin-1, so 0xE9 is é and the UTF-8
+    // bytes C3 A9 are Ã ©. Figby used to print `i`, `C)`.
+    let output = run_figby(&["-f", "standard"], Some(b"h\xe9llo \xc3\xa9\n"));
+    assert_eq!(output, expected_output(66));
+}
+
+#[test]
+fn test_67_utf8_control_mode_bare_name() {
+    // `-C utf8` must both resolve in the font dir and switch input to UTF-8.
+    let output = run_figby(
+        &["-f", "standard", "-C", "utf8"],
+        Some("héllo wörld ß\n".as_bytes()),
+    );
+    assert_eq!(output, expected_output(67));
+}
+
+#[test]
+fn test_68_bare_control_name_uskata() {
+    let output = run_figby(&["-f", "banner", "-C", "uskata"], Some(b"ABCDE"));
+    assert_eq!(output, expected_output(68));
+}
+
+#[test]
+fn test_69_control_name_with_flc_suffix() {
+    let output = run_figby(
+        &["-f", "standard", "-C", "utf8.flc"],
+        Some("äöü".as_bytes()),
+    );
+    assert_eq!(output, expected_output(69));
+}
+
+#[test]
+fn test_missing_control_file_fails() {
+    let root = repo_root();
+    let output = Command::new(figby_binary())
+        .current_dir(&root)
+        .env("FIGLET_FONTDIR", root.join("fonts"))
+        .args(["-C", "no-such-control-file", "hi"])
+        .output()
+        .expect("failed to run figby");
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Unable to open control file"));
+}
+
+#[test]
+fn test_to_file_and_output_write_rendered_text() {
+    // F6: `--to-file` / `--output` were parsed but ignored for text rendering.
+    let dir = tempfile::tempdir().unwrap();
+    let expected = run_figby(&["-f", "standard", "-c", "Hi"], None);
+    for flag in ["--to-file", "--output"] {
+        let dest = dir.path().join(format!("out{flag}.txt"));
+        let stdout = run_figby(
+            &["-f", "standard", "-c", flag, dest.to_str().unwrap(), "Hi"],
+            None,
+        );
+        assert!(stdout.is_empty(), "{flag}: nothing should reach stdout");
+        assert_eq!(
+            std::fs::read(&dest).unwrap(),
+            expected,
+            "{flag}: file content"
+        );
+    }
+}
+
 #[test]
 fn test_51_deutsch_unicode_input() {
     // Deutsch flag: [\] → Ä/Ö/Ü, {|}~ → ä/ö/ü/ß

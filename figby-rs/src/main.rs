@@ -293,7 +293,7 @@ struct CliArgs {
     create_font_size: f32,
     #[arg(
         long = "output",
-        help = "Write output to file instead of stdout (required by --bake, where the file IS the output)"
+        help = "Write output to file instead of stdout (text, templates, --create-font; required by --bake)"
     )]
     output_path: Option<String>,
     #[arg(
@@ -308,7 +308,10 @@ struct CliArgs {
         help = "Render a .ftmp template file"
     )]
     render_template: Option<String>,
-    #[arg(long = "to-file", help = "Write output to file instead of stdout")]
+    #[arg(
+        long = "to-file",
+        help = "Write rendered text or template output to a file instead of stdout (same as --output)"
+    )]
     to_file: Option<String>,
     #[arg(
         short = 'i',
@@ -539,7 +542,8 @@ impl CliConfig {
         }
 
         config.controlfile = args.controlfile;
-        config.to_file = args.to_file;
+        // `--to-file` and `--output` are synonyms for text rendering.
+        config.to_file = args.to_file.or(args.output_path);
 
         config
     }
@@ -898,9 +902,17 @@ fn run(config: CliConfig, message: Vec<String>) {
     };
 
     let mut control_state = match config.controlfile {
-        Some(ref path) => {
+        Some(ref name) => {
+            // Resolve like C FIGopen(): `<fontdir>/<name>.flc`, then `<name>.flc`.
+            let path = match control::resolve_control_file(name, &dirs) {
+                Some(p) => p,
+                None => {
+                    eprintln!("Error: {name}: Unable to open control file");
+                    process::exit(1);
+                }
+            };
             let mut state = control::ControlState::default();
-            if let Err(e) = control::read_control(path, &mut state) {
+            if let Err(e) = control::read_control(&path, &mut state) {
                 eprintln!("Error reading control file: {e}");
                 process::exit(1);
             }
@@ -942,15 +954,26 @@ fn run(config: CliConfig, message: Vec<String>) {
     let mut last_was_eol_flag: bool = false;
 
     let mut input = InputIter::new(message, config.cmdinput);
+    // `--to-file` / `--output`: render into memory, then replace the file
+    // atomically at the end so a failed run never leaves a partial banner.
+    let mut file_buf: Vec<u8> = Vec::new();
     let stdout = io::stdout();
-    let mut out = stdout.lock();
+    let mut stdout_lock = stdout.lock();
+    let mut out: &mut dyn Write = if config.to_file.is_some() {
+        &mut file_buf
+    } else {
+        &mut stdout_lock
+    };
     let mut hz_state = input::HZState::default();
 
     let next_char = |input: &mut InputIter,
                      state: &mut control::ControlState,
                      hz: &mut input::HZState|
      -> Option<u32> {
-        match config.multibyte {
+        // The input mode comes from the control files (`b`/`u`/`h`/`j`/`g`),
+        // exactly like C's `multibyte` global; `-N` only resets it before
+        // they are read.
+        match state.multibyte {
             0 => state.iso2022(input),
             1 | 4 => input::read_dbcs_char(input),
             2 => input::read_utf8_char(input),
@@ -1185,6 +1208,19 @@ fn run(config: CliConfig, message: Vec<String>) {
             wordbreakmode = if wordbreakmode == 3 { 1 } else { 0 };
             // loop continues (retry addchar with fresh output line)
         }
+    }
+
+    if let Some(ref path) = config.to_file {
+        write_output_file(path, &file_buf);
+    }
+}
+
+/// Atomically replace `path` with `bytes` for `--to-file` / `--output`;
+/// exits with status 1 if the write fails.
+fn write_output_file(path: &str, bytes: &[u8]) {
+    if let Err(e) = figby::atomic_io::atomic_write(std::path::Path::new(path), bytes) {
+        eprintln!("Error writing to '{path}': {e}");
+        process::exit(1);
     }
 }
 
@@ -1766,10 +1802,22 @@ fn main() {
             }
         };
 
-        let stdout = io::stdout();
-        let mut out = stdout.lock();
-        for row in &output {
-            let _ = writeln!(out, "{}", row);
+        match args.to_file.as_deref().or(args.output_path.as_deref()) {
+            Some(dest) => {
+                let mut text = String::new();
+                for row in &output {
+                    text.push_str(row);
+                    text.push('\n');
+                }
+                write_output_file(dest, text.as_bytes());
+            }
+            None => {
+                let stdout = io::stdout();
+                let mut out = stdout.lock();
+                for row in &output {
+                    let _ = writeln!(out, "{}", row);
+                }
+            }
         }
 
         return;
