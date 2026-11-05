@@ -330,7 +330,7 @@ struct CliArgs {
     #[arg(
         short = 'i',
         long = "image",
-        help = "Image file path(s) or URL(s) to convert to ASCII"
+        help = "Image file path(s) to convert to ASCII (local files only)"
     )]
     image_paths: Vec<String>,
     #[arg(long = "map", help = "Custom character map (darkest to brightest)")]
@@ -847,12 +847,22 @@ fn flip_vertical_rgb(matrix: &[Vec<image_input::RgbPixel>]) -> Vec<Vec<image_inp
     matrix.iter().rev().cloned().collect()
 }
 
-fn run_image(config: ImageOptions) {
+/// Convert each image to ASCII on stdout. Returns `false` if any input
+/// failed, so the process can exit non-zero (review F13): a missing file,
+/// a URL or a decode error used to print a message and still exit 0.
+fn run_image(config: ImageOptions) -> bool {
+    if config.img_width == Some(0) || config.img_height == Some(0) {
+        eprintln!("Error: image --width/--height must be at least 1");
+        return false;
+    }
     let term_width = get_columns().unwrap_or(80) as usize;
+    let mut ok = true;
+    let mut stdout = io::stdout().lock();
     for path in &config.paths {
         let is_url = path.starts_with("http://") || path.starts_with("https://");
         if is_url {
-            eprintln!("Error: URL support not yet implemented: {path}");
+            eprintln!("Error: URLs are not supported, download the image first: {path}");
+            ok = false;
             continue;
         }
 
@@ -861,6 +871,7 @@ fn run_image(config: ImageOptions) {
                 Ok(m) => m,
                 Err(e) => {
                     eprintln!("Error loading image '{}': {e}", path);
+                    ok = false;
                     continue;
                 }
             };
@@ -899,6 +910,7 @@ fn run_image(config: ImageOptions) {
                 Ok(m) => m,
                 Err(e) => {
                     eprintln!("Error loading image '{}': {e}", path);
+                    ok = false;
                     continue;
                 }
             };
@@ -925,6 +937,7 @@ fn run_image(config: ImageOptions) {
                 Ok(m) => m,
                 Err(e) => {
                     eprintln!("Error loading image '{}': {e}", path);
+                    ok = false;
                     continue;
                 }
             };
@@ -950,8 +963,12 @@ fn run_image(config: ImageOptions) {
             result
         };
 
-        println!("{}", result);
+        if writeln!(stdout, "{result}").is_err() {
+            // Reader went away (EPIPE): nothing left to write to.
+            return ok;
+        }
     }
+    ok
 }
 
 #[allow(clippy::ptr_arg, clippy::too_many_arguments)]
@@ -1995,7 +2012,9 @@ fn main() {
 
     if is_image_mode(&args) {
         let img_config = ImageOptions::from_args(&args);
-        run_image(img_config);
+        if !run_image(img_config) {
+            process::exit(1);
+        }
         return;
     }
 
@@ -2763,10 +2782,8 @@ mod tests {
         let args = CliArgs::try_parse_from(["figby", "--image", path, "--width", "40"]).unwrap();
         let opts = ImageOptions::from_args(&args);
         // Capture stdout — just verify no panic and produces output
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            run_image(opts);
-        }));
-        assert!(result.is_ok(), "run_image should not panic");
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_image(opts)));
+        assert_eq!(result.ok(), Some(true), "run_image should succeed");
     }
 
     #[test]
@@ -2779,10 +2796,12 @@ mod tests {
             CliArgs::try_parse_from(["figby", "--image", path, "--braille", "--width", "40"])
                 .unwrap();
         let opts = ImageOptions::from_args(&args);
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            run_image(opts);
-        }));
-        assert!(result.is_ok(), "run_image (braille) should not panic");
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_image(opts)));
+        assert_eq!(
+            result.ok(),
+            Some(true),
+            "run_image (braille) should succeed"
+        );
     }
 
     #[test]

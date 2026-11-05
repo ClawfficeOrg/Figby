@@ -10,6 +10,17 @@ fn image_limits() -> image::io::Limits {
     lim
 }
 
+/// Open and decode an image with the decoder limits applied (16000×16000
+/// pixels, 256 MiB allocation). Every
+/// path-based image load goes through this (review F10): `image::open`
+/// has no dimension or allocation cap, so a small file declaring a huge
+/// canvas would be decoded in full.
+pub fn open_image_limited<P: AsRef<Path>>(path: P) -> Result<DynamicImage, ImageError> {
+    let mut reader = ImageReader::open(path)?.with_guessed_format()?;
+    reader.limits(image_limits());
+    reader.decode()
+}
+
 /// Hard cap on ASCII output width requested of resize/conversion
 /// helpers, regardless of caller-supplied values (GPT review F-18).
 pub const MAX_ASCII_WIDTH: usize = 10_000;
@@ -48,9 +59,7 @@ fn get_terminal_width() -> Option<usize> {
 /// Returns `Vec<Vec<u8>>` where `matrix[y][x]` is the luminance (0-255)
 /// at pixel `(x, y)`. The outer vector represents rows, inner columns.
 pub fn load_luminance_matrix<P: AsRef<Path>>(path: P) -> Result<Vec<Vec<u8>>, ImageError> {
-    let mut reader = ImageReader::open(path)?.with_guessed_format()?;
-    reader.limits(image_limits());
-    let img = reader.decode()?;
+    let img = open_image_limited(path)?;
     Ok(luminance_from_dynamic(&img))
 }
 
@@ -73,9 +82,7 @@ pub fn luminance_from_dynamic(img: &DynamicImage) -> Vec<Vec<u8>> {
 
 /// Load an image from file and return RGB pixel matrix preserving original color.
 pub fn load_rgb_matrix<P: AsRef<Path>>(path: P) -> Result<Vec<Vec<RgbPixel>>, ImageError> {
-    let mut reader = ImageReader::open(path)?.with_guessed_format()?;
-    reader.limits(image_limits());
-    let img = reader.decode()?;
+    let img = open_image_limited(path)?;
     Ok(rgb_from_dynamic(&img))
 }
 
@@ -230,7 +237,7 @@ pub fn image_to_ascii<P: AsRef<Path>>(
     target_width: Option<usize>,
     char_map: Option<&str>,
 ) -> Result<String, ImageError> {
-    let img = image::open(path)?;
+    let img = open_image_limited(path)?;
     let matrix = luminance_from_dynamic(&img);
     let cmap = char_map.unwrap_or(DEFAULT_CHAR_MAP);
     let width = target_width.unwrap_or_else(|| get_terminal_width().unwrap_or(80));

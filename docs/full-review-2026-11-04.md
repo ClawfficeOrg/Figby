@@ -56,12 +56,41 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | R2 stale file maps | ✅ fixed in 6.2.8: one map, in `AGENTS.md`, with no line counts |
 | R3 YAML sketches in `assets/templates` | ✅ fixed in 6.2.8: renamed `.ftmp.draft`, plus a README |
 | R4 docs sprawl | ✅ partly done in 6.2.8: added the `docs/README.md` index and moved the root strays into `docs/`. The agent memory and logs were **not** moved to `docs/agent/`, because `scripts/ralph.sh`, `skills/ralph.md` and `AGENTS.md` hard-code their paths and the loop commits to them on its own branches |
+| F10 unbounded reads | ✅ fixed in 6.2.9: figmap and figseq capped at 256 MiB, TTF/OTF at 128 MiB, palettes at 8 MiB. `image_to_ascii` uses the limited decoder. GIF import already streamed with cell caps |
+| F12 figmap header dims | ✅ fixed in 6.2.9: the header must equal the base layer. All 20 checked-in figmaps still load (there's a test) |
+| F13 image CLI exit 0 | ✅ fixed in 6.2.9: exits 1 on any failed input or a zero width/height. The URL claim is gone from `--help` |
+| A5 figseq u16 cast | ✅ fixed in 6.2.9: `validate()` refuses dimensions above 65,535 |
 | Everything else | open |
 
 Upstream `run-tests.sh` with Figby now fails only 001 and 002, the same as C
 with this `fonts/` directory.
 
 ---
+
+## Where we left off (2026-11-05)
+
+Steps 1–7 of §5 are done (6.2.2–6.2.8), plus part of the small-items batch
+(6.2.9). Next, in order:
+
+1. **Rest of the batch:**
+   - **P2** EPIPE: stop rendering on the first stdout write error.
+     - Reproduce with `yes | head -20000 | figby | head -1`; it still renders all 20,000 lines.
+     - Start from the `let _ = writeln!` / `write!` calls in `main.rs` and `flush_output_line`.
+     - The image path is already done (6.2.9).
+   - **U4** the panel title says "Font Editor" while the New Image dialog is open over a fresh session.
+   - **D2** replace `serde_yaml` (unmaintained) with a maintained fork. `image` 0.24 can't move until
+     `rascii_art` does.
+   - **R5** README note on `git submodule update --init` for `figby-fonts`, or have
+     `scripts/install-fonts.sh` run it.
+2. **CI gap:** the fmt job runs `cargo fmt` without `--all`, so it never checks `figseq`. Add `--all`.
+3. **Step 8, structural:** A1 split `tui/dispatch.rs` into per-component handlers; A2 move to
+   `figby play|bake|image|font|tui` subcommands. Agree on a plan before starting; it's multi-session.
+4. **Unconfirmed in CI:** GitHub Actions hasn't run since 2026-10-07. Every gate above was run
+   locally only (tests, clippy native and wasm, fmt, strict rustdoc, `cparity-diff.sh` 463/463).
+   Re-enable Actions to confirm.
+
+Also still open from §3: T4 (differential fuzz job), A4 (duplicate
+`--to-file`/`--output` flags), and R4's agent-file move (deliberately skipped, see the table).
 
 ## 1. Verdict
 

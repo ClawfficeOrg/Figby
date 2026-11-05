@@ -749,6 +749,52 @@ fn test_missing_control_file_fails() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("Unable to open control file"));
 }
 
+/// F13: image conversion errors used to print a message and exit 0.
+#[test]
+fn test_image_errors_exit_nonzero() {
+    let root = repo_root();
+    let run = |args: &[&str]| {
+        Command::new(figby_binary())
+            .current_dir(&root)
+            .args(args)
+            .output()
+            .expect("failed to run figby")
+    };
+    let good = "assets/img/figby.png";
+    let ok = run(&["--image", good, "--width", "20"]);
+    assert!(
+        ok.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ok.stderr)
+    );
+    assert!(!ok.stdout.is_empty());
+
+    for (args, msg) in [
+        (vec!["--image", "no-such-image.png"], "Error loading image"),
+        (
+            vec!["--image", "https://example.com/a.png"],
+            "URLs are not supported",
+        ),
+        (vec!["--image", "tests/input.txt"], "Error loading image"),
+        (vec!["--image", good, "--width", "0"], "at least 1"),
+        // One bad input among good ones still fails, after the good output.
+        (
+            vec!["--image", good, "--image", "missing.png", "--width", "20"],
+            "missing.png",
+        ),
+    ] {
+        let out = run(&args);
+        assert_eq!(out.status.code(), Some(1), "{args:?} should exit 1");
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(msg),
+            "{args:?}: stderr should mention {msg:?}, got {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    let mixed = run(&["--image", good, "--image", "missing.png", "--width", "20"]);
+    assert!(!mixed.stdout.is_empty(), "good inputs are still converted");
+}
+
 #[test]
 fn test_to_file_and_output_write_rendered_text() {
     // F6: `--to-file` / `--output` were parsed but ignored for text rendering.

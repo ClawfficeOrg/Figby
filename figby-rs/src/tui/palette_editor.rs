@@ -282,7 +282,8 @@ impl PaletteEditor {
         path: &Path,
         format: Option<ImportFormat>,
     ) -> Result<(), String> {
-        let content = std::fs::read(path).map_err(|e| format!("Read error: {e}"))?;
+        let content = crate::bounded_io::read_bounded(path, crate::bounded_io::MAX_TEXT_BYTES)
+            .map_err(|e| format!("Read error: {e}"))?;
         let format = match format {
             Some(f) => f,
             None => {

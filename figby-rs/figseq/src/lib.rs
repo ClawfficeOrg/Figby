@@ -365,7 +365,10 @@ impl FigSeqFile {
         if self.version != FIGSEQ_VERSION {
             return Err(FigSeqError::InvalidVersion(self.version));
         }
-        if self.width == 0 || self.height == 0 {
+        // Terminal grids (and `Player::width`/`height`) are u16, so a
+        // larger dimension would silently wrap when played (review A5).
+        let max = u32::from(u16::MAX);
+        if self.width == 0 || self.height == 0 || self.width > max || self.height > max {
             return Err(FigSeqError::InvalidDimensions {
                 width: self.width,
                 height: self.height,
@@ -609,9 +612,34 @@ fn write_atomic(dest: &Path, data: &[u8]) -> std::io::Result<()> {
     result
 }
 
-/// Read and validate a `.figseq` file.
+/// Largest `.figseq` file [`load_figseq`] will read (256 MiB). A baked
+/// frame is ~18 KB at 76×26, so this is thousands of frames.
+pub const MAX_FIGSEQ_BYTES: u64 = 256 * 1024 * 1024;
+
+/// Read at most `max` bytes, failing rather than truncating past it.
+fn read_capped(path: &Path, max: u64) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let file = std::fs::File::open(path)?;
+    let too_big = || {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("{} exceeds the {max}-byte limit", path.display()),
+        )
+    };
+    if file.metadata().map(|m| m.len() > max).unwrap_or(false) {
+        return Err(too_big());
+    }
+    let mut data = Vec::new();
+    file.take(max + 1).read_to_end(&mut data)?;
+    if data.len() as u64 > max {
+        return Err(too_big());
+    }
+    Ok(data)
+}
+
+/// Read and validate a `.figseq` file (at most [`MAX_FIGSEQ_BYTES`]).
 pub fn load_figseq(path: &Path) -> Result<FigSeqFile, FigSeqError> {
-    let data = std::fs::read(path)?;
+    let data = read_capped(path, MAX_FIGSEQ_BYTES)?;
     let seq: FigSeqFile = serde_json::from_slice(&data)?;
     seq.validate()?;
     Ok(seq)
@@ -790,6 +818,34 @@ mod tests {
             seq.validate(),
             Err(FigSeqError::InvalidDimensions { width: 0, .. })
         ));
+    }
+
+    #[test]
+    fn validate_rejects_dimensions_past_u16() {
+        // Player::width()/height() are u16: 65_536 would play as 0 columns.
+        let cells = grid(2, 2);
+        let mut seq = FigSeqFile::new(2, 2, vec![cells], None, false, 0);
+        seq.width = 65_536;
+        assert!(matches!(
+            seq.validate(),
+            Err(FigSeqError::InvalidDimensions { width: 65_536, .. })
+        ));
+        seq.width = 2;
+        seq.height = u32::MAX;
+        assert!(matches!(
+            seq.validate(),
+            Err(FigSeqError::InvalidDimensions { .. })
+        ));
+    }
+
+    #[test]
+    fn read_capped_refuses_oversized_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.figseq");
+        std::fs::write(&path, vec![b' '; 100]).unwrap();
+        assert_eq!(read_capped(&path, 100).unwrap().len(), 100);
+        let err = read_capped(&path, 99).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     }
 
     #[test]

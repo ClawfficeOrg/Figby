@@ -573,7 +573,8 @@ pub fn font_file_to_figfont(
     charset: &[&str],
 ) -> Result<FIGfont, FontGenError> {
     use std::sync::Arc;
-    let data = std::fs::read(path).map_err(|e| FontGenError::FontNotFound(format!("{e}")))?;
+    let data = crate::bounded_io::read_bounded(path, crate::bounded_io::MAX_OUTLINE_FONT_BYTES)
+        .map_err(|e| FontGenError::FontNotFound(format!("{e}")))?;
     let handle = font_kit::handle::Handle::from_memory(Arc::new(data), 0);
     let font = handle.load()?;
     let (figfont, _maxlength) = render_font_glyphs(&font, point_size, charset)?;

@@ -1,4 +1,22 @@
 # Changelog
+## [6.2.9] - 2026-11-05
+
+### Fixed
+- Image CLI: a missing file, a URL, a file that isn't an image, or `--width 0` / `--height 0` now exits 1.
+  Before, each printed an error and the process still exited 0. With several `--image` inputs, the good
+  ones are still converted. `--help` no longer claims URL support. A closed stdout stops the loop instead
+  of panicking in `println!`.
+- `.figmap` load refuses a header whose size disagrees with the base layer (`HeaderSizeMismatch`).
+  Before, a 64×24 header over a 1×1 layer loaded and baked as 1×1 without a warning. Other layers may
+  still differ in size; compositing clips them. A test loads every `.figmap` under `assets/`.
+- `.figseq` validation refuses width or height above 65,535, which `Player::width()`/`height()` would
+  otherwise wrap to `u16`.
+
+### Changed
+- File reads are capped (review F10): `.figmap` and `.figseq` at 256 MiB, TTF/OTF input to the font
+  generator at 128 MiB, palettes at 8 MiB. `image_to_ascii` now applies the same decoder limits as the
+  other image loaders (16000×16000, 256 MiB), through the new `image_input::open_image_limited`.
+
 ## [6.2.8] - 2026-11-05
 
 ### Added

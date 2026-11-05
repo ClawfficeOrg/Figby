@@ -102,8 +102,20 @@ pub enum FigmapError {
     Io(std::io::Error),
     Json(serde_json::Error),
     InvalidVersion(u32),
-    InvalidDimensions { width: u32, height: u32 },
-    LayerCountMismatch { expected: usize, actual: usize },
+    InvalidDimensions {
+        width: u32,
+        height: u32,
+    },
+    LayerCountMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    /// The header's size disagrees with the base layer, which is what
+    /// actually sets the document size when compositing.
+    HeaderSizeMismatch {
+        header: (u32, u32),
+        layer: (usize, usize),
+    },
 }
 
 impl std::fmt::Display for FigmapError {
@@ -124,6 +136,13 @@ impl std::fmt::Display for FigmapError {
                 write!(
                     f,
                     "Timeline frame layer count {actual} does not match document layers {expected}"
+                )
+            }
+            FigmapError::HeaderSizeMismatch { header, layer } => {
+                write!(
+                    f,
+                    "Header says {}x{} but the base layer is {}x{}",
+                    header.0, header.1, layer.0, layer.1
                 )
             }
         }
@@ -197,8 +216,8 @@ pub fn save_figmap(
 
 /// Load a `.figmap` file into document state.
 pub fn load_figmap(path: &Path) -> Result<FigmapFile, FigmapError> {
-    let data = std::fs::read_to_string(path)?;
-    let figmap: FigmapFile = serde_json::from_str(&data)?;
+    let data = crate::bounded_io::read_bounded(path, crate::bounded_io::MAX_PROJECT_BYTES)?;
+    let figmap: FigmapFile = serde_json::from_slice(&data)?;
 
     if figmap.version != FIGMAP_VERSION {
         return Err(FigmapError::InvalidVersion(figmap.version));
@@ -208,6 +227,21 @@ pub fn load_figmap(path: &Path) -> Result<FigmapFile, FigmapError> {
             width: figmap.width,
             height: figmap.height,
         });
+    }
+
+    // The header must describe the document: `save_figmap` writes it from
+    // the base layer, and compositing sizes everything from that layer, so
+    // a disagreeing header (hand-edited or corrupt) is refused rather than
+    // silently ignored (review F12). Other layers may differ in size; the
+    // compositor clips them to the base.
+    if let Some(base) = figmap.layers.first() {
+        let layer = (base.buffer.width(), base.buffer.height());
+        if layer != (figmap.width as usize, figmap.height as usize) {
+            return Err(FigmapError::HeaderSizeMismatch {
+                header: (figmap.width, figmap.height),
+                layer,
+            });
+        }
     }
 
     // Validate timeline frame layer counts match document layer count
@@ -529,5 +563,57 @@ mod tests {
                 height: 0
             })
         ));
+    }
+
+    /// F12: a header that disagrees with the base layer used to be loaded
+    /// and silently ignored (a 64×24 header over a 1×1 layer baked as 1×1).
+    #[test]
+    fn figmap_rejects_header_that_disagrees_with_base_layer() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("lying.figmap");
+        save_figmap(&make_test_layers(), None, &[], &[], &[], &path).unwrap();
+        assert!(load_figmap(&path).is_ok(), "a file Figby wrote loads");
+
+        let mut json: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        for (w, h) in [(64, 24), (100_000, 100_000), (4, 3)] {
+            json["width"] = w.into();
+            json["height"] = h.into();
+            std::fs::write(&path, json.to_string()).unwrap();
+            match load_figmap(&path) {
+                Err(FigmapError::HeaderSizeMismatch { header, layer }) => {
+                    assert_eq!(header, (w, h));
+                    assert_eq!(layer, (4, 2));
+                }
+                other => panic!("{w}x{h} header over a 4x2 layer: {other:?}"),
+            }
+        }
+    }
+
+    /// The checked-in art must survive the header check.
+    #[test]
+    fn repo_figmaps_still_load() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../assets");
+        let shipped = root.is_dir(); // absent in a packaged crate
+        let mut stack = vec![root];
+        let mut loaded = 0;
+        while let Some(dir) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else if p.extension().is_some_and(|e| e == "figmap") {
+                    load_figmap(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+                    loaded += 1;
+                }
+            }
+        }
+        assert!(
+            !shipped || loaded > 0,
+            "no .figmap files found under assets/"
+        );
     }
 }

@@ -13,6 +13,12 @@ use std::path::Path;
 pub const MAX_FONT_BYTES: u64 = 32 * 1024 * 1024;
 /// Cap for text inputs: templates, themes, configs, palettes, recent files.
 pub const MAX_TEXT_BYTES: u64 = 8 * 1024 * 1024;
+/// Cap for `.figmap` projects. They store every cell of every layer and
+/// frame as JSON (a 76×26 frame is ~270 KB), so long animations are big.
+pub const MAX_PROJECT_BYTES: u64 = 256 * 1024 * 1024;
+/// Cap for TrueType/OpenType input to the font generator. Larger than
+/// [`MAX_FONT_BYTES`] because CJK collections (`.ttc`) run to tens of MB.
+pub const MAX_OUTLINE_FONT_BYTES: u64 = 128 * 1024 * 1024;
 
 /// Read at most `max` bytes from `path`.
 ///
