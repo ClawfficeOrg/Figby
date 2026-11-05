@@ -1129,11 +1129,10 @@ fn luminance(color: Color) -> Option<u8> {
 mod tests {
     use super::*;
     use crate::tui::palette::Palette;
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::Mutex;
 
     fn xdg_mutex() -> &'static Mutex<()> {
-        static XDG_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
-        XDG_MUTEX.get_or_init(|| Mutex::new(()))
+        crate::config::xdg_env_lock()
     }
 
     #[test]
@@ -1224,7 +1223,7 @@ mod tests {
 
         let path = PaletteEditor::palettes_dir().unwrap();
         assert!(path.exists());
-        assert!(path.to_string_lossy().contains("figby/palettes"));
+        assert!(path.ends_with(std::path::Path::new("figby").join("palettes")));
 
         match orig {
             Some(v) => std::env::set_var("XDG_CONFIG_HOME", v),

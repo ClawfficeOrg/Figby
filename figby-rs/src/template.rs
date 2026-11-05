@@ -634,10 +634,18 @@ pub fn render_template(
             // lexical checks alone don't catch relative symlinks that
             // escape containment (GPT review F-10).
             let img_path = std::path::Path::new(&img.source);
+            // `has_root`/Prefix catch "/etc/passwd" and "C:x" on Windows too,
+            // where `is_absolute` is false and `join` would replace the base.
             if img_path.is_absolute()
-                || img_path
-                    .components()
-                    .any(|c| c == std::path::Component::ParentDir)
+                || img_path.has_root()
+                || img_path.components().any(|c| {
+                    matches!(
+                        c,
+                        std::path::Component::ParentDir
+                            | std::path::Component::Prefix(_)
+                            | std::path::Component::RootDir
+                    )
+                })
             {
                 return Err(TemplateError::ImageError(format!(
                     "image path '{}' rejected: must be relative with no '..' traversal",
@@ -1109,9 +1117,10 @@ font = "standard"
 
     #[test]
     fn test_resolve_env_var() {
-        let result = resolve_text_value("${HOME}", true).unwrap();
-        assert!(!result.is_empty(), "HOME should be set");
-        assert!(result.contains('/'), "HOME should be a path");
+        std::env::set_var("FIGBY_TEST_RESOLVE_VAR", "/some/where");
+        let result = resolve_text_value("${FIGBY_TEST_RESOLVE_VAR}", true).unwrap();
+        std::env::remove_var("FIGBY_TEST_RESOLVE_VAR");
+        assert_eq!(result, "/some/where");
     }
 
     #[test]

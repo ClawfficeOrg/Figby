@@ -11,6 +11,7 @@ use figby::input;
 use figby::render::{lookup_char, render_line, Justification, OutputLine};
 use figby::smush::SmushMode;
 use figby::template;
+use std::cell::Cell;
 use std::io::{self, IsTerminal, Read, Write};
 use std::process;
 
@@ -971,6 +972,38 @@ fn run_image(config: ImageOptions) -> bool {
     ok
 }
 
+/// Writer that records the first failed write in `broken` and fails every
+/// write after it, so the render loop can stop instead of rendering the rest
+/// of the input into a closed pipe (`figby … | head -1`).
+struct BrokenWriter<'a, W: Write> {
+    inner: W,
+    broken: &'a Cell<bool>,
+}
+
+impl<W: Write> Write for BrokenWriter<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if self.broken.get() {
+            return Err(io::Error::from(io::ErrorKind::BrokenPipe));
+        }
+        let r = self.inner.write(buf);
+        if r.is_err() {
+            self.broken.set(true);
+        }
+        r
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        if self.broken.get() {
+            return Err(io::Error::from(io::ErrorKind::BrokenPipe));
+        }
+        let r = self.inner.flush();
+        if r.is_err() {
+            self.broken.set(true);
+        }
+        r
+    }
+}
+
 #[allow(clippy::ptr_arg, clippy::too_many_arguments)]
 fn flush_output_line(
     line: &mut OutputLine,
@@ -1136,10 +1169,17 @@ fn run(config: CliConfig, message: Vec<String>) {
     let mut file_buf: Vec<u8> = Vec::new();
     let stdout = io::stdout();
     let mut stdout_lock = stdout.lock();
-    let mut out: &mut dyn Write = if config.to_file.is_some() {
+    // Set by BrokenWriter on the first failed write (EPIPE: the reader went
+    // away). The loop below checks it and stops rendering.
+    let broken = Cell::new(false);
+    let inner: &mut dyn Write = if config.to_file.is_some() {
         &mut file_buf
     } else {
         &mut stdout_lock
+    };
+    let mut out = BrokenWriter {
+        inner,
+        broken: &broken,
     };
     let mut hz_state = input::HZState::default();
 
@@ -1161,6 +1201,9 @@ fn run(config: CliConfig, message: Vec<String>) {
 
     let mut pending_char: Option<u32> = None;
     loop {
+        if broken.get() {
+            break;
+        }
         let c = match pending_char
             .take()
             .or_else(|| next_char(&mut input, &mut control_state, &mut hz_state))
@@ -2068,6 +2111,37 @@ fn main() {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
+
+    /// A sink that fails like a closed pipe after `ok_bytes` bytes.
+    struct ClosedAfter(usize);
+    impl Write for ClosedAfter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if self.0 == 0 {
+                return Err(io::Error::from(io::ErrorKind::BrokenPipe));
+            }
+            let n = buf.len().min(self.0);
+            self.0 -= n;
+            Ok(n)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn broken_writer_latches_first_failure() {
+        let broken = Cell::new(false);
+        let mut w = BrokenWriter {
+            inner: ClosedAfter(4),
+            broken: &broken,
+        };
+        assert!(writeln!(w, "ab").is_ok());
+        assert!(!broken.get());
+        assert!(writeln!(w, "cdef").is_err());
+        assert!(broken.get(), "first failed write must set the flag");
+        // Later writes fail without touching the inner writer again.
+        assert!(writeln!(w, "x").is_err());
+    }
 
     // ── 2026-11-04 review F4/F5/F7c: C getopt semantics ────────────────────
 

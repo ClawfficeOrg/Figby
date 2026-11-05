@@ -46,6 +46,14 @@ fn config_file_path() -> Option<PathBuf> {
     Some(base.join("figby").join("config.toml"))
 }
 
+/// Serialises tests that set `XDG_CONFIG_HOME`; the env is process-global
+/// and cargo runs tests in parallel.
+#[cfg(test)]
+pub(crate) fn xdg_env_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
 pub fn config_dir() -> Option<PathBuf> {
     config_file_path().and_then(|p| p.parent().map(|p| p.to_path_buf()))
 }
@@ -182,6 +190,7 @@ character = "*"
         let path = figby_dir.join("config.toml");
         std::fs::write(&path, "<<<bad toml>>>").ok();
 
+        let _lock = xdg_env_lock().lock().unwrap_or_else(|e| e.into_inner());
         let orig = std::env::var("XDG_CONFIG_HOME").ok();
         std::env::set_var("XDG_CONFIG_HOME", dir.to_str().unwrap());
         let config = load_config();

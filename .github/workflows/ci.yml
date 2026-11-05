@@ -27,7 +27,7 @@ jobs:
         with:
           components: rustfmt
       - name: cargo fmt --check
-        run: cargo fmt --manifest-path figby-rs/Cargo.toml -- --check
+        run: cargo fmt --manifest-path figby-rs/Cargo.toml --all -- --check
 
   test:
     name: test (Linux)

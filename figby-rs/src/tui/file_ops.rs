@@ -2059,6 +2059,9 @@ mod tests {
         let subdir = dir.join("figby-test-recent");
         let _ = std::fs::create_dir_all(&subdir);
         // Override storage path via XDG_CONFIG_HOME (config_dir derives from it)
+        let _lock = crate::config::xdg_env_lock()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         std::env::set_var("XDG_CONFIG_HOME", dir.to_str().unwrap());
 
         let mut recent = RecentFiles::new();
