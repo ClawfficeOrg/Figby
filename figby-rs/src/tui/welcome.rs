@@ -1,5 +1,5 @@
-use crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEventKind};
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -401,47 +401,35 @@ impl WelcomeScreen {
         modifiers: KeyModifiers,
         recent_count: usize,
     ) -> Option<WelcomeAction> {
+        // Labels show the shortcut as `[C]`, so Shift+C must work as well
+        // as `c`. Terminals report the capital as `Char('C')` with SHIFT
+        // set, so a plain `== NONE` guard rejected it (review U1).
+        let plain = modifiers.difference(KeyModifiers::SHIFT).is_empty();
         match code {
             KeyCode::Esc if modifiers == KeyModifiers::NONE => Some(WelcomeAction::Dismiss),
             KeyCode::Up => Some(WelcomeAction::ScrollUp),
             KeyCode::Down => Some(WelcomeAction::ScrollDown),
             KeyCode::Char('?') => Some(WelcomeAction::ToggleHelp),
-            KeyCode::Char('n') | KeyCode::Char('N') if modifiers == KeyModifiers::NONE => {
+            KeyCode::Char('n') | KeyCode::Char('N') if plain => {
                 Some(WelcomeAction::FontNewFromSystem)
             }
-            KeyCode::Char('i') | KeyCode::Char('I') if modifiers == KeyModifiers::NONE => {
+            KeyCode::Char('i') | KeyCode::Char('I') if plain => {
                 Some(WelcomeAction::FontNewFromFile)
             }
-            KeyCode::Char('b') | KeyCode::Char('B') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::FontNewBlank)
-            }
-            KeyCode::Char('o') | KeyCode::Char('O') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::FontOpen)
-            }
-            KeyCode::Char('d') | KeyCode::Char('D') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::FontDuplicate)
-            }
-            KeyCode::Char('c') | KeyCode::Char('C') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::ImageNewBlank)
-            }
-            KeyCode::Char('t') | KeyCode::Char('T') if modifiers == KeyModifiers::NONE => {
+            KeyCode::Char('b') | KeyCode::Char('B') if plain => Some(WelcomeAction::FontNewBlank),
+            KeyCode::Char('o') | KeyCode::Char('O') if plain => Some(WelcomeAction::FontOpen),
+            KeyCode::Char('d') | KeyCode::Char('D') if plain => Some(WelcomeAction::FontDuplicate),
+            KeyCode::Char('c') | KeyCode::Char('C') if plain => Some(WelcomeAction::ImageNewBlank),
+            KeyCode::Char('t') | KeyCode::Char('T') if plain => {
                 Some(WelcomeAction::ImageNewFromTemplate)
             }
-            KeyCode::Char('v') | KeyCode::Char('V') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::ImageConvert)
-            }
-            KeyCode::Char('f') | KeyCode::Char('F') if modifiers == KeyModifiers::NONE => {
+            KeyCode::Char('v') | KeyCode::Char('V') if plain => Some(WelcomeAction::ImageConvert),
+            KeyCode::Char('f') | KeyCode::Char('F') if plain => {
                 Some(WelcomeAction::ImageOpenFigmap)
             }
-            KeyCode::Char('a') | KeyCode::Char('A') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::ImageImportGif)
-            }
-            KeyCode::Char('l') | KeyCode::Char('L') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::ImageOpen)
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') if modifiers == KeyModifiers::NONE => {
-                Some(WelcomeAction::OpenSettings)
-            }
+            KeyCode::Char('a') | KeyCode::Char('A') if plain => Some(WelcomeAction::ImageImportGif),
+            KeyCode::Char('l') | KeyCode::Char('L') if plain => Some(WelcomeAction::ImageOpen),
+            KeyCode::Char('s') | KeyCode::Char('S') if plain => Some(WelcomeAction::OpenSettings),
             KeyCode::Char(c) if modifiers == KeyModifiers::CONTROL => match c {
                 'o' | 'O' => Some(WelcomeAction::Open),
                 'n' | 'N' => Some(WelcomeAction::NewFile),
@@ -812,6 +800,25 @@ mod tests {
                 "shortcut '{key_char}' should also work as unshifted '{lower}'"
             );
         }
+    }
+
+    #[test]
+    fn test_action_shortcuts_work_with_shift() {
+        // What a terminal actually sends for Shift+C: the capital, with SHIFT.
+        let screen = WelcomeScreen::new();
+        for (_, key_char, _) in FONT_ACTIONS.iter().chain(IMAGE_ACTIONS.iter()) {
+            let upper = key_char.to_ascii_uppercase();
+            assert_eq!(
+                screen.handle_key(KeyCode::Char(upper), KeyModifiers::SHIFT, 0),
+                screen.handle_key(KeyCode::Char(*key_char), KeyModifiers::NONE, 0),
+                "Shift+{upper} should do what the [{upper}] label says"
+            );
+        }
+        // Ctrl/Alt chords are still not plain shortcuts.
+        assert_eq!(
+            screen.handle_key(KeyCode::Char('c'), KeyModifiers::ALT, 0),
+            None
+        );
     }
 }
 

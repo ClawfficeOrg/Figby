@@ -49,8 +49,8 @@ fn test_tui_smoke_all_panels_render() {
 
 #[test]
 fn test_tui_mode_switching() {
-    use crossterm::event::KeyCode;
     use figby::tui::{AppMode, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -92,8 +92,8 @@ fn test_tool_default_is_brush() {
 
 #[test]
 fn test_tool_selection_roundtrip() {
-    use crossterm::event::KeyCode;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -209,8 +209,8 @@ fn test_canvas_render_cells() {
 
 #[test]
 fn test_canvas_cursor_movement() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::CanvasWidget;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut canvas = CanvasWidget::new(10, 5);
     assert_eq!(canvas.cursor(), (0, 0));
@@ -230,8 +230,8 @@ fn test_canvas_cursor_movement() {
 
 #[test]
 fn test_canvas_zoom_in_out() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::CanvasWidget;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut canvas = CanvasWidget::new(10, 5);
     assert_eq!(canvas.zoom_level(), 1);
@@ -296,9 +296,9 @@ fn test_canvas_cursor_visible() {
 
 #[test]
 fn test_canvas_zoom_shows_grid() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::{CanvasCell, CanvasWidget};
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
 
     let mut canvas = CanvasWidget::new(5, 3);
@@ -346,8 +346,8 @@ fn test_palette_default_target_foreground() {
 
 #[test]
 fn test_palette_fg_bg_toggle() {
-    use crossterm::event::KeyCode;
     use figby::tui::palette::{ColorTarget, Palette};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut palette = Palette::new();
     assert_eq!(palette.target, ColorTarget::Foreground);
@@ -470,8 +470,8 @@ fn test_brush_cycle_shape() {
 
 #[test]
 fn test_brush_size_up_down_key() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     assert_eq!(app.editor.brush.size, 1);
@@ -485,9 +485,9 @@ fn test_brush_size_up_down_key() {
 
 #[test]
 fn test_brush_shape_cycle_key() {
-    use crossterm::event::KeyCode;
     use figby::tui::brush::BrushShape;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     assert_eq!(app.editor.brush.shape, BrushShape::Square);
@@ -629,10 +629,10 @@ fn test_palette_render_contains_labels() {
 
 #[test]
 fn test_status_bar_shows_cursor_position() {
-    use crossterm::event::KeyCode;
     use figby::tui::AppMode;
     use figby::tui::TuiApp;
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
 
     let mut app = TuiApp::new();
@@ -653,9 +653,9 @@ fn test_status_bar_shows_cursor_position() {
 
 #[test]
 fn test_status_bar_shows_zoom_level() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
 
     let mut app = TuiApp::new();
@@ -672,9 +672,9 @@ fn test_status_bar_shows_zoom_level() {
 
 #[test]
 fn test_status_bar_shows_tool_name() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
 
     let mut app = TuiApp::new();
@@ -736,9 +736,9 @@ fn test_status_bar_unsaved_indicator() {
 
 #[test]
 fn test_settings_toggle_visibility() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
 
     let mut app = TuiApp::new();
@@ -767,8 +767,8 @@ fn test_settings_toggle_visibility() {
 
 #[test]
 fn test_settings_changes_canvas_width() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     assert_eq!(app.editor.canvas.buffer.width(), 40);
@@ -785,8 +785,8 @@ fn test_settings_changes_canvas_width() {
 
 #[test]
 fn test_settings_toggle_grid() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.handle_key_event(KeyCode::Tab); // switch to ImageEditor so S opens Settings, not Smushing
@@ -800,8 +800,8 @@ fn test_settings_toggle_grid() {
 
 #[test]
 fn test_settings_toggle_snap_to_grid() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     assert!(!app.dialogs.settings.snap_to_grid);
@@ -819,9 +819,9 @@ fn test_settings_toggle_snap_to_grid() {
 
 #[test]
 fn test_fill_tool_keyboard() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::CanvasCell;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
 
@@ -991,9 +991,9 @@ fn test_font_editor_search_by_char_value() {
 
 #[test]
 fn test_font_editor_select_opens_char_in_canvas() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::{FontEditor, FontEditorView};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
@@ -1020,9 +1020,9 @@ fn test_font_editor_select_opens_char_in_canvas() {
 
 #[test]
 fn test_font_editor_esc_returns_to_overview() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::{FontEditor, FontEditorView};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
@@ -1061,9 +1061,9 @@ fn test_font_editor_empty_font_no_panic() {
 
 #[test]
 fn test_font_editor_grid_navigation() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::FontEditor;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
@@ -1110,8 +1110,8 @@ fn header_editor_setup() -> (figby::tui::font_editor::FontEditor, figby::font::F
 
 #[test]
 fn test_font_editor_header_open_close() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::tui::font_editor::FontEditorView;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
 
@@ -1124,7 +1124,7 @@ fn test_font_editor_header_open_close() {
 
 #[test]
 fn test_font_editor_header_charheight_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1145,7 +1145,7 @@ fn test_font_editor_header_charheight_edit() {
 
 #[test]
 fn test_font_editor_header_baseline_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1166,7 +1166,7 @@ fn test_font_editor_header_baseline_edit() {
 
 #[test]
 fn test_font_editor_header_hardblank_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1184,7 +1184,7 @@ fn test_font_editor_header_hardblank_edit() {
 
 #[test]
 fn test_font_editor_header_rejects_height_zero() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, orig) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1207,7 +1207,7 @@ fn test_font_editor_header_rejects_height_zero() {
 
 #[test]
 fn test_font_editor_header_rejects_baseline_exceeds_height() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, orig) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1230,7 +1230,7 @@ fn test_font_editor_header_rejects_baseline_exceeds_height() {
 
 #[test]
 fn test_font_editor_header_full_layout_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1250,7 +1250,7 @@ fn test_font_editor_header_full_layout_edit() {
 
 #[test]
 fn test_font_editor_header_print_direction_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1281,7 +1281,7 @@ fn test_font_editor_header_print_direction_edit() {
 
 #[test]
 fn test_font_editor_header_comment_lines_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1300,7 +1300,7 @@ fn test_font_editor_header_comment_lines_edit() {
 
 #[test]
 fn test_font_editor_header_maxlength_edit() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('H'), KeyModifiers::NONE, 120);
@@ -1321,8 +1321,8 @@ fn test_font_editor_header_maxlength_edit() {
 
 #[test]
 fn test_smush_editor_open_close() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::tui::font_editor::FontEditorView;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
 
@@ -1335,8 +1335,8 @@ fn test_smush_editor_open_close() {
 
 #[test]
 fn test_smush_rule_toggle() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::smush::SmushMode;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.font.as_mut().unwrap().full_layout = 0;
@@ -1363,8 +1363,8 @@ fn test_smush_rule_toggle() {
 
 #[test]
 fn test_smush_rule_multiple_toggles() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::smush::SmushMode;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.font.as_mut().unwrap().full_layout = 0;
@@ -1416,7 +1416,7 @@ fn test_smush_rule_multiple_toggles() {
 
 #[test]
 fn test_smush_editor_navigation() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('S'), KeyModifiers::NONE, 120);
@@ -1439,9 +1439,9 @@ fn test_smush_editor_navigation() {
 
 #[test]
 fn test_smush_preview_changes_on_toggle() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::smush::SmushMode;
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
     use ratatui::Terminal;
 
     let (mut editor, _) = header_editor_setup();
@@ -1496,8 +1496,8 @@ fn test_smush_preview_changes_on_toggle() {
 
 #[test]
 fn test_transform_editor_open_close() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::tui::font_editor::FontEditorView;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
 
@@ -1510,7 +1510,7 @@ fn test_transform_editor_open_close() {
 
 #[test]
 fn test_transform_editor_navigation() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('T'), KeyModifiers::NONE, 120);
@@ -1533,8 +1533,8 @@ fn test_transform_editor_navigation() {
 
 #[test]
 fn test_transform_bold_via_editor() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
     use ratatui::Terminal;
 
     let (mut editor, _) = header_editor_setup();
@@ -1561,7 +1561,7 @@ fn test_transform_bold_via_editor() {
 
 #[test]
 fn test_transform_mirror_horizontal_all_chars() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('T'), KeyModifiers::NONE, 120);
@@ -1588,7 +1588,7 @@ fn test_transform_mirror_horizontal_all_chars() {
 
 #[test]
 fn test_transform_resize_via_editor() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     let orig_height = editor.font.as_ref().unwrap().charheight;
@@ -1614,7 +1614,7 @@ fn test_transform_resize_via_editor() {
 
 #[test]
 fn test_transform_rename_via_editor() {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
     editor.handle_key(KeyCode::Char('T'), KeyModifiers::NONE, 120);
@@ -1640,8 +1640,8 @@ fn test_transform_rename_via_editor() {
 
 #[test]
 fn test_brush_tool_keyboard_paint() {
-    use crossterm::event::KeyCode;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
 
@@ -1665,8 +1665,8 @@ fn test_brush_tool_keyboard_paint() {
 
 #[test]
 fn test_braille_tool_shortcut_key_selects_it_in_font_editor() {
-    use crossterm::event::KeyCode;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     // 'k' must reach the toolbox tool-selector rather than being swallowed
     // by the FontEditor overview grid's type-to-search feature (which,
@@ -1679,8 +1679,8 @@ fn test_braille_tool_shortcut_key_selects_it_in_font_editor() {
 
 #[test]
 fn test_braille_tool_keyboard_dot_toggle() {
-    use crossterm::event::KeyCode;
     use figby::tui::{AppMode, Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -1722,8 +1722,8 @@ fn test_braille_tool_keyboard_dot_toggle() {
 
 #[test]
 fn test_braille_sub_cursor_clamps_within_cell() {
-    use crossterm::event::KeyCode;
     use figby::tui::{AppMode, Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -1747,9 +1747,9 @@ fn test_braille_sub_cursor_clamps_within_cell() {
 
 #[test]
 fn test_eraser_tool_keyboard_erase() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::CanvasCell;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
 
@@ -1783,8 +1783,8 @@ fn test_eraser_tool_keyboard_erase() {
 
 #[test]
 fn test_line_tool_keyboard_paint() {
-    use crossterm::event::KeyCode;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -1809,8 +1809,8 @@ fn test_line_tool_keyboard_paint() {
 
 #[test]
 fn test_spray_tool_keyboard_paint() {
-    use crossterm::event::KeyCode;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -1852,9 +1852,9 @@ fn test_spray_tool_keyboard_paint() {
 
 #[test]
 fn test_eyedropper_tool_keyboard_does_not_paint() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::CanvasCell;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -1913,9 +1913,9 @@ fn test_text_tool_commit_block_requires_font() {
 
 #[test]
 fn test_selection_copy_delete_keyboard() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::canvas::CanvasCell;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -1992,8 +1992,8 @@ fn test_selection_cut_direct() {
 
 #[test]
 fn test_canvas_scroll_on_cursor_move() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::CanvasWidget;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut canvas = CanvasWidget::new(100, 50);
 
@@ -2022,8 +2022,8 @@ fn test_canvas_scroll_on_cursor_move() {
 
 #[test]
 fn test_undo_redo_integration() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2055,8 +2055,8 @@ fn test_undo_redo_integration() {
 
 #[test]
 fn test_redo_via_ctrl_shift_z() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2082,8 +2082,8 @@ fn test_redo_via_ctrl_shift_z() {
 
 #[test]
 fn test_file_ops_dialog_open_close() {
-    use crossterm::event::KeyCode;
     use figby::tui::file_ops::{FileOpsDialog, FileOpsMode};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = FileOpsDialog::new();
     assert_eq!(dialog.mode, FileOpsMode::Idle);
@@ -2104,8 +2104,8 @@ fn test_file_ops_dialog_open_close() {
 
 #[test]
 fn test_file_ops_dialog_save_as() {
-    use crossterm::event::KeyCode;
     use figby::tui::file_ops::{FileOpsDialog, FileOpsMode};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = FileOpsDialog::new();
     dialog.enter_save_as(None, "untitled");
@@ -2135,8 +2135,8 @@ fn test_file_ops_dialog_save_as() {
 
 #[test]
 fn test_export_dialog_open_via_ctrl_e() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2154,8 +2154,8 @@ fn test_export_dialog_open_via_ctrl_e() {
 
 #[test]
 fn test_export_dialog_format_toggle() {
-    use crossterm::event::KeyCode;
     use figby::tui::export::{ExportDialog, ExportMode};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = ExportDialog::new();
     dialog.enter_export(ExportMode::Png);
@@ -2190,8 +2190,8 @@ fn test_export_dialog_format_toggle() {
 
 #[test]
 fn test_export_dialog_path_entry() {
-    use crossterm::event::KeyCode;
     use figby::tui::export::ExportDialog;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = ExportDialog::new();
     dialog.enter_export(figby::tui::ExportMode::Png);
@@ -2220,9 +2220,9 @@ fn test_export_dialog_path_entry() {
 
 #[test]
 fn test_image_editor_mode_switch_and_toggle() {
-    use crossterm::event::KeyCode;
     use figby::tui::image_editor::AsciiMode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2257,8 +2257,8 @@ fn test_image_editor_mode_switch_and_toggle() {
 
 #[test]
 fn test_menu_bar_alt_f_opens_file_menu() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2277,8 +2277,8 @@ fn test_menu_bar_alt_f_opens_file_menu() {
 
 #[test]
 fn test_menu_bar_navigate_and_select() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2297,9 +2297,9 @@ fn test_menu_bar_navigate_and_select() {
 
 #[test]
 fn test_menu_edit_redo_via_keyboard_nav() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::menu::MenuAction;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2328,8 +2328,8 @@ fn test_menu_edit_redo_via_keyboard_nav() {
 
 #[test]
 fn test_menu_help_keybindings() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2362,9 +2362,9 @@ fn test_menu_help_keybindings() {
 
 #[test]
 fn test_layout_drawer_toggle() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::side_panel::TabId;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2397,8 +2397,8 @@ fn test_layout_drawer_toggle() {
 
 #[test]
 fn test_zen_mode_toggle_f11() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
     assert!(!app.ui.zen_mode, "zen mode should be off by default");
@@ -2414,8 +2414,8 @@ fn test_zen_mode_toggle_f11() {
 
 #[test]
 fn test_keybindings_overlay_toggle() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2464,9 +2464,9 @@ fn test_canvas_ensure_cursor_visible_scrolls() {
 
 #[test]
 fn test_selection_escape_deselects() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::canvas::CanvasCell;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2497,9 +2497,9 @@ fn test_selection_escape_deselects() {
 
 #[test]
 fn test_font_editor_char_editor_toggle_cell() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::font::parse_tlf_font;
     use figby::tui::font_editor::{FontEditor, FontEditorView};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
@@ -2525,8 +2525,8 @@ fn test_font_editor_char_editor_toggle_cell() {
 
 #[test]
 fn test_canvas_grid_toggle_g_key() {
-    use crossterm::event::KeyCode;
     use figby::tui::{AppMode, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2539,9 +2539,9 @@ fn test_canvas_grid_toggle_g_key() {
 
 #[test]
 fn test_palette_fg_keyboard_shortcut() {
-    use crossterm::event::KeyCode;
     use figby::tui::palette::ColorTarget;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2583,10 +2583,10 @@ fn test_palette_fg_keyboard_shortcut() {
 
 #[test]
 fn test_selection_perimeter_delete() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::canvas::CanvasCell;
     use figby::tui::tools::selection::Selection;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2722,8 +2722,8 @@ fn test_text_tool_commit_text() {
 
 #[test]
 fn test_text_tool_cancel_text() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2763,10 +2763,10 @@ fn test_text_tool_cancel_text() {
 
 #[test]
 fn test_cli_dispatch_view_zoom_in_via_menu() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::events::AppEvent;
     use figby::tui::menu::MenuAction;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
     assert_eq!(app.editor.canvas.zoom_level(), 1, "default zoom is 1");
@@ -2790,10 +2790,10 @@ fn test_cli_dispatch_view_zoom_in_via_menu() {
 
 #[test]
 fn test_cli_dispatch_tools_select_brush_via_menu() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use figby::tui::events::AppEvent;
     use figby::tui::menu::MenuAction;
     use figby::tui::{Tool, TuiApp};
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
 
@@ -2828,10 +2828,10 @@ fn test_cli_dispatch_tools_select_brush_via_menu() {
 
 #[test]
 fn test_multiple_widgets_interaction() {
-    use crossterm::event::KeyCode;
     use figby::tui::palette::{ColorTarget, ANSI_16_COLORS};
     use figby::tui::Tool;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
 
@@ -2874,10 +2874,10 @@ fn test_multiple_widgets_interaction() {
 
 #[test]
 fn test_rotate_tool_arrow_key_rotates_whole_layer() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::{CanvasCell, CanvasWidget};
     use figby::tui::layers::LayerStack;
     use figby::tui::{AppMode, Tool, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2917,8 +2917,8 @@ fn test_rotate_tool_arrow_key_rotates_whole_layer() {
 
 #[test]
 fn test_welcome_screen_shortcuts_work_with_or_without_shift() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     // 'A' (Animated GIF Import) opens the gif_import sizing dialog.
     let mut app = TuiApp::new();
@@ -2937,9 +2937,9 @@ fn test_welcome_screen_shortcuts_work_with_or_without_shift() {
 
 #[test]
 fn test_welcome_screen_font_and_image_import_keys_do_not_collide() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::tui::welcome::WelcomeAction;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     // 'I'/'i' previously matched two different actions (FontNewFromFile and
     // ImageOpen) in the same match statement; the first arm always won and
@@ -2962,9 +2962,9 @@ fn test_welcome_screen_font_and_image_import_keys_do_not_collide() {
 
 #[test]
 fn test_f8_starts_playback_and_toggles_pause() {
-    use crossterm::event::KeyCode;
     use figby::tui::timeline::TimelineFrame;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     // F8 is the dedicated play key now that Space paints only. With no
     // player yet, F8 reaches GA::PlayAnimation and starts playback. While
@@ -3018,10 +3018,10 @@ fn test_f8_starts_playback_and_toggles_pause() {
 
 #[test]
 fn test_space_paints_even_with_layers_panel_open() {
-    use crossterm::event::KeyCode;
     use figby::tui::side_panel::TabId;
     use figby::tui::timeline::TimelineFrame;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
 
     // Space is the paint key. Timeline frames must not redirect it to
     // playback, and the Layers tab must not redirect it to
@@ -3072,11 +3072,11 @@ fn test_space_paints_even_with_layers_panel_open() {
 
 #[test]
 fn test_timeline_frame_edits_persist_on_switch() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::{CanvasCell, CanvasWidget};
     use figby::tui::layers::LayerStack;
     use figby::tui::timeline::TimelineFrame;
     use figby::tui::{AppMode, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -3308,8 +3308,8 @@ fn test_render_does_not_overwrite_paint_with_stale_image_cache() {
 /// clean document.
 #[test]
 fn test_new_file_with_unsaved_changes_asks_confirmation() {
-    use crossterm::event::{KeyCode, KeyModifiers};
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.editor.mark_dirty();
@@ -3363,8 +3363,8 @@ fn test_new_file_with_unsaved_changes_asks_confirmation() {
 /// F-08 (GPT review): Cancel keeps the current document untouched.
 #[test]
 fn test_new_file_cancel_keeps_document() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.editor.mark_dirty();
@@ -3383,9 +3383,9 @@ fn test_new_file_cancel_keeps_document() {
 /// a `.figmap`; confirming a path saves, then the quit proceeds.
 #[test]
 fn test_quit_save_option_in_image_mode_saves_then_quits() {
-    use crossterm::event::KeyCode;
     use figby::tui::file_ops::FileOpsMode;
     use figby::tui::{AppMode, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
     let dir = tempfile::tempdir().unwrap();
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -3415,8 +3415,8 @@ fn test_quit_save_option_in_image_mode_saves_then_quits() {
 /// navigation keys do not.
 #[test]
 fn test_font_editor_dirty_tracking_via_mutation_epoch() {
-    use crossterm::event::KeyCode;
     use figby::tui::TuiApp;
+    use ratatui::crossterm::event::KeyCode;
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     assert!(!app.editor.unsaved);
@@ -3446,8 +3446,8 @@ fn test_font_editor_dirty_tracking_via_mutation_epoch() {
 /// Previously the lock flag was cosmetic.
 #[test]
 fn test_locked_layer_blocks_keyboard_paint() {
-    use crossterm::event::KeyCode;
     use figby::tui::{AppMode, TuiApp};
+    use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;

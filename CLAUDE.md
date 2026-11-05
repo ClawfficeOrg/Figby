@@ -4,33 +4,18 @@ See [README.md](README.md) for full project overview, CLI usage, feature matrix,
 
 ## Source layout
 
-- `figby-rs/src/` — Rust source
-  - `main.rs` — CLI entry point + TUI launch
-  - `lib.rs` — Crate root (re-exports public API)
-  - `font.rs` — FIGfont/TLF parser + ZIP font support
-  - `font_gen.rs` — TTF/OTF → FIGfont conversion
-  - `render.rs` — FIGlet render engine (kerning, smushing)
-  - `smush.rs` — Smushing rules engine
-  - `control.rs` — FIGlet control file parser (.flc)
-  - `image_input.rs` — Image → ASCII luminance/RGB matrix
-  - `gif_import.rs` — Animated GIF import
-  - `palette_import.rs` — Palette import (Paletty/ASE/WezTerm)
-  - `template.rs` — .ftmp template engine
-  - `tui/mod.rs` — TUI app state, event loop, render
-  - `tui/canvas.rs` — ASCII canvas buffer
-  - `tui/layers.rs` — Layer stack + compositing
-  - `tui/palette.rs` — Color palette widget
-  - `tui/toolbox.rs` — Tool selection widget
-  - `tui/font_editor.rs` — FIGfont glyph editor
-  - `tui/file_ops.rs` — File open/save dialogs + recent files
-  - `tui/layout.rs` — Layout computation
-  - `tui/theme.rs` — Color theme system
-  - `tui/welcome.rs` — Welcome screen
-  - `tui/components/` — Reusable widgets (`canvas.rs`, `status_bar.rs`)
-  - `tui/tools/` — Tool implementations (brush, fill, selection, etc.)
-- `docs/` — Task lists (`todo-v6.md` is current), audit, learnings
-- `fonts/` — Bundled `.flf` fonts
-- `assets/` — Icons, images, template examples
+The full, current file map is in [AGENTS.md § File Structure](AGENTS.md#file-structure);
+it is the only copy, so update it there. The short version:
+
+- `figby-rs/src/` — the `figby` crate: FIGlet engine (`render.rs`, `smush.rs`,
+  `font.rs`, `control.rs`, `input.rs`), CLI (`main.rs`), formats (`figmap.rs`,
+  `figseq.rs`, `template.rs`), and the TUI under `tui/` (`app_state.rs`,
+  `dispatch.rs`, `event_loop.rs`, `documents.rs`, widgets, `tools/`, `dialogs/`)
+- `figby-rs/figseq/` — standalone `.figseq` crate
+- `c-figlet/` — reference C FIGlet 2.2.5; `scripts/cparity-diff.sh` diffs against it
+- `docs/` — see `docs/README.md`; milestones in `docs/todo.md`
+- `fonts/` — bundled fonts; `assets/` — templates, demo images and video
+- `figby-rs/assets/` — compiled-in assets: icons (`icons.yaml`, `icons-ascii.yaml`), themes, images
 
 ## Build & run
 
@@ -41,7 +26,10 @@ cargo run --manifest-path figby-rs/Cargo.toml -- --tui
 
 ## Current milestone
 
-v6 — Pre-Release Hardening & Polish. See `docs/todo-v6.md`.
+v7.1 (Dialog, Keybindings & Props Polish) and v8 (multi-document, figmap,
+backlog) are active; v6 is complete. `docs/todo.md` is the source of truth.
+The package version (`figby-rs/Cargo.toml`, 6.2.x) is separate from milestone
+numbers.
 
 ## After every task
 

@@ -47,6 +47,15 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | **N10** C's UTF-8 reader swallows the byte after a broken sequence | intentional divergence, documented in the README |
 | P1 quadratic rendering | ✅ fixed in 6.2.7: a 33k-char line now takes 0.028 s (was 35.7 s; C takes 2.9 s), and RTL 0.036 s (C 10.2 s). Output is byte-identical (cparity 463/463) |
 | **N5** quit-prompt mouse targets were hard-coded columns, so with Save hidden a click on the Save position discarded | ✅ fixed in 6.2.3 |
+| D1 duplicate crossterm | ✅ fixed in 6.2.8: `ratatui::crossterm` everywhere, so only 0.29 is built. Also `rand` 0.9 (shared with proptest). `lru` 0.16 is wasm-only (ratzilla). `image` 0.24 stays because `rascii_art` pins it, so bumping it would add a copy rather than remove one; that's under D2 with `serde_yaml` |
+| A3 dead config | ✅ fixed in 6.2.8: removed `cli.color_mode` and `[tui.particles]`. Old files still load (unknown keys are ignored; there's a test) |
+| U1 welcome Shift+letter | ✅ fixed in 6.2.8, verified in tmux |
+| U2 duplicate startup tab | ✅ fixed in 6.2.8: New Image and welcome "New" reuse the untouched startup document, which also takes the new kind. The dirty dot before any edit doesn't reproduce at HEAD (tmux: fresh start, resize, Create Image, then quit with no prompt). The status bar's `Dirty` is the render mode, not the unsaved flag |
+| U3 Nerd Font only | ✅ fixed in 6.2.8: `FIGBY_ICONS=ascii` / `[tui] icons`, documented in the README, plus the `tool_flood_fill` glyph. Nerd stays the default: a Nerd Font can't be detected reliably, and switching the default would change the look for current users |
+| R1 version identity | ✅ fixed in 6.2.8: README 6.2.x, changelog 6.0.50 – 6.2.x, `CLAUDE.md` milestone |
+| R2 stale file maps | ✅ fixed in 6.2.8: one map, in `AGENTS.md`, with no line counts |
+| R3 YAML sketches in `assets/templates` | ✅ fixed in 6.2.8: renamed `.ftmp.draft`, plus a README |
+| R4 docs sprawl | ✅ partly done in 6.2.8: added the `docs/README.md` index and moved the root strays into `docs/`. The agent memory and logs were **not** moved to `docs/agent/`, because `scripts/ralph.sh`, `skills/ralph.md` and `AGENTS.md` hard-code their paths and the loop commits to them on its own branches |
 | Everything else | open |
 
 Upstream `run-tests.sh` with Figby now fails only 001 and 002, the same as C

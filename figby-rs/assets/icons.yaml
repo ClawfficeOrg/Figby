@@ -1,6 +1,8 @@
-# Figby TUI Iconset — Nerd Font icon names
+# Figby TUI Iconset — Nerd Font glyphs
 # Maps every UI element from the todo spec to a Nerd Font glyph.
-# Loaded at TUI startup; key = element id, value = nf icon name.
+# Loaded at TUI startup; key = element id, value = the glyph itself
+# (the trailing comment names it). Needs a Nerd Font in the terminal;
+# `[tui] icons = "ascii"` or FIGBY_ICONS=ascii switches to icons-ascii.yaml.
 
 # ── Modes ──────────────────────────────────────────
 mode_font_editor: 󰛖                                 # nf-fa-font changed to nf-md-format_font for now
@@ -12,7 +14,7 @@ tool_brush:                                        # nf-fa-paint_brush  alt: 
 tool_eraser:                                       # nf-fa-eraser       󰇾 nf-md-eraser  󰙂 nf-md-eraser_variant
 tool_line: 󰕞                                        # nf-md-vector_line
 tool_fill:                                         # nf-fa-fill alts:  󰁷 nf-md-basket_fill  # nf-fa-paint_bucket alts:  nf-fa-fill  nf-cod-paintcan  nf-fa-fill-drop 󰉦 nd-md-format_color_fill
-tool_flood_fill: nf-fa-paint_bucket
+tool_flood_fill: 󰉦                                  # nf-md-format_color_fill (was the literal name, not the glyph)
 tool_marquee:                                      # nf-fa-arrows alts: 
 tool_lasso: 󰼃                                       # nf-md-lasso alts:  󰆣 nf-fa-crosshairs
 tool_circle:                                       #nf-oct-circle    alts:  nf-fa-circle_o  nf-fa-circle_o  nf-fa-circle_thin    nf-cod-circle_large   nf-cod-circle  nf-cod-circle_filled  nf-cod-circle_small

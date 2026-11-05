@@ -1,7 +1,7 @@
-use crossterm::event::{KeyCode, KeyModifiers};
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::layout::Rect;
 use ratatui::widgets::{Block, Borders};
 use ratatui::Frame;
@@ -18,6 +18,38 @@ use super::{
 use crate::config;
 
 const ICONS_YAML: &str = include_str!("../../assets/icons.yaml");
+const ICONS_ASCII_YAML: &str = include_str!("../../assets/icons-ascii.yaml");
+
+/// Which icon set the TUI draws with (review U3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IconSet {
+    /// Nerd Font glyphs (`assets/icons.yaml`). The default; needs a Nerd
+    /// Font in the terminal or the icons render as tofu.
+    Nerd,
+    /// Plain ASCII (`assets/icons-ascii.yaml` over the built-in fallbacks).
+    Ascii,
+}
+
+impl IconSet {
+    /// `FIGBY_ICONS` wins over `[tui] icons` in config.toml; anything
+    /// other than `ascii` (case-insensitive) means the Nerd Font set.
+    pub fn resolve(env: Option<&str>, config: Option<&str>) -> Self {
+        match env.filter(|v| !v.trim().is_empty()).or(config) {
+            Some(v) if v.trim().eq_ignore_ascii_case("ascii") => IconSet::Ascii,
+            _ => IconSet::Nerd,
+        }
+    }
+
+    /// The icon map for this set. Keys absent from the map fall back to
+    /// each widget's own plain-text label.
+    pub fn icons(self) -> BTreeMap<String, String> {
+        let yaml = match self {
+            IconSet::Nerd => ICONS_YAML,
+            IconSet::Ascii => ICONS_ASCII_YAML,
+        };
+        serde_yaml::from_str(yaml).unwrap_or_default()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppMode {
@@ -691,7 +723,7 @@ impl EditorState {
                     height: None,
                 };
                 self.palette.apply_to_cell(&mut cell);
-                let mut rng = StdRng::seed_from_u64(rand::thread_rng().gen());
+                let mut rng = StdRng::seed_from_u64(rand::rng().random());
                 let size = self.brush.size;
                 let density = self.brush.density;
                 let mut buf = self.layer_stack.active_layer().buffer.clone();
@@ -1397,8 +1429,12 @@ pub struct TuiApp {
 
 impl TuiApp {
     pub fn new() -> Self {
-        let icons: BTreeMap<String, String> = serde_yaml::from_str(ICONS_YAML).unwrap_or_default();
         let config = config::load_config();
+        let icons = IconSet::resolve(
+            std::env::var("FIGBY_ICONS").ok().as_deref(),
+            config.tui.icons.as_deref(),
+        )
+        .icons();
         let theme = theme::load_theme(&config.tui.theme);
 
         let mut brush = brush::BrushState::new();
@@ -1700,6 +1736,24 @@ mod editor_state_tests {
             selection_polygon_points: Vec::new(),
             figmap_path: None,
         }
+    }
+
+    #[test]
+    fn test_icon_set_resolution() {
+        assert_eq!(IconSet::resolve(None, None), IconSet::Nerd);
+        assert_eq!(IconSet::resolve(None, Some("ascii")), IconSet::Ascii);
+        assert_eq!(IconSet::resolve(None, Some(" ASCII ")), IconSet::Ascii);
+        assert_eq!(IconSet::resolve(None, Some("nerd")), IconSet::Nerd);
+        // The environment wins over the config file, both ways...
+        assert_eq!(IconSet::resolve(Some("nerd"), Some("ascii")), IconSet::Nerd);
+        assert_eq!(
+            IconSet::resolve(Some("ascii"), Some("nerd")),
+            IconSet::Ascii
+        );
+        // ...unless it is set but empty.
+        assert_eq!(IconSet::resolve(Some(""), Some("ascii")), IconSet::Ascii);
+        // Unknown values keep the default rather than failing.
+        assert_eq!(IconSet::resolve(Some("emoji"), None), IconSet::Nerd);
     }
 
     #[test]

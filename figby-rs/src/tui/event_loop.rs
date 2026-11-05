@@ -1,8 +1,8 @@
-use crossterm::event::{
+use ratatui::crossterm::event::{
     self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
     Event, KeyEventKind,
 };
-use crossterm::execute;
+use ratatui::crossterm::execute;
 use std::io::{self, Write};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -46,7 +46,7 @@ impl TuiApp {
         let mut terminal = ratatui::init();
         execute!(io::stdout(), EnableBracketedPaste, EnableMouseCapture)?;
 
-        let (term_width, _) = crossterm::terminal::size().unwrap_or((80, 24));
+        let (term_width, _) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
         self.side_panel.open = self.default_side_panel_open(term_width);
 
         while !self.ui.should_quit {

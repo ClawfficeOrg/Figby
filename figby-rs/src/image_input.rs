@@ -33,7 +33,9 @@ pub type RgbPixel = (u8, u8, u8);
 
 #[cfg(not(target_arch = "wasm32"))]
 fn get_terminal_width() -> Option<usize> {
-    crossterm::terminal::size().map(|(w, _)| w as usize).ok()
+    ratatui::crossterm::terminal::size()
+        .map(|(w, _)| w as usize)
+        .ok()
 }
 
 #[cfg(target_arch = "wasm32")]

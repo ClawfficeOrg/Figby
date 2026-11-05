@@ -1,7 +1,9 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
+use ratatui::crossterm::event::{
+    KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 use ratatui::layout::Rect;
 use std::sync::mpsc;
 
@@ -409,20 +411,13 @@ impl TuiApp {
 
     /// Fresh blank document for the given session type (welcome "New").
     pub(crate) fn do_new_file_session(&mut self, session_type: SessionType) {
-        // Fresh-app case (single clean document): reset in place so the
-        // welcome screen doesn't leave an empty tab behind. Otherwise the
-        // new session gets its own tab — never a replace.
-        let pristine =
-            self.document_count() == 1 && !self.editor.unsaved && self.editor.revision == 0;
-        if pristine {
-            self.ui.session_type = session_type;
-        } else {
-            let kind = match session_type {
-                SessionType::Image => crate::tui::documents::DocumentKind::Image,
-                _ => crate::tui::documents::DocumentKind::Font,
-            };
-            self.new_document(kind);
-        }
+        // The new session gets its own tab, replacing the startup document
+        // only if that one is still untouched (never an edited one).
+        let kind = match session_type {
+            SessionType::Image => crate::tui::documents::DocumentKind::Image,
+            _ => crate::tui::documents::DocumentKind::Font,
+        };
+        self.new_document_or_reuse_pristine(kind);
         self.reset_document(32, 16);
         self.welcome.screen.show = false;
         self.welcome.fx = None;
@@ -575,7 +570,7 @@ impl TuiApp {
 
         // Toolbox click: select tool by row
         let mouse_fl = {
-            let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
+            let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
             let tw = self
                 .editor
                 .toolbox
@@ -816,7 +811,7 @@ impl TuiApp {
                 MouseEventKind::Down(_) | MouseEventKind::Drag(_) | MouseEventKind::Up(_)
             )
         {
-            let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
+            let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
             let full = Rect::new(0, 0, cols, rows);
             self.palette_editor
                 .handle_overlay_click(mouse.column, mouse.row, full);
@@ -1026,7 +1021,7 @@ impl TuiApp {
                         height: None,
                     };
                     self.editor.palette.apply_to_cell(&mut cell);
-                    let mut rng = StdRng::seed_from_u64(rand::thread_rng().gen());
+                    let mut rng = StdRng::seed_from_u64(rand::rng().random());
                     let size = self.editor.brush.size;
                     let density = self.editor.brush.density;
                     let mut buf = self.editor.layer_stack.active_layer().buffer.clone();
@@ -1212,7 +1207,7 @@ impl TuiApp {
                             height: None,
                         };
                         self.editor.palette.apply_to_cell(&mut cell);
-                        let mut rng = StdRng::seed_from_u64(rand::thread_rng().gen());
+                        let mut rng = StdRng::seed_from_u64(rand::rng().random());
                         let size = self.editor.brush.size;
                         let density = self.editor.brush.density;
                         let mut buf = self.editor.layer_stack.active_layer().buffer.clone();
@@ -1425,7 +1420,7 @@ impl TuiApp {
         if self.dialogs.new_image.active {
             self.dialogs.new_image.handle_key(code);
             if !self.dialogs.new_image.active && self.dialogs.new_image.confirmed {
-                self.new_document(crate::tui::documents::DocumentKind::Image);
+                self.new_document_or_reuse_pristine(crate::tui::documents::DocumentKind::Image);
                 let w = self.dialogs.new_image.result_width;
                 let h = self.dialogs.new_image.result_height;
                 let pal_name = self.dialogs.new_image.result_palette_name.clone();
@@ -2110,7 +2105,7 @@ impl TuiApp {
                     height: None,
                 };
                 self.editor.palette.apply_to_cell(&mut cell);
-                let mut rng = StdRng::seed_from_u64(rand::thread_rng().gen());
+                let mut rng = StdRng::seed_from_u64(rand::rng().random());
                 let size = self.editor.brush.size;
                 let density = self.editor.brush.density;
                 let mut buf = self.editor.layer_stack.active_layer().buffer.clone();
@@ -2338,7 +2333,7 @@ impl TuiApp {
         ) {
             self.editor.font_editor.brush_char = self.editor.brush.ch;
         }
-        let area_width = crossterm::terminal::size().unwrap_or((80, 24)).0;
+        let area_width = ratatui::crossterm::terminal::size().unwrap_or((80, 24)).0;
         let epoch_before = self.editor.font_editor.mutation_epoch;
         if self
             .editor
@@ -3784,7 +3779,7 @@ mod playback_reconciliation_tests {
 mod sidebar_keybindings_tests {
     use super::*;
     use crate::tui::side_panel::TabId;
-    use crossterm::event::KeyEvent;
+    use ratatui::crossterm::event::KeyEvent;
 
     fn app_with_frames(frame_count: usize) -> TuiApp {
         let mut app = TuiApp::new();
@@ -3946,7 +3941,7 @@ mod keybind_collision_tests {
     use super::*;
     use crate::font::{FIGcharacter, FIGfont};
     use crate::tui::font_editor::FontEditorView;
-    use crossterm::event::KeyEvent;
+    use ratatui::crossterm::event::KeyEvent;
     use std::collections::HashMap;
 
     fn test_font() -> FIGfont {
@@ -4249,8 +4244,8 @@ mod keybind_collision_tests {
 
     #[test]
     fn test_doc_tab_click_switches_document() {
-        use crossterm::event::KeyModifiers;
-        use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+        use ratatui::crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
         use ratatui::layout::Rect;
 
         let mut app = app_not_font_editor();
@@ -4348,7 +4343,7 @@ mod keybind_collision_tests {
 mod timeline_key_wiring_tests {
     use super::super::AppMode;
     use super::*;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     fn app_with_visible_timeline() -> TuiApp {
         let mut app = TuiApp::new();
@@ -4502,7 +4497,7 @@ mod timeline_key_wiring_tests {
 #[cfg(test)]
 mod open_in_new_tab_tests {
     use super::super::{AppMode, Tool, TuiApp};
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     fn dirty_app() -> TuiApp {
         let mut app = TuiApp::new();
@@ -4599,11 +4594,42 @@ mod open_in_new_tab_tests {
         fresh.welcome.screen.show = false;
         fresh.do_new_file_session(crate::tui::app_state::SessionType::Image);
         assert_eq!(fresh.document_count(), 1, "pristine doc reused");
+        assert_eq!(
+            fresh.documents[0].kind,
+            crate::tui::documents::DocumentKind::Image,
+            "reused tab takes the new kind (icon, Tab cycle)"
+        );
+        assert_eq!(fresh.ui.mode, AppMode::ImageEditor);
 
         let mut used = dirty_app();
         used.do_new_file_session(crate::tui::app_state::SessionType::Image);
         assert_eq!(used.document_count(), 2, "dirty doc gets a new tab");
         assert_eq!(used.ui.mode, AppMode::ImageEditor);
+    }
+
+    /// U2: welcome → Create Image → Enter used to leave the blank startup
+    /// font document behind as a second "Untitled" tab.
+    #[test]
+    fn test_welcome_create_image_reuses_startup_doc() {
+        let mut app = TuiApp::new();
+        assert!(app.welcome.screen.show);
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE));
+        assert!(app.dialogs.new_image.active, "welcome [C] opens New Image");
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(!app.dialogs.new_image.active);
+        assert_eq!(app.document_count(), 1, "no leftover empty tab");
+        assert_eq!(
+            app.documents[0].kind,
+            crate::tui::documents::DocumentKind::Image
+        );
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        assert!(!app.doc_unsaved(0), "a fresh image is not dirty");
+
+        // With real work in the first tab, a new image still gets its own.
+        app.editor.mark_dirty();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert_eq!(app.document_count(), 2);
     }
 
     #[test]

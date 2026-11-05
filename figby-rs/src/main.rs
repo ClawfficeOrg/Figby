@@ -179,7 +179,6 @@ struct CliConfig {
     multibyte: u32,
     controlfiles: Vec<String>,
     to_file: Option<String>,
-    color_mode: Option<String>,
 }
 
 impl Default for CliConfig {
@@ -198,7 +197,6 @@ impl Default for CliConfig {
             multibyte: 0,
             controlfiles: Vec::new(),
             to_file: None,
-            color_mode: None,
         }
     }
 }
@@ -553,7 +551,6 @@ impl CliConfig {
         if let Some(width) = config_file.cli.output_width {
             config.outputwidth = width;
         }
-        config.color_mode = config_file.cli.color_mode.clone();
 
         if !args.message.is_empty() || args.flag_A {
             config.cmdinput = true;
@@ -783,7 +780,9 @@ fn printinfo(
 
 #[cfg(not(target_arch = "wasm32"))]
 fn get_columns() -> Option<u16> {
-    crossterm::terminal::size().ok().map(|(cols, _)| cols)
+    ratatui::crossterm::terminal::size()
+        .ok()
+        .map(|(cols, _)| cols)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1709,7 +1708,7 @@ fn main() {
                 // Fit within the current terminal, reserving 1 row for the
                 // playback progress bar. Falls back to a common default if
                 // the terminal size can't be queried (e.g. not a real tty).
-                let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
+                let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
                 figby::gif_import::GifScaleTarget::FitBox(
                     cols as usize,
                     (rows as usize).saturating_sub(1).max(1),
@@ -2806,7 +2805,6 @@ mod tests {
             cli: figby::config::CliSection {
                 font: Some("big".to_string()),
                 output_width: Some(100),
-                color_mode: None,
             },
             tui: figby::config::TuiSection::default(),
         };
@@ -2824,7 +2822,6 @@ mod tests {
             cli: figby::config::CliSection {
                 font: Some("big".to_string()),
                 output_width: Some(100),
-                color_mode: None,
             },
             tui: figby::config::TuiSection::default(),
         };
@@ -2842,7 +2839,6 @@ mod tests {
             cli: figby::config::CliSection {
                 font: None,
                 output_width: Some(100),
-                color_mode: None,
             },
             tui: figby::config::TuiSection::default(),
         };
@@ -2852,28 +2848,5 @@ mod tests {
 
         assert_eq!(cli_config.fontname, "small");
         assert_eq!(cli_config.outputwidth, 100);
-    }
-
-    #[test]
-    fn test_config_color_mode_field() {
-        let config_file = FigbyConfig {
-            cli: figby::config::CliSection {
-                font: None,
-                output_width: None,
-                color_mode: Some("always".to_string()),
-            },
-            tui: figby::config::TuiSection::default(),
-        };
-
-        let args = CliArgs::try_parse_from(["figby"]).unwrap();
-        let cli_config = CliConfig::from_args_with_config(args, &config_file);
-        assert_eq!(cli_config.color_mode, Some("always".to_string()));
-    }
-
-    #[test]
-    fn test_config_color_mode_default() {
-        let args = CliArgs::try_parse_from(["figby"]).unwrap();
-        let cli_config = CliConfig::from_args_with_config(args, &FigbyConfig::default());
-        assert_eq!(cli_config.color_mode, None);
     }
 }

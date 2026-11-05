@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -1315,9 +1315,14 @@ impl LayerPanel {
 
                 let opa_pct = (layer.opacity as f32 / 255.0 * 100.0).round() as u8;
                 let link_suffix = if layer.link.is_some() {
-                    " \u{1f517}"
+                    let link = self
+                        .icons
+                        .get("layer_link")
+                        .map(|s| s.as_str())
+                        .unwrap_or("\u{1f517}");
+                    format!(" {link}")
                 } else {
-                    ""
+                    String::new()
                 };
 
                 let attr_style = Style::default()
@@ -1442,11 +1447,11 @@ impl LayerPanel {
         &mut self,
         col: u16,
         row: u16,
-        kind: crossterm::event::MouseEventKind,
+        kind: ratatui::crossterm::event::MouseEventKind,
         area: Rect,
         stack: &mut LayerStack,
     ) -> bool {
-        use crossterm::event::{MouseButton, MouseEventKind};
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
         let inner = Block::default().borders(Borders::ALL).inner(area);
         match kind {
             MouseEventKind::Down(MouseButton::Left) => {
@@ -2200,7 +2205,7 @@ mod tests {
 
     #[test]
     fn test_handle_mouse_selects_correct_layer_with_content_area() {
-        use crossterm::event::{MouseButton, MouseEventKind};
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
 
         let mut stack = make_stack(10, 10);
         stack.add(10, 10); // index 0 "Background", index 1 "Layer 2"
@@ -2228,7 +2233,7 @@ mod tests {
     }
     #[test]
     fn test_handle_mouse_attr_icons_toggle() {
-        use crossterm::event::{MouseButton, MouseEventKind};
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
 
         let mut stack = make_stack(10, 10);
         stack.add(10, 10);
@@ -2257,7 +2262,7 @@ mod tests {
 
     #[test]
     fn test_handle_mouse_gutter_click_selects() {
-        use crossterm::event::{MouseButton, MouseEventKind};
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
 
         let mut stack = make_stack(10, 10);
         stack.add(10, 10);
@@ -2278,7 +2283,7 @@ mod tests {
 
     #[test]
     fn test_handle_mouse_wheel_scrolls_without_dirty() {
-        use crossterm::event::MouseEventKind;
+        use ratatui::crossterm::event::MouseEventKind;
 
         let mut stack = make_stack(10, 10);
         let mut panel = LayerPanel::new();

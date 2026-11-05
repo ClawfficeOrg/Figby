@@ -97,6 +97,40 @@ figby -d fonts -f banner "Figby"
 Default font directory is `/usr/share/figlet`. Use `-d <path>` or
 `FIGLET_FONTDIR` to override without system install.
 
+## TUI
+
+Run `figby` with no arguments in a terminal (or `figby --tui`) to open the
+editor.
+
+**Icons need a [Nerd Font](https://www.nerdfonts.com/).** Without one, the
+toolbox, tabs and layer panel show empty boxes. To use plain ASCII instead,
+set `FIGBY_ICONS=ascii`, or put `icons = "ascii"` under `[tui]` in the
+config file. The environment variable wins over the config file.
+
+### Config file
+
+`$XDG_CONFIG_HOME/figby/config.toml` (default `~/.config/figby/config.toml`).
+Every key is optional, and keys the file doesn't recognise are ignored.
+
+```toml
+[cli]
+font = "slant"          # default -f; command-line flags still win
+output_width = 100      # default -w
+
+[tui]
+icons = "ascii"         # "nerd" (default) or "ascii"
+theme = "my-theme.yaml" # path to a theme YAML; "default" or unset = built-in
+recent_files_max = 20
+undo_limit = 200        # capped at 10000
+render_mode = "fast"    # "fast" or unset (dirty-rectangle redraw)
+
+[tui.brush]
+shape = "circle"        # square, circle, spray, dither, custom
+size = 3
+density = 50
+ch = "#"
+```
+
 ## CLI Usage
 
 ```

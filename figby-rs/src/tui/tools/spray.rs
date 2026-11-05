@@ -22,7 +22,7 @@ pub fn spray_stamp(
             if d2 > rr {
                 continue;
             }
-            if !rng.gen_bool(density as f64 / 100.0) {
+            if !rng.random_bool(density as f64 / 100.0) {
                 continue;
             }
             let x = cx.wrapping_add(dx);

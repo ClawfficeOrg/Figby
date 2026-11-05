@@ -126,60 +126,72 @@ After completing any implementation work:
 
 ## File Structure
 
+Checked against the tree on 2026-11-04. No line counts: they went stale.
+When you add or remove a module, update this map in the same commit.
+
 ```
-figby-rs/         # Rust crate (library + TUI binary)
-├── Cargo.toml
+figby-rs/                 # Rust workspace: the figby crate (lib + binary) and figseq
+├── Cargo.toml            # Package version lives here (see Post-Task Checklist)
+├── figseq/               # Standalone crate: .figseq format, Player, ratatui Banner widget
+├── benches/              # criterion benches (render_bench.rs)
+├── tests/                # Integration tests; tests/cparity/scenarios.tsv drives C parity
 └── src/
-    ├── main.rs           # CLI entry point + TUI launch
+    ├── main.rs           # CLI (FIGlet flags with C getopt semantics, image/font/play/bake modes) + TUI launch
     ├── lib.rs            # Crate root (re-exports)
-    ├── font.rs           # FIGfont/TLF parser + ZIP font support
-    ├── font_gen.rs       # TTF/OTF → FIGfont conversion (fontdue)
-    ├── render.rs         # Character rendering, kerning, smushing
-    ├── smush.rs          # Smushing rules engine
-    ├── control.rs        # FIGlet control file parser (.flc)
-    ├── config.rs         # CLI config / settings persistence
-    ├── input.rs          # Input pipeline
-    ├── output.rs         # Output formatting
+    ├── font.rs           # FIGfont/TLF parser (lenient like C), ZIP fonts, Latin-1 fallback
+    ├── font_gen.rs       # TTF/OTF → FIGfont conversion
+    ├── render.rs         # FIGlet engine: OutputLine, add_char/split_line, kerning, smushing
+    ├── smush.rs          # Smushing rules
+    ├── control.rs        # Control files (.flc), ISO 2022 / multibyte input decoding
+    ├── input.rs          # Multibyte input readers (UTF-8, HZ, DBCS) and -D Deutsch mapping
+    ├── output.rs         # Canvas export (TXT/ANSI/PNG/GIF/APNG), procedural block/braille glyphs
+    ├── config.rs         # ~/.config/figby/config.toml
+    ├── atomic_io.rs      # Crash- and symlink-safe file replacement (every user-facing save)
+    ├── bounded_io.rs     # Size-capped reads
+    ├── sanitize.rs       # Display sanitization for untrusted strings
     ├── image_input.rs    # Image → ASCII luminance/RGB matrix
     ├── gif_import.rs     # Animated GIF import
     ├── palette_import.rs # Palette import (Paletty/ASE/WezTerm)
+    ├── figmap.rs         # .figmap project format (layers, timeline, lights)
+    ├── figseq.rs         # Re-exports the figseq crate + bake (figmap → figseq, native only)
     ├── template.rs       # .ftmp template engine
     ├── web.rs            # WASM bindings
     └── tui/              # TUI application (ratatui)
-        ├── mod.rs        # re-exports + render pipeline + shared helpers (~774 LOC)
-        ├── app_state.rs  # TuiApp + EditorState/AnimationState/LightingState + new
-        ├── event_loop.rs # run(), handle_event(), tick/async completion
-        ├── dispatch.rs   # handle_key_event/handle_mouse_event + perform_* actions
+        ├── mod.rs        # Re-exports, render pipeline, shared helpers
+        ├── app_state.rs  # TuiApp, EditorState/AnimationState/LightingState, IconSet, new()
+        ├── event_loop.rs # run(), handle_event(), tick, async completion
+        ├── dispatch.rs   # handle_key_event/handle_mouse_event, perform_* actions (largest file)
+        ├── documents.rs  # Multi-document tabs (park/unpark live state)
+        ├── overlays.rs   # Floating dialogs, quit prompt, keybindings, undo panel
         ├── canvas.rs     # ASCII canvas buffer
-        ├── layers.rs     # Layer stack + compositing
-        ├── palette.rs    # Color palette widget
-        ├── palette_editor.rs
-        ├── toolbox.rs    # Tool selection widget
-        ├── font_editor.rs # FIGfont glyph editor
-        ├── image_editor.rs
-        ├── file_ops.rs   # File open/save dialogs
-        ├── layout.rs     # Layout computation
-        ├── keymap.rs     # Global keybindings
-        ├── events.rs     # App event types
-        ├── theme.rs      # Color theme system
-        ├── welcome.rs    # Welcome screen
-        ├── lighting.rs   # Dynamic lighting engine
-        ├── side_panel.rs # Right drawer panel
-        ├── timeline.rs   # Animation timeline
-        ├── export.rs     # Export formats
-        ├── tools/        # Tool implementations
-        │   ├── brush.rs, eraser.rs, fill.rs, line.rs
-        │   ├── selection.rs, spray.rs, text.rs, eyedropper.rs
-        └── components/   # Reusable widgets
-            ├── canvas.rs
-            └── status_bar.rs
-fonts/                # FIGlet font files (.flf/.tlf)
-assets/               # Icons, images, templates
+        ├── layers.rs     # Layer stack, compositing, layer panel
+        ├── brush.rs      # Brush state and shapes
+        ├── palette.rs, palette_editor.rs
+        ├── toolbox.rs    # Tool list widget
+        ├── font_editor.rs, image_editor.rs
+        ├── file_ops.rs   # Open/Save dialogs, recent files
+        ├── layout.rs, theme.rs, keymap.rs, events.rs, menu.rs
+        ├── welcome.rs, fx.rs        # Welcome screen and its tachyonfx fade
+        ├── lighting.rs, light_panel.rs
+        ├── timeline.rs, player.rs, particles.rs
+        ├── side_panel.rs, props_panel.rs, status.rs (canvas settings), undo.rs, undo_panel.rs
+        ├── render_mode.rs, throbber.rs, export.rs
+        ├── component.rs  # Empty placeholder (Component trait was removed)
+        ├── dialogs/      # new_image, gif_import, rascii_import, system_font, font_import_options
+        ├── tools/        # brush, eraser, eyedropper, fill, line, move_tool, rotate_tool,
+        │                 #   selection, spray, text
+        └── components/   # canvas.rs, status_bar.rs
+c-figlet/                 # Reference C FIGlet 2.2.5 (parity oracle)
+fonts/                    # Bundled .flf/.tlf fonts
+assets/                   # Templates, demo images/video (figby-rs/assets/ holds the compiled-in icons, themes)
+tests/                    # Upstream-style resNNN.txt fixtures, input.txt
 scripts/
-├── ralph.sh          # Autonomous task loop (bash)
-└── ralph-monitor.sh  # Rate-limit monitor cron
-docs/
-├── todo.md           # Master todo index
-├── todo-v6.md        # v6 pre-release hardening tasks
-└── codebase-audit-2026-06-18.md
+├── cparity-diff.sh       # Builds C FIGlet, diffs ~460 cases against figby (CI gate)
+├── regenerate-expected.sh# Regenerates tests/resNNN.txt from C FIGlet
+├── ralph.sh              # Autonomous task loop (bash)
+└── ralph-monitor.sh      # Rate-limit monitor cron
+docs/                     # See docs/README.md for the index
+├── todo.md               # Master todo index (milestones)
+├── memory.md, learnings.md, ralph-log.md   # Agent memory and logs (paths used by ralph.sh)
+└── full-review-2026-11-04.md               # Latest full review and fix status
 ```

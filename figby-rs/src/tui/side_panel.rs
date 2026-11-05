@@ -1708,7 +1708,7 @@ mod tests {
     #[test]
     fn test_palette_click_accounts_for_multi_select_row() {
         use crate::tui::palette::Palette;
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         use ratatui::layout::Rect;
         let mut p = Palette::new();
         let area = Rect::new(0, 0, 16, 20);

@@ -1,6 +1,6 @@
 [package]
 name = "figby"
-version = "6.2.7"
+version = "6.2.8"
 edition = "2021"
 description = "FIGlet deluxe: drop in rust replacement but with more time-wasting toys"
 license = "BSD-3-Clause"
@@ -27,11 +27,10 @@ unicode-width = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ratatui = { version = "0.30.1", features = ["crossterm", "serde"] }
-crossterm = "0.28"
 font-kit = "0.14.3"
 pathfinder_geometry = "0.5"
 tachyonfx = { version = "0.25", features = ["std-duration"] }
-rand = "0.8"
+rand = "0.9"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ratatui = { version = "0.30.1", default-features = false }

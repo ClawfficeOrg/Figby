@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, MouseButton, MouseEventKind};
+use ratatui::crossterm::event::{KeyCode, MouseButton, MouseEventKind};
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};

@@ -1,5 +1,5 @@
-use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -2202,7 +2202,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_navigation() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_transform_editor();
 
@@ -2223,7 +2223,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_esc_returns_to_overview() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_transform_editor();
         assert_eq!(editor.view, FontEditorView::TransformEditor);
@@ -2233,7 +2233,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_t_key_opens() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         assert!(editor.handle_key(KeyCode::Char('T'), KeyModifiers::NONE, 120));
         assert_eq!(editor.view, FontEditorView::TransformEditor);
@@ -2241,7 +2241,7 @@ mod tests {
 
     #[test]
     fn test_smush_editor_s_key_opens() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         assert!(editor.handle_key(KeyCode::Char('S'), KeyModifiers::NONE, 120));
         assert_eq!(editor.view, FontEditorView::SmushRuleEditor);
@@ -2249,7 +2249,7 @@ mod tests {
 
     #[test]
     fn test_smush_editor_esc_returns_to_overview() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_smush_editor();
         assert_eq!(editor.view, FontEditorView::SmushRuleEditor);
@@ -2259,7 +2259,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_resize_flow() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_transform_editor();
 
@@ -2279,7 +2279,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_italicize_flow() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_transform_editor();
 
@@ -2293,7 +2293,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_bold_flow() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_transform_editor();
 
@@ -2309,7 +2309,7 @@ mod tests {
 
     #[test]
     fn test_transform_editor_mirror_flow() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut editor = make_editor();
         editor.enter_transform_editor();
 

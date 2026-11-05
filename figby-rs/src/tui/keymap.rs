@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
 /// Machine-dispatchable global actions — one-to-one with entries in [`GLOBAL_DISPATCH`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,7 +1,7 @@
 use super::canvas::CanvasCell;
 use super::theme::Theme;
-use crossterm::event::KeyCode;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::KeyCode;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
@@ -729,7 +729,7 @@ mod tests {
     use super::ColorTarget;
     use super::Palette;
     use super::CHAR_GROUPS;
-    use crossterm::event::KeyCode;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::layout::Rect;
 
     #[test]
@@ -1179,7 +1179,7 @@ mod tests {
 
     #[test]
     fn test_navigation_offset_5() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut p = Palette::new();
         assert_eq!(p.selected_index, 0);
         p.handle_key(KeyCode::Down);

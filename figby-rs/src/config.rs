@@ -13,7 +13,6 @@ pub struct FigbyConfig {
 pub struct CliSection {
     pub font: Option<String>,
     pub output_width: Option<u32>,
-    pub color_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -22,32 +21,10 @@ pub struct TuiSection {
     pub recent_files_max: Option<usize>,
     pub undo_limit: Option<usize>,
     pub render_mode: Option<String>,
+    /// `"nerd"` (default) or `"ascii"`; `FIGBY_ICONS` overrides it.
+    pub icons: Option<String>,
     #[serde(default)]
     pub brush: BrushSection,
-    #[serde(default)]
-    pub particles: ParticleSection,
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct ParticleSection {
-    pub emitter_x: Option<f64>,
-    pub emitter_y: Option<f64>,
-    pub spawn_rate: Option<f64>,
-    pub lifetime_min: Option<f64>,
-    pub lifetime_max: Option<f64>,
-    pub velocity_x_min: Option<f64>,
-    pub velocity_x_max: Option<f64>,
-    pub velocity_y_min: Option<f64>,
-    pub velocity_y_max: Option<f64>,
-    pub acceleration_x: Option<f64>,
-    pub acceleration_y: Option<f64>,
-    pub size: Option<u8>,
-    pub color_r: Option<u8>,
-    pub color_g: Option<u8>,
-    pub color_b: Option<u8>,
-    pub character: Option<String>,
-    pub opacity: Option<u8>,
-    pub blend_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -112,7 +89,6 @@ ch = "#"
         let config: FigbyConfig = toml::from_str(toml_str).unwrap();
         assert_eq!(config.cli.font.as_deref(), Some("big"));
         assert_eq!(config.cli.output_width, Some(100));
-        assert_eq!(config.cli.color_mode.as_deref(), Some("always"));
         assert_eq!(config.tui.theme.as_deref(), Some("dark"));
         assert_eq!(config.tui.recent_files_max, Some(20));
         assert_eq!(config.tui.undo_limit, None);
@@ -131,7 +107,6 @@ font = "big"
         let config: FigbyConfig = toml::from_str(toml_str).unwrap();
         assert_eq!(config.cli.font.as_deref(), Some("big"));
         assert_eq!(config.cli.output_width, None);
-        assert_eq!(config.cli.color_mode, None);
         assert_eq!(config.tui.theme, None);
         assert_eq!(config.tui.brush.shape, None);
     }
@@ -167,6 +142,28 @@ undo_limit = 100
         assert_eq!(config.cli.output_width, None);
         assert_eq!(config.tui.theme, None);
         assert_eq!(config.tui.brush.size, None);
+    }
+
+    /// `cli.color_mode` and `[tui.particles]` were parsed but never used,
+    /// so they were removed (review A3). Old config files that still set
+    /// them must keep loading, with the rest of their settings intact.
+    #[test]
+    fn test_config_removed_keys_still_parse() {
+        let toml_str = r#"
+[cli]
+font = "big"
+color_mode = "always"
+
+[tui]
+theme = "dark"
+
+[tui.particles]
+spawn_rate = 4.0
+character = "*"
+"#;
+        let config: FigbyConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.cli.font.as_deref(), Some("big"));
+        assert_eq!(config.tui.theme.as_deref(), Some("dark"));
     }
 
     #[test]

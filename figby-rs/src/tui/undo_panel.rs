@@ -28,17 +28,17 @@ impl UndoPanel {
         self.scroll_offset = 0;
     }
 
-    pub fn handle_key(&mut self, code: crossterm::event::KeyCode) -> bool {
+    pub fn handle_key(&mut self, code: ratatui::crossterm::event::KeyCode) -> bool {
         match code {
-            crossterm::event::KeyCode::Up => {
+            ratatui::crossterm::event::KeyCode::Up => {
                 self.scroll_offset = self.scroll_offset.saturating_sub(1);
                 true
             }
-            crossterm::event::KeyCode::Down => {
+            ratatui::crossterm::event::KeyCode::Down => {
                 self.scroll_offset = self.scroll_offset.saturating_add(1);
                 true
             }
-            crossterm::event::KeyCode::Esc => {
+            ratatui::crossterm::event::KeyCode::Esc => {
                 self.open = false;
                 self.scroll_offset = 0;
                 true

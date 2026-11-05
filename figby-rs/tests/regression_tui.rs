@@ -138,9 +138,9 @@ fn regression_tui_menubar_roundtrip() {
 /// Dialog widget round-trip: open FileOpsDialog, render, verify path entry.
 #[test]
 fn regression_tui_dialog_roundtrip() {
-    use crossterm::event::KeyCode;
     use figby::tui::file_ops::FileOpsDialog;
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
 
     let mut dialog = FileOpsDialog::new();
@@ -182,9 +182,9 @@ fn regression_tui_full_app_render() {
 /// Canvas with zoom=2 and colored cells renders correctly.
 #[test]
 fn regression_tui_canvas_zoom_colored() {
-    use crossterm::event::KeyCode;
     use figby::tui::canvas::{CanvasCell, CanvasWidget};
     use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::KeyCode;
     use ratatui::style::Color;
     use ratatui::Terminal;
 

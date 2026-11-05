@@ -2,10 +2,10 @@ use std::cell::Cell;
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
-use crossterm::event::{self, Event, KeyCode};
-use crossterm::terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::{self, Event, KeyCode};
+use ratatui::crossterm::terminal;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::Widget;

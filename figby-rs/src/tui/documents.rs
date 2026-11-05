@@ -282,6 +282,37 @@ impl TuiApp {
         self.active_doc
     }
 
+    /// True while the app holds only the blank startup document: one tab,
+    /// never edited, never saved or opened from a file.
+    pub fn is_pristine(&self) -> bool {
+        self.documents.len() == 1
+            && !self.editor.unsaved
+            && self.editor.revision == 0
+            && self.editor.font_editor.current_path.is_none()
+            && self.editor.font_editor.font_storage_name.trim().is_empty()
+            && self.editor.figmap_path.is_none()
+    }
+
+    /// Start a fresh `kind` document. If the only tab is the untouched
+    /// startup document it is reused, so the welcome screen doesn't leave
+    /// an empty second "Untitled" tab behind (review U2). Reused in place
+    /// rather than replaced because the startup document is the one that
+    /// carries the config overrides (brush, undo limit). Callers reset its
+    /// content themselves, as they do for a new tab.
+    pub fn new_document_or_reuse_pristine(&mut self, kind: DocumentKind) -> usize {
+        if !self.is_pristine() {
+            return self.new_document(kind);
+        }
+        let idx = self.active_doc;
+        self.documents[idx].kind = kind;
+        self.ui.session_type = kind.session_type();
+        self.ui.mode = kind.default_mode();
+        self.ui.prev_mode = self.ui.mode;
+        self.frame.dirty = true;
+        self.frame.force_full_redraw = true;
+        idx
+    }
+
     /// Close a tab. The last document and unsaved documents are refused;
     /// prompting for the latter arrives with the 8.5.3 keybinding.
     pub fn close_document(&mut self, idx: usize) -> CloseResult {

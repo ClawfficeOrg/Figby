@@ -2,7 +2,7 @@ use crate::font::{load_font, FIGfont};
 use crate::render::{Justification, OutputLine};
 use crate::smush::SmushMode;
 use crate::tui::canvas::{CanvasBuffer, CanvasCell, TextOverlay};
-use crossterm::event::{KeyCode, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};

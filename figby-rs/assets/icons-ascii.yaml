@@ -1,0 +1,12 @@
+# Figby TUI Iconset — plain ASCII, for terminals without a Nerd Font.
+# Selected with `[tui] icons = "ascii"` in config.toml or FIGBY_ICONS=ascii.
+#
+# Deliberately sparse: every icon lookup in the TUI has a plain-text
+# fallback for a missing key (tools show their two-letter abbreviation,
+# layer buttons `+ D x G`, blend modes their name, ...), so this file
+# only overrides the few fallbacks that are emoji or non-ASCII symbols.
+# Values must stay ASCII; tests/icons_ascii.rs enforces it.
+
+status_git_branch: "br"
+status_clock: "@"
+layer_link: "&"

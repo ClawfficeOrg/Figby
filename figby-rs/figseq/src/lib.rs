@@ -575,8 +575,7 @@ fn write_atomic(dest: &Path, data: &[u8]) -> std::io::Result<()> {
     let mut opened = None;
     for attempt in 0..64u32 {
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let candidate =
-            parent.join(format!(".figseq_tmp_{}_{n}_{attempt}", std::process::id()));
+        let candidate = parent.join(format!(".figseq_tmp_{}_{n}_{attempt}", std::process::id()));
         match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)

@@ -1,4 +1,35 @@
 # Changelog
+## [6.2.8] - 2026-11-05
+
+### Added
+- `FIGBY_ICONS=ascii` / `[tui] icons = "ascii"`: a plain-ASCII icon set for terminals without a Nerd Font,
+  where the default icons render as empty boxes. It overrides only the fallbacks that were emoji (git
+  branch, clock, layer link); everything else already had a text fallback. A test renders the welcome
+  screen and every mode and checks that no private-use or emoji glyph is left.
+- README: a TUI section covering the Nerd Font requirement, the icon switch and every `config.toml` key.
+- `docs/README.md` index (start here, specs, reviews by date, test checklists, agent files) and
+  `assets/templates/README.md`.
+
+### Fixed
+- Welcome screen: Shift+letter did nothing, although the labels show the shortcuts as capitals
+  (`[C]reate Image`). The handler required no modifiers at all, and terminals send Shift+C as `C`
+  with SHIFT set.
+- Welcome → Create Image left the blank startup document behind as a second `Untitled` tab. The New Image
+  dialog now reuses the startup document while it is untouched, and so does welcome "New". The reused
+  tab also takes the new kind (icon, Tab cycle); before, a reused tab kept the font kind.
+- `icons.yaml`: `tool_flood_fill` held the literal text `nf-fa-paint_bucket` instead of the glyph.
+
+### Changed
+- Dependencies: Figby uses ratatui's re-exported crossterm 0.29 instead of its own crossterm 0.28, so one
+  copy is built (one event reader, one raw-mode implementation). `rand` 0.8 → 0.9, shared with proptest.
+- Config: removed `cli.color_mode` and `[tui.particles]`, which were parsed but never used. Old config
+  files that still set them load as before, since unknown keys are ignored.
+- Docs: `CLAUDE.md` names the active milestones (v7.1, v8) and points to one file map, in `AGENTS.md`.
+  That map is rewritten against the tree, without line counts. The undated `[Unreleased]` changelog
+  block is labelled 6.0.50 – 6.2.1. Root `handoff.md` and `5.0-manual-testing-notes.md` moved into `docs/`.
+- `assets/templates/figby-30w.ftmp` and `figby-cli-h1.ftmp` are renamed `.ftmp.draft`: they are YAML
+  design sketches that `figby -T` can't parse.
+
 ## [6.2.7] - 2026-11-04
 
 ### Changed
@@ -121,7 +152,11 @@
 - C-parity scenarios 66–69 (Latin-1 input, `-C utf8`, bare `-C` names, `.flc` suffix) with fixtures generated
   from C FIGlet 2.2.5, plus tests for `--to-file`/`--output` and a missing control file.
 
-## [Unreleased]
+## [6.0.50 – 6.2.1] - 2026-10-05 to 2026-10-19
+
+These versions were bumped without their own entries; this section collects
+them. 6.1.0 added `.figseq`, 6.2.0 split it into the `figseq` crate, and
+6.2.1 fixed `--play-inline`.
 
 ### Added
 - `figseq` workspace crate (`figby-rs/figseq`): the `.figseq` format, colour codec and `CanvasCell` split out

@@ -402,22 +402,22 @@ impl Particle {
 
     fn new(config: &ParticleConfig) -> Self {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let lifetime = if config.lifetime_min < config.lifetime_max {
-            rng.gen_range(config.lifetime_min..config.lifetime_max)
+            rng.random_range(config.lifetime_min..config.lifetime_max)
         } else {
             config.lifetime_min
         };
 
         let mut vx = if config.velocity_x_min < config.velocity_x_max {
-            rng.gen_range(config.velocity_x_min..config.velocity_x_max)
+            rng.random_range(config.velocity_x_min..config.velocity_x_max)
         } else {
             config.velocity_x_min
         };
 
         let mut vy = if config.velocity_y_min < config.velocity_y_max {
-            rng.gen_range(config.velocity_y_min..config.velocity_y_max)
+            rng.random_range(config.velocity_y_min..config.velocity_y_max)
         } else {
             config.velocity_y_min
         };
@@ -428,7 +428,7 @@ impl Particle {
             if speed > 0.0 {
                 let base_angle = vy.atan2(vx);
                 let half_spread = config.spread_angle.to_radians() / 2.0;
-                let angle = base_angle + rng.gen_range(-half_spread..half_spread);
+                let angle = base_angle + rng.random_range(-half_spread..half_spread);
                 vx = speed * angle.cos();
                 vy = speed * angle.sin();
             }
@@ -438,15 +438,15 @@ impl Particle {
         let (ox, oy) = match config.emission_shape {
             EmissionShape::Point => (0.0, 0.0),
             EmissionShape::CircleRadius(r) if r > 0.0 => {
-                let a = rng.gen_range(0.0..std::f64::consts::TAU);
-                let d = rng.gen_range(0.0..=r);
+                let a = rng.random_range(0.0..std::f64::consts::TAU);
+                let d = rng.random_range(0.0..=r);
                 (d * a.cos(), d * a.sin())
             }
             EmissionShape::CircleRadius(_) => (0.0, 0.0),
             EmissionShape::RectWH(w, h) if w > 0.0 && h > 0.0 => {
                 let hw = w / 2.0;
                 let hh = h / 2.0;
-                (rng.gen_range(-hw..hw), rng.gen_range(-hh..hh))
+                (rng.random_range(-hw..hw), rng.random_range(-hh..hh))
             }
             EmissionShape::RectWH(_, _) => (0.0, 0.0),
         };
@@ -851,30 +851,30 @@ impl EmitterConfigPanel {
     /// Modifies `config` when a field value is saved.
     pub fn handle_config_key(
         &mut self,
-        code: crossterm::event::KeyCode,
+        code: ratatui::crossterm::event::KeyCode,
         config: &mut ParticleConfig,
     ) -> bool {
         if self.editing {
             match code {
-                crossterm::event::KeyCode::Enter => {
+                ratatui::crossterm::event::KeyCode::Enter => {
                     self.error_message.clear();
                     if self.save_field(config) {
                         self.editing = false;
                     }
                     true
                 }
-                crossterm::event::KeyCode::Esc => {
+                ratatui::crossterm::event::KeyCode::Esc => {
                     self.editing = false;
                     self.edit_buffer.clear();
                     self.error_message.clear();
                     true
                 }
-                crossterm::event::KeyCode::Backspace => {
+                ratatui::crossterm::event::KeyCode::Backspace => {
                     self.edit_buffer.pop();
                     self.error_message.clear();
                     true
                 }
-                crossterm::event::KeyCode::Char(c) if !c.is_control() => {
+                ratatui::crossterm::event::KeyCode::Char(c) if !c.is_control() => {
                     // Shape/edge/toggle fields: cycling on Enter only, chars ignored in edit mode
                     if self.selected_field == 10
                         || self.selected_field == 17
@@ -890,28 +890,28 @@ impl EmitterConfigPanel {
             }
         } else {
             match code {
-                crossterm::event::KeyCode::Up => {
+                ratatui::crossterm::event::KeyCode::Up => {
                     if self.selected_field > 0 {
                         self.selected_field -= 1;
                     }
                     self.error_message.clear();
                     true
                 }
-                crossterm::event::KeyCode::Down => {
+                ratatui::crossterm::event::KeyCode::Down => {
                     if self.selected_field < 18 {
                         self.selected_field += 1;
                     }
                     self.error_message.clear();
                     true
                 }
-                crossterm::event::KeyCode::Enter => {
+                ratatui::crossterm::event::KeyCode::Enter => {
                     self.edit_buffer.clear();
                     self.error_message.clear();
                     self.editing = true;
                     self.start_editing();
                     true
                 }
-                crossterm::event::KeyCode::Esc => {
+                ratatui::crossterm::event::KeyCode::Esc => {
                     self.open = false;
                     self.error_message.clear();
                     true
@@ -1383,7 +1383,7 @@ mod tests {
 
     #[test]
     fn test_emitter_config_field_navigate() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut panel = EmitterConfigPanel::new();
         let mut config = ParticleConfig::default();
 
@@ -1405,7 +1405,7 @@ mod tests {
 
     #[test]
     fn test_emitter_config_edit_float() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut panel = EmitterConfigPanel::new();
         let mut config = ParticleConfig::default();
 
@@ -1429,7 +1429,7 @@ mod tests {
 
     #[test]
     fn test_emitter_config_edit_shape() {
-        use crossterm::event::KeyCode;
+        use ratatui::crossterm::event::KeyCode;
         let mut panel = EmitterConfigPanel::new();
         let mut config = ParticleConfig::default();
 
