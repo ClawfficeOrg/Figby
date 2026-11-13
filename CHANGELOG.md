@@ -21,6 +21,8 @@
 - The placeholder `/home/user` paths in `scripts/make-tui-draw-cast.py` and the timelapse driver helper
   now resolve relative to the script, so they work from any checkout.
 - `serde_yaml` (unmaintained) replaced with `serde_yaml_ng`.
+- Internal: removed the empty placeholder `tui/component.rs` (left over from the removed `Component`
+  trait; it was never compiled). No behaviour change.
 - `.gitattributes` forces LF line endings, so Windows checkouts (`core.autocrlf=true`) match the C reference output.
 - Removed a stale `fonts-external` entry from `.gitmodules`; `figby-fonts` now uses an HTTPS URL.
 - README: submodule init instructions; removed a link to a private local path.

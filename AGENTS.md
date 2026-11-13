@@ -150,7 +150,6 @@ figby-rs/                 # Rust workspace: the figby crate (lib + binary) and f
         ├── timeline.rs, player.rs, particles.rs
         ├── side_panel.rs, props_panel.rs, status.rs (canvas settings), undo.rs, undo_panel.rs
         ├── render_mode.rs, throbber.rs, export.rs
-        ├── component.rs  # Empty placeholder (Component trait was removed)
         ├── dialogs/      # new_image, gif_import, rascii_import, system_font, font_import_options
         ├── tools/        # brush, eraser, eyedropper, fill, line, move_tool, rotate_tool,
         │                 #   selection, spray, text
