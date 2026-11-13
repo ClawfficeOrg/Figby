@@ -13,6 +13,7 @@ impl TuiApp {
     /// that returns `Break` ends routing with its result.
     pub fn handle_key_event(&mut self, key: impl Into<KeyEvent>) -> Option<AppEvent> {
         let key = key.into();
+        self.sync_side_panel_mode();
         let handlers: &[fn(&mut Self, KeyEvent) -> KeyRoute] = &[
             Self::key_keybindings_overlay,
             Self::key_quit_prompt,

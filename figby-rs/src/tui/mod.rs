@@ -71,6 +71,7 @@ pub use toolbox::Tool;
 
 impl TuiApp {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
+        self.sync_side_panel_mode();
         self.check_async_completion();
         self.ctx.throbber.tick();
 
@@ -118,20 +119,10 @@ impl TuiApp {
             }
         }
 
-        // Single-pass layout computation — stored for mouse handlers next cycle.
-        let tw = self
-            .editor
-            .toolbox
-            .required_width(self.editor.brush.required_outer_width());
-        let toolbox_h = Tool::all().len() as u16 + 2;
-        let fl = layout::FrameLayout::compute(
-            frame.area(),
-            self.ui.zen_mode,
-            self.side_panel.open,
-            tw,
-            toolbox_h,
-            self.animation.timeline_visible,
-        );
+        // Single-pass layout computation; the mouse handlers recompute the
+        // same layout through `frame_layout`. The toolbox column is hidden
+        // in the font editor outside the glyph character editor.
+        let fl = self.frame_layout(frame.area());
 
         // --- Zen mode: canvas only, hint overlay ---
         if self.ui.zen_mode {

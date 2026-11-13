@@ -47,7 +47,7 @@ impl TuiApp {
         execute!(io::stdout(), EnableBracketedPaste, EnableMouseCapture)?;
 
         let (term_width, _) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
-        self.side_panel.open = self.default_side_panel_open(term_width);
+        self.apply_default_side_panel(term_width);
 
         while !self.ui.should_quit {
             self.handle_event()?;

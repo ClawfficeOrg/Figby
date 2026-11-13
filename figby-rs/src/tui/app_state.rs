@@ -1666,6 +1666,10 @@ impl TuiApp {
     /// when the terminal is wide enough that opening it still leaves a
     /// reasonably usable canvas, rather than cramming toolbox + canvas +
     /// drawer into too little space.
+    ///
+    /// This is the default for the image/canvas modes only. The font
+    /// editor always starts with the drawer closed, see
+    /// [`TuiApp::apply_default_side_panel`].
     pub(crate) fn default_side_panel_open(&self, term_width: u16) -> bool {
         const MIN_CANVAS_WIDTH: u16 = 60;
         let toolbox_width = self
@@ -1673,6 +1677,54 @@ impl TuiApp {
             .toolbox
             .required_width(self.editor.brush.required_outer_width());
         term_width >= toolbox_width + layout::DRAWER_WIDTH + MIN_CANVAS_WIDTH
+    }
+
+    /// Apply the startup drawer default for both mode families: closed in
+    /// the font editor, open on a wide terminal everywhere else.
+    pub(crate) fn apply_default_side_panel(&mut self, term_width: u16) {
+        let image_open = self.default_side_panel_open(term_width);
+        let font_mode = self.ui.mode == AppMode::FontEditor;
+        self.side_panel.set_default_open(font_mode, image_open);
+    }
+
+    /// Point the drawer at the current mode (own open state per mode
+    /// family, no Layers tab in the font editor). Called at the top of
+    /// render and of key/mouse dispatch.
+    pub(crate) fn sync_side_panel_mode(&mut self) {
+        self.side_panel
+            .sync_mode(self.ui.mode == AppMode::FontEditor);
+    }
+
+    /// The toolbox/palette column is shown everywhere except the font
+    /// editor's non-drawing views (overview, header, smush, transform):
+    /// only the glyph character editor paints.
+    pub(crate) fn toolbox_visible(&self) -> bool {
+        self.ui.mode != AppMode::FontEditor
+            || matches!(
+                self.editor.font_editor.view,
+                font_editor::FontEditorView::CharEditor(_)
+            )
+    }
+
+    /// Screen layout for `area`, shared by render and the mouse handlers
+    /// so hit-testing always matches what is drawn.
+    pub(crate) fn frame_layout(&self, area: Rect) -> layout::FrameLayout {
+        let tw = if self.toolbox_visible() {
+            self.editor
+                .toolbox
+                .required_width(self.editor.brush.required_outer_width())
+        } else {
+            0
+        };
+        let toolbox_h = Tool::all().len() as u16 + 2;
+        layout::FrameLayout::compute(
+            area,
+            self.ui.zen_mode,
+            self.side_panel.open,
+            tw,
+            toolbox_h,
+            self.animation.timeline_visible,
+        )
     }
 
     /// Returns `true` when any text-entry field is live across the
@@ -2138,5 +2190,251 @@ mod default_side_panel_open_tests {
     fn test_default_side_panel_open_closed_for_narrow_classic_80col_terminal() {
         let app = TuiApp::new();
         assert!(!app.default_side_panel_open(80));
+    }
+}
+
+/// Font mode hides the toolbox column outside the glyph character
+/// editor, starts with the drawer closed and never offers Layers.
+#[cfg(test)]
+mod font_mode_chrome_tests {
+    use super::{AppMode, TuiApp};
+    use crate::font::{FIGcharacter, FIGfont};
+    use crate::tui::font_editor::FontEditorView;
+    use crate::tui::side_panel::TabId;
+    use crate::tui::toolbox::Tool;
+    use ratatui::backend::TestBackend;
+    use ratatui::crossterm::event::{
+        KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+    };
+    use ratatui::layout::Rect;
+    use ratatui::Terminal;
+    use std::collections::HashMap;
+
+    const W: u16 = 120;
+    const H: u16 = 40;
+
+    /// 40 glyphs, 3 rows high, so the grid fills several rows at any width.
+    fn font() -> FIGfont {
+        let chars = (0..40u32)
+            .map(|i| {
+                let c = char::from_u32(65 + (i % 26)).unwrap();
+                let row = format!("{c}{c}{c}  ");
+                (
+                    65 + i,
+                    FIGcharacter::from(vec![row.clone(), row.clone(), row]),
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        FIGfont {
+            charheight: 3,
+            maxlength: 5,
+            chars,
+            ..FIGfont::default()
+        }
+    }
+
+    /// Font overview as the event loop starts it on a 120x40 terminal.
+    fn font_app() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.animation.timeline_visible = false;
+        app.editor.font_editor.load_font(font());
+        app.apply_default_side_panel(W);
+        assert_eq!(app.ui.mode, AppMode::FontEditor);
+        assert_eq!(app.editor.font_editor.view, FontEditorView::Overview);
+        app
+    }
+
+    /// Render and return the main area only (below the menu bar and tab
+    /// strip, above the status bar): the menu bar has its own "Tools"
+    /// and "Layers" menus.
+    fn draw(app: &mut TuiApp) -> String {
+        let mut terminal = Terminal::new(TestBackend::new(W, H)).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
+        let buf = terminal.backend().buffer();
+        let mut out = String::new();
+        for y in 4..H - 1 {
+            for x in 0..W {
+                out.push_str(buf[(x, y)].symbol());
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    fn key(app: &mut TuiApp, code: KeyCode) {
+        let _ = app.handle_key_event(KeyEvent::new(code, KeyModifiers::NONE));
+    }
+
+    fn area() -> Rect {
+        Rect::new(0, 0, W, H)
+    }
+
+    #[test]
+    fn test_font_overview_has_no_toolbox_and_no_drawer_by_default() {
+        let mut app = font_app();
+        let out = draw(&mut app);
+        assert!(
+            !app.side_panel.open,
+            "drawer must start closed in font mode"
+        );
+        let fl = app.frame_layout(area());
+        assert!(fl.toolbox_full.is_none() && fl.toolbox_list.is_none());
+        assert!(fl.palette.is_none());
+        assert!(fl.right_panel.is_none());
+        assert_eq!(fl.canvas.x, 0);
+        assert_eq!(fl.canvas.width, W);
+        assert!(!out.contains(" Tools "), "toolbox drawn in overview");
+        assert!(!out.contains("Palette"), "palette drawn in overview");
+        assert!(!out.contains("tabs "), "drawer drawn in overview");
+    }
+
+    #[test]
+    fn test_font_header_smush_transform_views_hide_toolbox() {
+        let mut app = font_app();
+        for view in [
+            FontEditorView::HeaderEditor,
+            FontEditorView::SmushRuleEditor,
+            FontEditorView::TransformEditor,
+        ] {
+            app.editor.font_editor.view = view;
+            let out = draw(&mut app);
+            assert!(app.frame_layout(area()).toolbox_full.is_none(), "{view:?}");
+            assert!(!out.contains(" Tools "), "toolbox drawn in {view:?}");
+        }
+    }
+
+    #[test]
+    fn test_char_editor_shows_toolbox() {
+        let mut app = font_app();
+        draw(&mut app);
+        key(&mut app, KeyCode::Enter);
+        assert!(matches!(
+            app.editor.font_editor.view,
+            FontEditorView::CharEditor(_)
+        ));
+        let out = draw(&mut app);
+        let fl = app.frame_layout(area());
+        assert!(fl.toolbox_list.is_some() && fl.palette.is_some());
+        assert!(out.contains(" Tools "), "toolbox missing in char editor");
+    }
+
+    #[test]
+    fn test_overview_to_glyph_and_back_toggles_toolbox() {
+        let mut app = font_app();
+        assert!(!draw(&mut app).contains(" Tools "));
+        key(&mut app, KeyCode::Enter);
+        assert!(draw(&mut app).contains(" Tools "), "glyph open: toolbox");
+        key(&mut app, KeyCode::Esc);
+        assert_eq!(app.editor.font_editor.view, FontEditorView::Overview);
+        assert!(!draw(&mut app).contains(" Tools "), "back: no toolbox");
+    }
+
+    #[test]
+    fn test_image_mode_shows_toolbox_and_drawer() {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::ImageEditor;
+        app.apply_default_side_panel(W);
+        let out = draw(&mut app);
+        assert!(app.side_panel.open, "wide image mode opens the drawer");
+        assert_eq!(app.side_panel.active_tab, TabId::Layers);
+        let fl = app.frame_layout(area());
+        assert!(fl.toolbox_full.is_some() && fl.right_panel.is_some());
+        assert!(out.contains(" Tools "));
+        assert!(out.contains("Layers"));
+    }
+
+    #[test]
+    fn test_image_drawer_default_survives_starting_in_font_mode() {
+        // The app starts in the font editor (welcome screen); switching
+        // to image mode must still bring up the wide-terminal drawer.
+        let mut app = font_app();
+        draw(&mut app);
+        assert!(!app.side_panel.open);
+        app.ui.mode = AppMode::ImageEditor;
+        draw(&mut app);
+        assert!(app.side_panel.open, "image mode keeps its drawer default");
+        assert_eq!(app.side_panel.active_tab, TabId::Layers);
+        app.ui.mode = AppMode::FontEditor;
+        draw(&mut app);
+        assert!(!app.side_panel.open, "font mode keeps its own state");
+    }
+
+    #[test]
+    fn test_layers_tab_not_offered_in_font_mode() {
+        let mut app = font_app();
+        draw(&mut app);
+        // The user can still open the drawer by hand.
+        app.side_panel.toggle_open();
+        let out = draw(&mut app);
+        assert!(app.side_panel.open);
+        assert_eq!(app.side_panel.tabs(), TabId::font_mode());
+        assert!(!app.side_panel.tabs().contains(&TabId::Layers));
+        assert_ne!(app.side_panel.active_tab, TabId::Layers);
+        assert!(!out.contains("Layers"), "Layers tab label drawn");
+        for _ in 0..10 {
+            let _ = app.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::ALT));
+            assert_ne!(app.side_panel.active_tab, TabId::Layers);
+        }
+        app.side_panel.set_active_tab(TabId::Layers);
+        assert_ne!(app.side_panel.active_tab, TabId::Layers);
+        // A stale Layers tab (set directly) is corrected on the next sync.
+        app.side_panel.active_tab = TabId::Layers;
+        draw(&mut app);
+        assert_eq!(app.side_panel.active_tab, TabId::Props);
+        // Every tab label click lands on a font-mode tab.
+        let rp = app.frame_layout(area()).right_panel.unwrap();
+        for r in app.side_panel.tab_rects(rp) {
+            let tab = app.side_panel.tab_at_pos(r.x, r.y, rp).unwrap();
+            assert_ne!(tab, TabId::Layers);
+        }
+    }
+
+    #[test]
+    fn test_grid_uses_full_width_without_toolbox() {
+        let mut app = font_app();
+        draw(&mut app);
+        let cell_w = 8; // (maxlength 5 + 2).max(8)
+        let inner_w = W as usize - 2; // canvas borders, no toolbox, no drawer
+        assert_eq!(app.editor.font_editor.grid_state.cols(), inner_w / cell_w);
+        // The rightmost recorded cell sits past where the toolbox column
+        // used to end the grid.
+        let max_x = app
+            .editor
+            .font_editor
+            .grid_state
+            .cell_rects
+            .iter()
+            .map(|(_, r)| r.x + r.width)
+            .max()
+            .unwrap();
+        assert!(max_x > W - 10, "grid stops at {max_x}");
+        assert!(app.editor.font_editor.grid_state.cell_rects[0].1.x <= 1);
+    }
+
+    #[test]
+    fn test_clicks_on_hidden_toolbox_area_do_not_select_tools() {
+        let mut app = font_app();
+        app.editor.toolbox.selected = Tool::Brush;
+        draw(&mut app);
+        let revision = app.editor.revision;
+        // Where the toolbox list would be: rows below the tab strip, the
+        // first columns of the main area.
+        for row in 5..30 {
+            for col in 0..20 {
+                app.handle_mouse_event(MouseEvent {
+                    kind: MouseEventKind::Down(MouseButton::Left),
+                    column: col,
+                    row,
+                    modifiers: KeyModifiers::NONE,
+                });
+                if app.editor.font_editor.view != FontEditorView::Overview {
+                    app.editor.font_editor.view = FontEditorView::Overview;
+                }
+            }
+        }
+        assert_eq!(app.editor.toolbox.selected, Tool::Brush);
+        assert_eq!(app.editor.revision, revision, "canvas painted");
     }
 }

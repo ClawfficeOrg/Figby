@@ -27,6 +27,8 @@ fn test_tui_smoke_all_panels_render() {
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
+    // The font overview hides the toolbox/palette column; image mode shows it.
+    app.ui.mode = figby_lib::tui::AppMode::ImageEditor;
     // toolbox_h = 12 tools + 1 + 10 brush = 23 rows; need ~30+ rows for palette to render
     // 80 cols drops droppable status-bar items (e.g. FPS) via truncation;
     // 120 keeps the full status bar visible.
@@ -141,6 +143,7 @@ fn test_toolbox_renders_tool_names() {
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
+    app.ui.mode = figby_lib::tui::AppMode::ImageEditor;
     let backend = TestBackend::new(80, 40);
     let mut terminal = Terminal::new(backend).unwrap();
     terminal.draw(|f| app.render(f)).unwrap();
@@ -615,6 +618,7 @@ fn test_palette_render_contains_labels() {
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
+    app.ui.mode = figby_lib::tui::AppMode::ImageEditor;
     app.editor.palette.select_color(0);
     // toolbox_h = 23 rows; "Recent:" section is near bottom of palette — need tall terminal
     let backend = TestBackend::new(80, 80);
@@ -2371,6 +2375,8 @@ fn test_layout_drawer_toggle() {
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
+    // Image mode: the font editor never offers the Layers tab.
+    app.ui.mode = figby_lib::tui::AppMode::ImageEditor;
 
     // Default drawer is closed, active tab = Layers
     assert!(!app.side_panel.open, "default drawer should be closed");

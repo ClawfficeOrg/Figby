@@ -42,6 +42,10 @@ impl FrameLayout {
     ///   - Right panel block uses Borders::ALL (canvas omits its RIGHT when
     ///     right panel is open, so right panel owns its LEFT).
     ///   - All layouts use `spacing(0)` so adjacent rects share edges exactly.
+    ///
+    /// A `toolbox_width` of 0 hides the whole left column (toolbox and
+    /// palette): `toolbox_full`, `toolbox_list` and `palette` are `None`
+    /// and the canvas takes the width.
     pub fn compute(
         area: Rect,
         zen_mode: bool,
@@ -111,20 +115,23 @@ impl FrameLayout {
         };
 
         // Split the toolbox column: top=toolbox, bottom=palette
-        let left_vert = Layout::vertical([Constraint::Length(toolbox_h), Constraint::Min(0)])
-            .spacing(0)
-            .split(toolbox_full);
-        let toolbox_list = left_vert[0];
-        let palette_rect = left_vert[1];
+        let (toolbox_full, toolbox_list, palette_rect) = if toolbox_width == 0 {
+            (None, None, None)
+        } else {
+            let left_vert = Layout::vertical([Constraint::Length(toolbox_h), Constraint::Min(0)])
+                .spacing(0)
+                .split(toolbox_full);
+            (Some(toolbox_full), Some(left_vert[0]), Some(left_vert[1]))
+        };
 
         Self {
             menu,
             tabs,
             main,
             status,
-            toolbox_full: Some(toolbox_full),
-            toolbox_list: Some(toolbox_list),
-            palette: Some(palette_rect),
+            toolbox_full,
+            toolbox_list,
+            palette: palette_rect,
             canvas,
             right_panel,
             timeline: timeline_area,

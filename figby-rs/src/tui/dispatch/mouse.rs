@@ -8,6 +8,7 @@ use super::*;
 
 impl TuiApp {
     pub(crate) fn handle_mouse_event(&mut self, mouse: MouseEvent) {
+        self.sync_side_panel_mode();
         // Modal layers and full-screen views, highest priority first.
         if self.mouse_quit_prompt(mouse)
             || self.mouse_menu_bar(mouse)
@@ -236,19 +237,7 @@ impl TuiApp {
     /// the renderer uses).
     fn mouse_frame_layout(&self) -> layout::FrameLayout {
         let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
-        let tw = self
-            .editor
-            .toolbox
-            .required_width(self.editor.brush.required_outer_width());
-        let toolbox_h = Tool::all().len() as u16 + 2;
-        layout::FrameLayout::compute(
-            Rect::new(0, 0, cols, rows),
-            self.ui.zen_mode,
-            self.side_panel.open,
-            tw,
-            toolbox_h,
-            self.animation.timeline_visible,
-        )
+        self.frame_layout(Rect::new(0, 0, cols, rows))
     }
 
     /// Side panel tab label click.

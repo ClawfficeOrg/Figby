@@ -61,24 +61,29 @@ impl TabId {
         ]
     }
 
-    pub fn next(self) -> Self {
-        match self {
-            TabId::Layers => TabId::Props,
-            TabId::Props => TabId::Text,
-            TabId::Text => TabId::Libraries,
-            TabId::Libraries => TabId::Effects,
-            TabId::Effects => TabId::Layers,
+    /// Tabs offered in the font editor: no Layers (a FIGfont has no
+    /// layer stack the user should manage from the drawer).
+    pub fn font_mode() -> &'static [TabId] {
+        &[TabId::Props, TabId::Text, TabId::Libraries, TabId::Effects]
+    }
+
+    /// The tab after `self` in `tabs`, wrapping. A tab missing from
+    /// `tabs` lands on the first one.
+    fn step(self, tabs: &[TabId], forward: bool) -> Self {
+        let n = tabs.len();
+        match tabs.iter().position(|&t| t == self) {
+            Some(i) if forward => tabs[(i + 1) % n],
+            Some(i) => tabs[(i + n - 1) % n],
+            None => tabs[0],
         }
     }
 
+    pub fn next(self) -> Self {
+        self.step(Self::all(), true)
+    }
+
     pub fn prev(self) -> Self {
-        match self {
-            TabId::Layers => TabId::Effects,
-            TabId::Props => TabId::Layers,
-            TabId::Text => TabId::Props,
-            TabId::Libraries => TabId::Text,
-            TabId::Effects => TabId::Libraries,
-        }
+        self.step(Self::all(), false)
     }
 }
 
@@ -87,6 +92,16 @@ pub struct SidePanel {
     pub active_tab: TabId,
     pub icons: BTreeMap<String, String>,
     pub theme: Theme,
+    /// Whether the panel is serving the font editor (no Layers tab).
+    /// Set by [`SidePanel::sync_mode`].
+    font_mode: bool,
+    /// False until the first `sync_mode`/`set_default_open`, so the first
+    /// sync records the mode instead of treating it as a switch.
+    mode_seen: bool,
+    /// Open state and tab of the other mode family (font vs everything
+    /// else), restored when the user switches back.
+    stashed_open: bool,
+    stashed_tab: TabId,
 }
 
 impl SidePanel {
@@ -96,27 +111,76 @@ impl SidePanel {
             active_tab: TabId::Layers,
             icons,
             theme,
+            font_mode: false,
+            mode_seen: false,
+            stashed_open: false,
+            stashed_tab: TabId::Props,
         }
+    }
+
+    /// Tabs offered in the current mode.
+    pub fn tabs(&self) -> &'static [TabId] {
+        if self.font_mode {
+            TabId::font_mode()
+        } else {
+            TabId::all()
+        }
+    }
+
+    /// Follow the app's mode. The font editor and the other modes each
+    /// keep their own open state and tab, so the drawer the user left
+    /// open (or closed) in image mode is back when they return to it.
+    /// In font mode the Layers tab is never active.
+    pub fn sync_mode(&mut self, font_mode: bool) {
+        let first = !self.mode_seen;
+        if !first && font_mode != self.font_mode {
+            std::mem::swap(&mut self.open, &mut self.stashed_open);
+            std::mem::swap(&mut self.active_tab, &mut self.stashed_tab);
+        }
+        self.mode_seen = true;
+        self.font_mode = font_mode;
+        if !self.tabs().contains(&self.active_tab) {
+            if first {
+                // Keep the other modes' tab (Layers) for when they return.
+                self.stashed_tab = self.active_tab;
+            }
+            self.active_tab = self.tabs()[0];
+        }
+    }
+
+    /// Startup default: the drawer starts closed on Props in the font
+    /// editor, and `image_open` on Layers in every other mode.
+    pub fn set_default_open(&mut self, font_mode: bool, image_open: bool) {
+        self.mode_seen = true;
+        self.font_mode = font_mode;
+        let font = (false, TabId::Props);
+        let image = (image_open, TabId::Layers);
+        let (current, other) = if font_mode {
+            (font, image)
+        } else {
+            (image, font)
+        };
+        (self.open, self.active_tab) = current;
+        (self.stashed_open, self.stashed_tab) = other;
     }
 
     pub fn toggle_open(&mut self) {
         self.open = !self.open;
     }
 
+    /// Select `id` if the current mode offers it.
     pub fn set_active_tab(&mut self, id: TabId) {
-        self.active_tab = id;
+        if self.tabs().contains(&id) {
+            self.active_tab = id;
+        }
     }
 
     pub fn cycle_tab(&mut self, forward: bool) {
-        self.active_tab = if forward {
-            self.active_tab.next()
-        } else {
-            self.active_tab.prev()
-        };
+        self.active_tab = self.active_tab.step(self.tabs(), forward);
     }
 
     pub fn tab_rects(&self, area: Rect) -> Vec<Rect> {
-        let tab_count = TabId::all().len() as u16;
+        let tab_count = self.tabs().len() as u16;
         if tab_count == 0 || area.width < 2 {
             return Vec::new();
         }
@@ -135,7 +199,7 @@ impl SidePanel {
         let rects = self.tab_rects(area);
         for (i, r) in rects.iter().enumerate() {
             if col >= r.x && col < r.x + r.width && row == r.y {
-                return TabId::all().get(i).copied();
+                return self.tabs().get(i).copied();
             }
         }
         None
@@ -205,7 +269,7 @@ impl SidePanel {
         }
 
         // Tab header row
-        let tabs = TabId::all();
+        let tabs = self.tabs();
         let tab_count = tabs.len() as u16;
         let total_tab_w = inner.width.saturating_sub(2);
         let tab_w = total_tab_w / tab_count;

@@ -10,6 +10,7 @@
   the same status. All existing options keep working unchanged; `figby --help` lists the subcommands.
 
 ### Changed
+- Font editor: the toolbox and palette column is shown only while a glyph is open in the character editor, so the glyph overview, header, smush and transform views use the full width. The side drawer starts closed in the font editor and no longer offers the Layers tab there (image mode is unchanged).
 - Internal: the library crate is renamed `figby_lib` (was `figby`), so the lib and the `figby` binary no longer share an output file name. The binary and its CLI are unchanged. Code that imports the library must use `figby_lib::`.
 - Font editor overview: press `/` to search glyphs. Letters (H, S, T, A, D, C, W and tool shortcuts) are always commands and no longer start a search; Esc ends a search.
 - **CLI:** when the *first* argument is exactly `play`, `bake`, `image`, `font` or `tui`, it is now a
