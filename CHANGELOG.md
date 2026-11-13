@@ -43,6 +43,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Font editor overview panicked ("end byte index is not a char boundary") when a glyph row held a multi-byte character such as a block/dither glyph (`░`). Rows are now cut by character.
 - Moving the cursor with the arrow keys now scrolls the editor canvas so the cursor stays on screen, horizontally and vertically, including after zoom or a terminal resize.
 - Save As for a new font now opens in the FIGlet font directory figby searches, always shows the absolute "Save to:" path, and Enter on a highlighted folder opens it instead of saving into the folder shown.
 - TUI: in New Font from System, Enter on the font list now moves to the size field instead of creating the font at once. Enter steps through size and charset, only Enter on the last field creates the font, and Esc goes back one field.

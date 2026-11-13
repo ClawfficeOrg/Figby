@@ -208,9 +208,11 @@ impl Widget for &GlyphGridWidget<'_> {
                         .unwrap_or("");
                     let mut text = String::with_capacity(cell_w);
                     text.push(' ');
-                    let display_len = row_text.len().min(cell_w.saturating_sub(1));
-                    text.push_str(&row_text[..display_len]);
-                    while text.len() < cell_w {
+                    // Slice by characters, not bytes: block glyphs such as '░' are
+                    // multi-byte and a byte cut panics on a char boundary.
+                    let shown: String = row_text.chars().take(cell_w.saturating_sub(1)).collect();
+                    text.push_str(&shown);
+                    while text.chars().count() < cell_w {
                         text.push(' ');
                     }
                     let x = area.x + (ci * cell_w) as u16;
@@ -2679,6 +2681,22 @@ mod tests {
         editor.preview_text = "BAB".to_string();
         editor.load_font(make_test_font());
         assert_eq!(editor.preview_text, "BAB");
+    }
+
+    #[test]
+    fn test_overview_multibyte_glyph_rows_do_not_panic() {
+        // Regression: a dithered/block glyph ('░' is 3 bytes) was cut at a byte
+        // index in the overview and panicked on a char boundary.
+        let mut editor = make_editor();
+        let font = editor.font.as_mut().unwrap();
+        let width = font.charheight.max(1) as usize;
+        let row: String = "\u{2591}\u{2592}\u{2593}\u{2588}".repeat(width);
+        for ch in font.chars.values_mut() {
+            let rows = vec![row.clone(); font.charheight as usize];
+            ch.set_rows(rows);
+        }
+        let screen = render_overview_text(&editor, 60, 20);
+        assert!(!screen.is_empty());
     }
 
     #[test]
