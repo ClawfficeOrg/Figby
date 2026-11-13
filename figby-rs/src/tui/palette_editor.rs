@@ -471,7 +471,8 @@ impl PaletteEditor {
                 )),
             ]));
 
-            // Lighting pickers: show L/S swatches when lighting mode active
+            // Lighting pickers: show lit (L:) / shadow (S:) swatches when
+            // lighting mode active
             if self.lighting_pickers_visible {
                 let lit_hex = swatch.lit_hex.as_deref().unwrap_or(&swatch.hex);
                 let shadow_hex = swatch.shadow_hex.as_deref().unwrap_or(&swatch.hex);
@@ -653,6 +654,12 @@ impl PaletteEditor {
             format_hint,
             Style::default().fg(theme.dialog.meta),
         )));
+        if matches!(self.mode, PanelMode::Idle) && self.lighting_pickers_visible {
+            lines.push(Line::from(Span::styled(
+                LIGHTING_HINT,
+                Style::default().fg(theme.dialog.meta),
+            )));
+        }
 
         let paragraph = Paragraph::new(lines).block(
             Block::default()
@@ -921,7 +928,8 @@ impl PaletteEditor {
 
     /// Idle: swatch navigation, panel commands and close. Keys not
     /// claimed here fall through to the lighting toggles when the
-    /// lighting pickers are visible.
+    /// lighting pickers are visible, so the two key sets must stay
+    /// disjoint.
     fn handle_idle_key(&mut self, code: KeyCode) -> bool {
         match code {
             KeyCode::Esc => {
@@ -1000,13 +1008,14 @@ impl PaletteEditor {
         }
     }
 
-    /// Idle with lighting pickers visible: per-swatch lighting edits for
-    /// keys the Idle commands did not claim. The `L`, `l`, `S` and `s`
-    /// arms are kept as they were but are currently shadowed by the
-    /// Idle Load and Save commands, so only `[` and `]` reach here.
+    /// Idle with lighting pickers visible: per-swatch lighting edits.
+    /// Every key here is one the Idle commands and the global keymap
+    /// leave free: `I` lit hex, `O` shadow hex, `P` specular toggle,
+    /// `G` shininess cycle (each either case), `[` / `]` shininess
+    /// halve / double.
     fn handle_lighting_toggle_key(&mut self, code: KeyCode) -> bool {
         match code {
-            KeyCode::Char('L') => {
+            KeyCode::Char('i') | KeyCode::Char('I') => {
                 // Edit lit color for selected swatch
                 self.ensure_lighting_defaults(self.selected);
                 if let Some(swatch) = self.swatches.get(self.selected) {
@@ -1021,7 +1030,7 @@ impl PaletteEditor {
                 }
                 true
             }
-            KeyCode::Char('l') => {
+            KeyCode::Char('p') | KeyCode::Char('P') => {
                 // Toggle specular for selected swatch
                 self.ensure_lighting_defaults(self.selected);
                 if let Some(swatch) = self.swatches.get_mut(self.selected) {
@@ -1031,7 +1040,7 @@ impl PaletteEditor {
                 }
                 true
             }
-            KeyCode::Char('S') => {
+            KeyCode::Char('o') | KeyCode::Char('O') => {
                 // Edit shadow color for selected swatch
                 self.ensure_lighting_defaults(self.selected);
                 if let Some(swatch) = self.swatches.get(self.selected) {
@@ -1046,8 +1055,8 @@ impl PaletteEditor {
                 }
                 true
             }
-            KeyCode::Char('s') => {
-                // Cycle shininess for selected swatch
+            KeyCode::Char('g') | KeyCode::Char('G') => {
+                // Cycle shininess (gloss) for selected swatch
                 self.ensure_lighting_defaults(self.selected);
                 if let Some(swatch) = self.swatches.get_mut(self.selected) {
                     let current = swatch.shininess.unwrap_or(32.0);
@@ -1091,6 +1100,11 @@ impl Default for PaletteEditor {
         Self::new()
     }
 }
+
+/// Second hint line shown in Idle while the lighting pickers are visible.
+/// Keep in step with `handle_lighting_toggle_key`, and within the
+/// overlay's 40-column interior.
+const LIGHTING_HINT: &str = " I=lit O=shadow P=spec G=gloss []=shine";
 
 fn color_to_hex(color: Color) -> String {
     match color {
@@ -1340,5 +1354,94 @@ mod tests {
         let cy = overlay.y + overlay.height / 2;
         assert!(editor.handle_overlay_click(cx, cy, area));
         assert!(editor.open, "inside click stays open but consumed");
+    }
+
+    #[test]
+    fn test_lighting_keys_reachable_with_pickers_visible() {
+        let mut editor = PaletteEditor::new();
+        editor.open_with_swatches(
+            String::new(),
+            vec![Swatch::new("Red".to_string(), "#FF0000".to_string())],
+        );
+        editor.lighting_pickers_visible = true;
+        editor.modified = false;
+
+        for (key, field) in [('i', "lit"), ('I', "lit"), ('o', "shadow"), ('O', "shadow")] {
+            assert!(editor.handle_key(KeyCode::Char(key)));
+            assert!(matches!(editor.mode, PanelMode::Idle));
+            assert_eq!(editor.editing_lighting_field, Some(field), "key {key}");
+            assert!(editor.handle_key(KeyCode::Esc));
+            assert_eq!(editor.editing_lighting_field, None);
+            assert!(editor.open, "Esc closes the field, not the editor");
+        }
+
+        // Lit edit commits through the field handler.
+        editor.handle_key(KeyCode::Char('i'));
+        editor.lighting_hex_buffer.clear();
+        for c in "00FF00".chars() {
+            editor.handle_key(KeyCode::Char(c));
+        }
+        editor.handle_key(KeyCode::Enter);
+        assert_eq!(editor.swatches[0].lit_hex.as_deref(), Some("#00FF00"));
+
+        let spec = |e: &PaletteEditor| e.swatches[0].specular.unwrap_or(false);
+        let before = spec(&editor);
+        assert!(editor.handle_key(KeyCode::Char('p')));
+        assert_eq!(spec(&editor), !before);
+        assert!(editor.handle_key(KeyCode::Char('P')));
+        assert_eq!(spec(&editor), before);
+
+        let shine = |e: &PaletteEditor| e.swatches[0].shininess.unwrap_or(32.0);
+        assert!(editor.handle_key(KeyCode::Char('g')));
+        assert_eq!(shine(&editor), 64.0);
+        assert!(editor.handle_key(KeyCode::Char('G')));
+        assert_eq!(shine(&editor), 128.0);
+        assert!(editor.handle_key(KeyCode::Char('g')));
+        assert_eq!(shine(&editor), 4.0, "cycle wraps past 128");
+        assert!(editor.handle_key(KeyCode::Char(']')));
+        assert_eq!(shine(&editor), 8.0);
+        assert!(editor.handle_key(KeyCode::Char('[')));
+        assert_eq!(shine(&editor), 4.0);
+        assert!(editor.modified);
+
+        // Save and Load still win in Idle with the pickers visible. The
+        // empty palette name makes Save fail without touching disk.
+        for key in ['s', 'S'] {
+            editor.message = None;
+            assert!(editor.handle_key(KeyCode::Char(key)));
+            let msg = editor.message.clone().unwrap_or_default();
+            assert!(msg.starts_with("Save error"), "key {key}: {msg}");
+            assert_eq!(editor.editing_lighting_field, None);
+        }
+        for key in ['l', 'L'] {
+            assert!(editor.handle_key(KeyCode::Char(key)));
+            assert!(
+                matches!(editor.mode, PanelMode::ChoosingFormat),
+                "key {key}"
+            );
+            editor.handle_key(KeyCode::Esc);
+            assert!(matches!(editor.mode, PanelMode::Idle));
+        }
+
+        // Lighting keys must not collide with the global keymap's
+        // unmodified bindings, and the hint must fit the overlay.
+        for key in ['i', 'I', 'o', 'O', 'p', 'P', 'g', 'G', '[', ']'] {
+            for m in [
+                ratatui::crossterm::event::KeyModifiers::NONE,
+                ratatui::crossterm::event::KeyModifiers::SHIFT,
+            ] {
+                assert!(
+                    crate::tui::keymap::lookup_global(KeyCode::Char(key), m).is_none(),
+                    "{key} shadows a global binding"
+                );
+            }
+        }
+        assert!(LIGHTING_HINT.chars().count() <= 40);
+
+        // Hidden pickers: the lighting keys stay unclaimed.
+        editor.lighting_pickers_visible = false;
+        for key in ['i', 'o', 'p', 'g'] {
+            assert!(!editor.handle_key(KeyCode::Char(key)), "key {key}");
+        }
     }
 }
