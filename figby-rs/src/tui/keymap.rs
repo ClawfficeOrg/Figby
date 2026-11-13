@@ -496,14 +496,14 @@ pub const KEYMAP: &[KeyBinding] = &[
         description: "Open glyph editor",
     },
     KeyBinding {
-        keys: "Type chars",
+        keys: "/",
         scope: Scope::FontOverview,
-        description: "Activate search / filter glyphs",
+        description: "Search / filter glyphs (then type)",
     },
     KeyBinding {
         keys: "Esc",
         scope: Scope::FontOverview,
-        description: "Clear search",
+        description: "Clear and end search",
     },
     KeyBinding {
         keys: "A",

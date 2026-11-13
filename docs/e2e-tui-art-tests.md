@@ -174,7 +174,7 @@ Linear), fps 8, loop on.
   `Ctrl+K` keybindings overlay (arrows/`PageUp/Down` scroll, `Esc`/`q`
   close), `Ctrl+Shift+H` undo panel, `Ctrl+Shift+P` palette editor,
   `Alt+F/E/V/T/H` menus, `S` settings dialog
-- [ ] Font editor: overview (`↑↓←→` nav, type-to-search, `Enter` edit,
+- [ ] Font editor: overview (`↑↓←→` nav, `/` search, `Enter` edit,
   `A`dd, `D`el, `C`opy, `H`eader, `S`mush, `T`ransform); char editor
   (`Space` toggle, `M`irror, `F`lip, `G`enerate); preview `AaBbCc123!?`
 - [ ] Image editor (`o` path, `c` color, `b/k/t/w` + `+`/`-` adjustments,

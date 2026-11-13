@@ -224,7 +224,8 @@ impl TuiApp {
 
         // File ops dialog active: dispatch all keys to it. This sits above
         // the FontEditor search (which would otherwise swallow typed paths —
-        // `/`, `.`, letters all start glyph searches in Overview).
+        // `/` starts a glyph search in Overview, and an active search eats
+        // every printable char).
         if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
             let prev_mode = self.dialogs.file_ops.mode;
             self.dialogs.file_ops.handle_key(code);
@@ -469,7 +470,7 @@ impl TuiApp {
 
     /// Font Editor mode: dispatch to font_editor before canvas/tools.
     /// The Open dialog sits above the Overview search: typed paths
-    /// (`/`, `.`, letters) must reach the dialog, not start a search.
+    /// (`/`, `.`, letters) must reach the dialog, not start or feed a search.
     fn key_editor_modes(&mut self, key: KeyEvent) -> KeyRoute {
         let code = key.code;
         let modifiers = key.modifiers;

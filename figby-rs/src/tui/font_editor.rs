@@ -22,9 +22,11 @@ pub const PREVIEW_MAX_CHARS: usize = 80;
 
 /// Overview hint footer, widest first. The renderer picks the first one
 /// that fits the available width (the last is clipped if none fits).
+/// The shortest one omits `/ Search` to stay within 80 columns; the search
+/// bar above the grid always shows "press / to filter".
 const OVERVIEW_HINTS: [&str; 3] = [
-    " \u{2191}\u{2193}\u{2190}\u{2192} Navigate  Type Search  Enter Edit  W Preview  A Add  D Del  C Copy  H Header  S Smush  T Transform  Esc Close",
-    " \u{2191}\u{2193}\u{2190}\u{2192} Nav  Type Find  Enter Edit  W Preview  A Add  D Del  C Copy  H Hdr  S Smush  T Xform  Esc Close",
+    " \u{2191}\u{2193}\u{2190}\u{2192} Navigate  / Search  Enter Edit  W Preview  A Add  D Del  C Copy  H Header  S Smush  T Transform  Esc Close",
+    " \u{2191}\u{2193}\u{2190}\u{2192} Nav  / Search  Enter Edit  W Preview  A Add  D Del  C Copy  H Hdr  S Smush  T Xform  Esc Close",
     " Enter Edit  W Preview  A Add  D Del  C Copy  H Hdr  S Smush  T Xform  Esc",
 ];
 
@@ -116,6 +118,10 @@ pub struct GlyphGridState {
     pub cell_rects: Vec<(u32, Rect)>,
     last_click: Option<(u32, Instant)>,
     cols: usize,
+    /// Whole glyph rows that fit in the grid area at the last render
+    /// (0 before the first render). Keyboard navigation uses it to keep
+    /// the selection scrolled into view.
+    visible_rows: usize,
 }
 
 impl GlyphGridState {
@@ -124,7 +130,16 @@ impl GlyphGridState {
             cell_rects: Vec::new(),
             last_click: None,
             cols: 0,
+            visible_rows: 0,
         }
+    }
+
+    pub fn visible_rows(&self) -> usize {
+        self.visible_rows
+    }
+
+    pub fn set_visible_rows(&mut self, rows: usize) {
+        self.visible_rows = rows;
     }
 
     pub fn last_click(&self) -> Option<(u32, Instant)> {
@@ -497,6 +512,11 @@ impl FontEditor {
         let cell_h = (font.charheight as u16 + 1) as usize;
         let cols = (area.width as usize / cell_w).max(1);
         self.grid_state.set_cols(cols);
+        // The grid itself is drawn in the middle chunk of the Overview
+        // layout, so the visible row count comes from that chunk.
+        let grid_area = self.overview_layout(area)[1];
+        self.grid_state
+            .set_visible_rows(grid_area.height as usize / cell_h);
 
         let filtered = self.filtered_codes();
         let start_cell = self.grid_scroll as usize * cols;
@@ -530,11 +550,13 @@ impl FontEditor {
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         frame.render_widget(self, area);
     }
-    fn render_overview(&self, area: Rect, buf: &mut Buffer) {
+    /// Overview layout: prompt, glyph grid, preview strip, hint footer.
+    /// Shared by `before_render` and `render_overview` so the recorded
+    /// visible row count matches what is drawn.
+    fn overview_layout(&self, area: Rect) -> std::rc::Rc<[Rect]> {
         let prompt_height: u16 = 3;
         let preview_height = self.font.as_ref().map_or(0, |f| f.charheight as u16 + 2);
-
-        let chunks = Layout::default()
+        Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(prompt_height),
@@ -542,7 +564,12 @@ impl FontEditor {
                 Constraint::Length(preview_height),
                 Constraint::Length(1),
             ])
-            .split(area);
+            .split(area)
+    }
+
+    fn render_overview(&self, area: Rect, buf: &mut Buffer) {
+        let preview_height = self.font.as_ref().map_or(0, |f| f.charheight as u16 + 2);
+        let chunks = self.overview_layout(area);
 
         if self.preview_input_active {
             let prompt = format!(
@@ -581,7 +608,7 @@ impl FontEditor {
             let search_display = if self.search_active {
                 format!(" Search: {}|", self.search_query)
             } else {
-                " Search: (type to filter)".to_string()
+                " Search: (press / to filter)".to_string()
             };
             let search =
                 Paragraph::new(search_display).block(Block::default().borders(Borders::ALL));
@@ -1523,7 +1550,7 @@ impl FontEditor {
 
     fn handle_key_overview(&mut self, code: KeyCode, area_width: u16) -> bool {
         let filtered = self.filtered_codes();
-        let cols = self.compute_cols(area_width);
+        let cols = self.nav_cols(area_width);
 
         if self.preview_input_active {
             return self.handle_key_preview_input(code);
@@ -1533,36 +1560,22 @@ impl FontEditor {
         }
 
         match code {
-            // Printable chars start/extend search when not in search mode,
-            // EXCEPT chars that have global meaning. Those fall through to mod.rs.
-            KeyCode::Char(c)
-                if !c.is_control()
-                    && !self.search_active
-                    // Font editor action keys (handled by explicit arms below)
-                    && !matches!(c, 'H' | 'S' | 'T' | 'A' | 'D' | 'C' | 'W')
-                    // Global tool shortcuts (lowercase and uppercase).
-                    // m/n select Emitter/Lighting via the tool catch-all
-                    // below — they must not start a glyph search (live:
-                    // pressing m in FontEditor searched instead of
-                    // selecting the tool).
-                    && !matches!(c.to_ascii_lowercase(), 'b' | 'v' | 'l' | 'c' | 'p' | 'g' | 'i' | 'e' | 'd' | 'a' | 't' | 'k' | 'm' | 'n')
-                    && !matches!(c, 'q' | 'Q' | '?')
-                    // Brush adjustment shortcuts
-                    && !matches!(c, '[' | ']' | ';' | '\'' | '\\')
-                    // Canvas/zoom controls, paint trigger, and path
-                    // separators (typed/pasted file paths must reach the
-                    // Open dialog instead of starting a glyph search)
-                    && !matches!(c, '+' | '-' | '=' | '_' | ' ' | '/' | '.' | '~') =>
-            {
-                self.search_active = true;
+            // While searching, every printable char (action letters
+            // included) builds the query. This arm must stay above the
+            // action-key arms so e.g. "Hello" can be typed.
+            KeyCode::Char(c) if !c.is_control() && self.search_active => {
                 self.search_query.push(c);
                 self.grid_scroll = 0;
                 self.selected_index = 0;
                 true
             }
-            // When search active: printable chars build the query
-            KeyCode::Char(c) if !c.is_control() && self.search_active => {
-                self.search_query.push(c);
+            // `/` opens the glyph search. Letters are commands by default
+            // (action keys below, tool/global shortcuts via fall-through),
+            // so typing never starts a search on its own. The `/` itself
+            // is not part of the query.
+            KeyCode::Char('/') => {
+                self.search_active = true;
+                self.search_query.clear();
                 self.grid_scroll = 0;
                 self.selected_index = 0;
                 true
@@ -1581,6 +1594,7 @@ impl FontEditor {
                 if !filtered.is_empty() && self.selected_index >= cols {
                     self.selected_index -= cols;
                 }
+                self.scroll_selection_into_view(filtered.len(), cols);
                 true
             }
             KeyCode::Down => {
@@ -1589,12 +1603,14 @@ impl FontEditor {
                         (self.selected_index + cols).min(filtered.len().saturating_sub(1));
                     self.selected_index = new_idx;
                 }
+                self.scroll_selection_into_view(filtered.len(), cols);
                 true
             }
             KeyCode::Left => {
                 if self.selected_index > 0 {
                     self.selected_index -= 1;
                 }
+                self.scroll_selection_into_view(filtered.len(), cols);
                 true
             }
             KeyCode::Right => {
@@ -1602,6 +1618,7 @@ impl FontEditor {
                     let new_idx = (self.selected_index + 1).min(filtered.len().saturating_sub(1));
                     self.selected_index = new_idx;
                 }
+                self.scroll_selection_into_view(filtered.len(), cols);
                 true
             }
             // Enter selects highlighted char
@@ -1843,6 +1860,50 @@ impl FontEditor {
         let Some(font) = &self.font else { return 1 };
         let cell_w = (font.maxlength as u16 + 2).max(8);
         (area_width / cell_w).max(1) as usize
+    }
+
+    /// Columns used by Overview keyboard navigation: the count the grid
+    /// was last rendered with, or an estimate from `area_width` (the
+    /// terminal width) before the first render.
+    fn nav_cols(&self, area_width: u16) -> usize {
+        match self.grid_state.cols() {
+            0 => self.compute_cols(area_width),
+            cols => cols,
+        }
+    }
+
+    /// Glyph rows shown in the Overview grid. Before the first render
+    /// the area is unknown, so it assumes one row, which still keeps the
+    /// selection on screen once the real size is recorded.
+    fn visible_grid_rows(&self) -> usize {
+        self.grid_state.visible_rows().max(1)
+    }
+
+    /// Range of grid rows currently on screen.
+    pub fn visible_row_range(&self) -> std::ops::Range<usize> {
+        let start = self.grid_scroll as usize;
+        start..start + self.visible_grid_rows()
+    }
+
+    /// Adjust `grid_scroll` by the minimum amount that puts the selected
+    /// glyph's row inside the visible rows, never past the last row.
+    fn scroll_selection_into_view(&mut self, len: usize, cols: usize) {
+        if len == 0 {
+            self.grid_scroll = 0;
+            return;
+        }
+        let cols = cols.max(1);
+        let rows = self.visible_grid_rows();
+        let total_rows = len.div_ceil(cols);
+        let sel_row = self.selected_index.min(len - 1) / cols;
+        let mut scroll = self.grid_scroll as usize;
+        if sel_row < scroll {
+            scroll = sel_row;
+        } else if sel_row >= scroll + rows {
+            scroll = sel_row + 1 - rows;
+        }
+        let scroll = scroll.min(total_rows.saturating_sub(1));
+        self.grid_scroll = scroll.min(u16::MAX as usize) as u16;
     }
 
     pub fn selected_char(&self) -> Option<(u32, &crate::font::FIGcharacter)> {
@@ -2742,6 +2803,131 @@ mod tests {
         assert_eq!(overview_hint(200), OVERVIEW_HINTS[0]);
     }
 
+    // --- Overview glyph search: `/` opens it, letters are commands ---
+
+    #[test]
+    fn test_overview_hints_advertise_slash_search() {
+        for hint in OVERVIEW_HINTS {
+            assert!(
+                !hint.contains("Type"),
+                "hint implies typing searches: {hint}"
+            );
+        }
+        assert!(OVERVIEW_HINTS[0].contains("/ Search"));
+        assert!(OVERVIEW_HINTS[1].contains("/ Search"));
+    }
+
+    #[test]
+    fn test_letters_outside_search_do_not_start_search() {
+        let mut editor = make_editor();
+        // Unbound letters, tool letters and digits fall through to the
+        // app's command handlers instead of starting a glyph search.
+        for c in "xyzfoqb1".chars() {
+            assert!(!press(&mut editor, KeyCode::Char(c)), "{c} was swallowed");
+            assert!(!editor.search_active, "{c} started a search");
+        }
+        assert!(editor.search_query.is_empty());
+        assert_eq!(editor.view, FontEditorView::Overview);
+    }
+
+    #[test]
+    fn test_slash_starts_search_without_adding_slash() {
+        let mut editor = make_editor();
+        assert!(press(&mut editor, KeyCode::Char('/')));
+        assert!(editor.search_active);
+        assert!(
+            editor.search_query.is_empty(),
+            "'/' must not enter the query"
+        );
+        let screen = render_overview_text(&editor, 140, 20);
+        assert!(screen.contains("Search: |"), "empty query prompt missing");
+        type_str(&mut editor, "Ab");
+        let screen = render_overview_text(&editor, 140, 20);
+        assert!(screen.contains("Search: Ab|"), "query not shown");
+    }
+
+    #[test]
+    fn test_idle_search_bar_points_at_slash() {
+        let editor = make_editor();
+        let screen = render_overview_text(&editor, 140, 20);
+        assert!(screen.contains("press / to filter"));
+    }
+
+    #[test]
+    fn test_search_captures_action_letters() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('/'));
+        type_str(&mut editor, "WHSTADC/Hello");
+        assert_eq!(editor.search_query, "WHSTADC/Hello");
+        assert!(editor.search_active);
+        assert!(
+            !editor.preview_input_active,
+            "W opened preview during search"
+        );
+        assert!(
+            !editor.code_input_active,
+            "A/D/C opened a prompt during search"
+        );
+        assert_eq!(editor.view, FontEditorView::Overview);
+    }
+
+    #[test]
+    fn test_search_backspace_esc_and_enter() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('/'));
+        type_str(&mut editor, "Bx");
+        assert!(press(&mut editor, KeyCode::Backspace));
+        assert_eq!(editor.search_query, "B");
+        assert!(press(&mut editor, KeyCode::Esc));
+        assert!(!editor.search_active);
+        assert!(editor.search_query.is_empty());
+        // Esc with no search falls through (closes the editor elsewhere).
+        assert!(!press(&mut editor, KeyCode::Esc));
+
+        press(&mut editor, KeyCode::Char('/'));
+        type_str(&mut editor, "B");
+        assert_eq!(editor.filtered_codes(), vec![66]);
+        press(&mut editor, KeyCode::Enter);
+        assert_eq!(editor.view, FontEditorView::CharEditor(66));
+    }
+
+    #[test]
+    fn test_action_keys_work_after_search_ends() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('/'));
+        type_str(&mut editor, "A");
+        press(&mut editor, KeyCode::Esc);
+        assert!(press(&mut editor, KeyCode::Char('W')));
+        assert!(editor.preview_input_active);
+        assert!(!editor.search_active);
+    }
+
+    #[test]
+    fn test_action_keys_run_from_overview() {
+        type Ran = fn(&FontEditor) -> bool;
+        let cases: [(char, Ran); 7] = [
+            ('H', |e| e.view == FontEditorView::HeaderEditor),
+            ('S', |e| e.view == FontEditorView::SmushRuleEditor),
+            ('T', |e| e.view == FontEditorView::TransformEditor),
+            ('A', |e| {
+                e.code_input_active && e.code_input_mode == CodeInputMode::Add
+            }),
+            ('D', |e| {
+                e.code_input_active && e.code_input_mode == CodeInputMode::DeleteConfirm
+            }),
+            ('C', |e| {
+                e.code_input_active && e.code_input_mode == CodeInputMode::CopySource
+            }),
+            ('W', |e| e.preview_input_active),
+        ];
+        for (key, ran) in cases {
+            let mut editor = make_editor();
+            assert!(press(&mut editor, KeyCode::Char(key)), "{key} not handled");
+            assert!(ran(&editor), "{key} did not run its action");
+            assert!(!editor.search_active, "{key} started a search");
+        }
+    }
+
     #[test]
     fn test_preview_height_zero_without_font() {
         let editor = FontEditor::new();
@@ -2924,5 +3110,171 @@ mod tests {
         assert!(state.cell_rects.is_empty());
         assert_eq!(state.cols(), 0);
         assert!(state.last_click().is_none());
+        assert_eq!(state.visible_rows(), 0);
+    }
+
+    // --- Keyboard navigation keeps the selection scrolled into view ---
+
+    fn make_editor_n(n: u32) -> FontEditor {
+        let mut chars: HashMap<u32, FIGcharacter> = HashMap::new();
+        for code in 0..n {
+            chars.insert(code, FIGcharacter::from(vec!["     ".to_string(); 3]));
+        }
+        let font = FIGfont {
+            charheight: 3,
+            maxlength: 5,
+            chars,
+            ..Default::default()
+        };
+        let mut editor = FontEditor::new();
+        editor.load_font(font);
+        editor
+    }
+
+    // 80x30 with charheight 3 / maxlength 5: cell 8x4, 10 columns, grid
+    // chunk 30 - 3 (prompt) - 5 (preview) - 1 (hint) = 21 rows -> 5 glyph rows.
+    const NAV_W: u16 = 80;
+    const NAV_H: u16 = 30;
+
+    fn nav_press(editor: &mut FontEditor, code: KeyCode) {
+        assert!(editor.handle_key(code, KeyModifiers::NONE, NAV_W));
+        render_editor(editor, NAV_W, NAV_H);
+        assert_selection_visible(editor);
+    }
+
+    fn assert_selection_visible(editor: &FontEditor) {
+        let cols = editor.grid_state.cols().max(1);
+        let sel_row = editor.selected_index / cols;
+        let range = editor.visible_row_range();
+        assert!(
+            range.contains(&sel_row),
+            "selected row {sel_row} not in visible rows {range:?}"
+        );
+        // The rendered cells really include the selected glyph.
+        let code = editor.filtered_codes()[editor.selected_index];
+        assert!(
+            editor.grid_state.cell_rects.iter().any(|(c, _)| *c == code),
+            "selected glyph {code} not drawn"
+        );
+    }
+
+    #[test]
+    fn test_nav_records_visible_rows() {
+        let mut editor = make_editor_n(200);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        assert_eq!(editor.grid_state.cols(), 10);
+        assert_eq!(editor.grid_state.visible_rows(), 5);
+        assert_eq!(editor.visible_row_range(), 0..5);
+    }
+
+    #[test]
+    fn test_nav_down_past_last_visible_row_scrolls() {
+        let mut editor = make_editor_n(200);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        for _ in 0..4 {
+            nav_press(&mut editor, KeyCode::Down);
+        }
+        assert_eq!(editor.grid_scroll, 0, "rows 0-4 fit without scrolling");
+        nav_press(&mut editor, KeyCode::Down);
+        assert_eq!(editor.selected_index, 50);
+        assert_eq!(editor.grid_scroll, 1, "scrolls by exactly one row");
+        // Run to the bottom: never scrolls past the last row.
+        for _ in 0..30 {
+            nav_press(&mut editor, KeyCode::Down);
+        }
+        assert_eq!(editor.selected_index, 199);
+        assert_eq!(editor.grid_scroll, 15, "20 rows - 5 visible");
+    }
+
+    #[test]
+    fn test_nav_up_past_first_visible_row_scrolls_back() {
+        let mut editor = make_editor_n(200);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        for _ in 0..10 {
+            nav_press(&mut editor, KeyCode::Down);
+        }
+        assert_eq!(editor.grid_scroll, 6);
+        // Up within the visible rows does not scroll.
+        for _ in 0..4 {
+            nav_press(&mut editor, KeyCode::Up);
+        }
+        assert_eq!(editor.grid_scroll, 6);
+        nav_press(&mut editor, KeyCode::Up);
+        assert_eq!(editor.grid_scroll, 5, "scrolls back by exactly one row");
+        for _ in 0..10 {
+            nav_press(&mut editor, KeyCode::Up);
+        }
+        assert_eq!(editor.selected_index, 0);
+        assert_eq!(editor.grid_scroll, 0);
+    }
+
+    #[test]
+    fn test_nav_left_right_across_row_boundary_stays_visible() {
+        let mut editor = make_editor_n(200);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        for _ in 0..49 {
+            nav_press(&mut editor, KeyCode::Right);
+        }
+        assert_eq!(editor.grid_scroll, 0);
+        // Right from the end of the last visible row wraps to the next row.
+        nav_press(&mut editor, KeyCode::Right);
+        assert_eq!(editor.selected_index, 50);
+        assert_eq!(editor.grid_scroll, 1);
+        // Left back to row 4 is still visible: no scroll.
+        nav_press(&mut editor, KeyCode::Left);
+        assert_eq!(editor.grid_scroll, 1);
+        // Left from the start of the first visible row scrolls up.
+        while editor.selected_index > 10 {
+            nav_press(&mut editor, KeyCode::Left);
+        }
+        assert_eq!(editor.grid_scroll, 1);
+        nav_press(&mut editor, KeyCode::Left);
+        assert_eq!(editor.selected_index, 9);
+        assert_eq!(editor.grid_scroll, 0);
+    }
+
+    #[test]
+    fn test_nav_short_list_never_scrolls() {
+        // 30 glyphs = 3 rows, fewer than the 5 visible.
+        let mut editor = make_editor_n(30);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        for key in [
+            KeyCode::Down,
+            KeyCode::Down,
+            KeyCode::Down,
+            KeyCode::Right,
+            KeyCode::Right,
+            KeyCode::Up,
+            KeyCode::Left,
+            KeyCode::Up,
+            KeyCode::Up,
+        ] {
+            nav_press(&mut editor, key);
+            assert_eq!(editor.grid_scroll, 0);
+        }
+    }
+
+    #[test]
+    fn test_nav_after_mouse_scroll_brings_selection_back() {
+        let mut editor = make_editor_n(200);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        editor.handle_mouse_scroll_overview(8);
+        assert_eq!(editor.grid_scroll, 8, "mouse scroll unchanged");
+        nav_press(&mut editor, KeyCode::Right);
+        assert_eq!(editor.grid_scroll, 0);
+    }
+
+    #[test]
+    fn test_nav_before_first_render_keeps_selection_row() {
+        // No render yet: one row is assumed, so the scroll follows the
+        // selection's row and it is on screen once the grid is drawn.
+        let mut editor = make_editor_n(200);
+        for _ in 0..3 {
+            assert!(editor.handle_key(KeyCode::Down, KeyModifiers::NONE, NAV_W));
+        }
+        assert_eq!(editor.selected_index, 30);
+        assert_eq!(editor.grid_scroll, 3);
+        render_editor(&mut editor, NAV_W, NAV_H);
+        assert_selection_visible(&editor);
     }
 }

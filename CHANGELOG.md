@@ -10,6 +10,7 @@
   the same status. All existing options keep working unchanged; `figby --help` lists the subcommands.
 
 ### Changed
+- Font editor overview: press `/` to search glyphs. Letters (H, S, T, A, D, C, W and tool shortcuts) are always commands and no longer start a search; Esc ends a search.
 - **CLI:** when the *first* argument is exactly `play`, `bake`, `image`, `font` or `tui`, it is now a
   subcommand instead of a one-word banner message. `figby play` used to print "play" in large letters;
   it now asks for a file. This is the only change to existing invocations: a later word
@@ -43,6 +44,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Font editor overview: moving the glyph selection with the arrow keys now scrolls the grid so the selected glyph stays visible.
 - Font editor overview panicked ("end byte index is not a char boundary") when a glyph row held a multi-byte character such as a block/dither glyph (`░`). Rows are now cut by character.
 - Moving the cursor with the arrow keys now scrolls the editor canvas so the cursor stays on screen, horizontally and vertically, including after zoom or a terminal resize.
 - Save As for a new font now opens in the FIGlet font directory figby searches, always shows the absolute "Save to:" path, and Enter on a highlighted folder opens it instead of saving into the folder shown.

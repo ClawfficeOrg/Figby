@@ -271,6 +271,77 @@ mod keybind_collision_tests {
         assert!(app.is_typing(), "open preview prompt counts as typing");
     }
 
+    // --- Overview glyph search: `/` opens it, letters stay commands ---
+
+    #[test]
+    fn test_letter_outside_search_reaches_tool_shortcut() {
+        let mut app = app_font_editor_overview();
+        app.editor.toolbox.selected = crate::tui::toolbox::Tool::Brush;
+        press(&mut app, KeyCode::Char('k'));
+        assert!(!app.editor.font_editor.search_active, "k started a search");
+        assert_eq!(
+            app.editor.toolbox.selected,
+            crate::tui::toolbox::Tool::Braille
+        );
+        press(&mut app, KeyCode::Char('x'));
+        assert!(!app.editor.font_editor.search_active, "x started a search");
+    }
+
+    #[test]
+    fn test_slash_search_captures_action_letters_in_app() {
+        let mut app = app_font_editor_overview();
+        let tool = app.editor.toolbox.selected;
+        let timeline = app.animation.timeline_visible;
+        press(&mut app, KeyCode::Char('/'));
+        assert!(app.editor.font_editor.search_active);
+        assert!(app.is_typing(), "active search counts as typing");
+        for c in "WHSTkq".chars() {
+            press(&mut app, KeyCode::Char(c));
+        }
+        let fe = &app.editor.font_editor;
+        assert_eq!(fe.search_query, "WHSTkq");
+        assert!(!fe.preview_input_active);
+        assert_eq!(fe.view, FontEditorView::Overview);
+        assert!(!app.dialogs.settings.settings_open);
+        assert!(!app.ui.should_quit && !app.dialogs.quit_confirm_dialog);
+        assert_eq!(app.editor.toolbox.selected, tool);
+        assert_eq!(app.animation.timeline_visible, timeline);
+        press(&mut app, KeyCode::Esc);
+        assert!(!app.editor.font_editor.search_active);
+        assert!(app.editor.font_editor.search_query.is_empty());
+        assert_eq!(app.ui.mode, AppMode::FontEditor, "Esc only ended search");
+    }
+
+    #[test]
+    fn test_shift_w_opens_preview_after_search_ends() {
+        let mut app = app_font_editor_overview();
+        press(&mut app, KeyCode::Char('/'));
+        press(&mut app, KeyCode::Char('A'));
+        press(&mut app, KeyCode::Esc);
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT));
+        assert!(app.editor.font_editor.preview_input_active);
+        assert!(!app.editor.font_editor.search_active);
+    }
+
+    #[test]
+    fn test_overview_action_keys_run_in_app() {
+        for (key, view) in [
+            ('H', FontEditorView::HeaderEditor),
+            ('S', FontEditorView::SmushRuleEditor),
+            ('T', FontEditorView::TransformEditor),
+        ] {
+            let mut app = app_font_editor_overview();
+            press(&mut app, KeyCode::Char(key));
+            assert_eq!(app.editor.font_editor.view, view, "{key}");
+        }
+        for key in ['A', 'D', 'C'] {
+            let mut app = app_font_editor_overview();
+            press(&mut app, KeyCode::Char(key));
+            assert!(app.editor.font_editor.code_input_active, "{key}");
+            assert!(!app.editor.font_editor.search_active, "{key}");
+        }
+    }
+
     #[test]
     fn test_preview_prompt_edit_applies_without_dirty_or_side_effects() {
         let mut app = app_font_editor_overview();
