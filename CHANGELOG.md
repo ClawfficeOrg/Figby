@@ -25,6 +25,9 @@
   trait; it was never compiled). No behaviour change.
 - Internal: the TUI's 306-line `handle_menu_action` is now a router over one handler per menu (File,
   Edit, View, Tools, Layer, Animation, Image/Help) in `tui/dispatch/menu_actions.rs`. No behaviour change.
+- Internal: the palette editor's 363-line `handle_key` in `tui/palette_editor.rs` is now a router over
+  one handler per panel mode (hex entry, swatch name, palette name, format choice, file list, lighting
+  field, Idle commands, lighting toggles). No behaviour change.
 - `.gitattributes` forces LF line endings, so Windows checkouts (`core.autocrlf=true`) match the C reference output.
 - Removed a stale `fonts-external` entry from `.gitmodules`; `figby-fonts` now uses an HTTPS URL.
 - README: submodule init instructions; removed a link to a private local path.

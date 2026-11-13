@@ -680,368 +680,408 @@ impl PaletteEditor {
         true
     }
 
+    /// Route a key to the handler for the current panel mode. Returns
+    /// `true` when the key was consumed.
     pub fn handle_key(&mut self, code: KeyCode) -> bool {
         match self.mode {
-            PanelMode::EditingHex | PanelMode::AddingColor => {
-                let is_adding = matches!(self.mode, PanelMode::AddingColor);
-                match code {
-                    KeyCode::Char(c) if c.is_ascii_hexdigit() || c == '#' => {
-                        if self.lighting_hex_buffer.len() < 7 {
-                            self.lighting_hex_buffer.push(c);
-                        }
-                        true
-                    }
-                    KeyCode::Backspace => {
-                        self.lighting_hex_buffer.pop();
-                        true
-                    }
-                    KeyCode::Enter => {
-                        let hex =
-                            format!("#{:0>6}", self.lighting_hex_buffer.trim_start_matches('#'));
-                        if is_adding {
-                            let mut swatch =
-                                Swatch::new(format!("Color {}", self.swatches.len() + 1), hex);
-                            swatch.lit_hex = Some(swatch.hex.clone());
-                            swatch.shadow_hex = Some(Swatch::default_shadow_hex(&swatch.hex));
-                            self.swatches.push(swatch);
-                            self.selected = self.swatches.len().saturating_sub(1);
-                        } else {
-                            self.edit_selected_hex(&hex);
-                        }
-                        self.modified = true;
-                        self.message = None;
-                        self.mode = PanelMode::Idle;
-                        self.lighting_hex_buffer.clear();
-                        true
-                    }
-                    KeyCode::Esc => {
-                        self.mode = PanelMode::Idle;
-                        self.lighting_hex_buffer.clear();
-                        true
-                    }
-                    _ => false,
-                }
-            }
-            PanelMode::EditingName => match code {
-                KeyCode::Char(c) if !c.is_control() => {
-                    self.name_buffer.push(c);
-                    true
-                }
-                KeyCode::Backspace => {
-                    self.name_buffer.pop();
-                    true
-                }
-                KeyCode::Enter => {
-                    let name = self.name_buffer.clone();
-                    if !name.trim().is_empty() {
-                        self.rename_selected(&name);
-                        self.message = None;
-                    }
-                    self.mode = PanelMode::Idle;
-                    self.name_buffer.clear();
-                    true
-                }
-                KeyCode::Esc => {
-                    self.mode = PanelMode::Idle;
-                    self.name_buffer.clear();
-                    true
-                }
-                _ => false,
-            },
-            PanelMode::Naming => match code {
-                KeyCode::Char(c) => {
-                    self.name_buffer.push(c);
-                    true
-                }
-                KeyCode::Backspace => {
-                    self.name_buffer.pop();
-                    true
-                }
-                KeyCode::Enter => {
-                    let name = self.name_buffer.trim().to_string();
-                    if !name.is_empty() {
-                        if self.naming_is_rename {
-                            self.name_buffer = name.clone();
-                            self.message = Some(format!("Palette: {name}"));
-                            self.naming_is_rename = false;
-                        } else {
-                            let result = self.duplicate(&name);
-                            if let Err(e) = result {
-                                self.message = Some(format!("Duplicate error: {e}"));
-                            } else {
-                                self.message = Some("Duplicated".to_string());
-                            }
-                        }
-                    }
-                    self.mode = PanelMode::Idle;
-                    true
-                }
-                KeyCode::Esc => {
-                    self.mode = PanelMode::Idle;
-                    self.naming_is_rename = false;
-                    true
-                }
-                _ => false,
-            },
-            PanelMode::ChoosingFormat => match code {
-                KeyCode::Up => {
-                    self.format_index = self.format_index.saturating_sub(1);
-                    true
-                }
-                KeyCode::Down => {
-                    let max = ImportFormat::all().len(); // 5 formats
-                    self.format_index = self.format_index.saturating_add(1).min(max);
-                    true
-                }
-                KeyCode::Enter => {
-                    let selected_format = if self.format_index == 0 {
-                        None
-                    } else {
-                        Some(ImportFormat::all()[self.format_index - 1])
-                    };
-                    self.import_format = selected_format;
-                    self.available_palettes(selected_format);
-                    if self.file_list.is_empty() {
-                        let hint = match selected_format {
-                            Some(f) => format!("No {} files found", f.display_name()),
-                            None => "No palette files found".to_string(),
-                        };
-                        self.message = Some(hint);
-                        self.mode = PanelMode::Idle;
-                    } else {
-                        self.mode = PanelMode::Loading;
-                        self.file_scroll = 0;
-                    }
-                    true
-                }
-                KeyCode::Esc => {
-                    self.mode = PanelMode::Idle;
-                    true
-                }
-                _ => false,
-            },
-            PanelMode::Loading => match code {
-                KeyCode::Up => {
-                    self.file_scroll = self.file_scroll.saturating_sub(1);
-                    true
-                }
-                KeyCode::Down => {
-                    self.file_scroll = self
-                        .file_scroll
-                        .saturating_add(1)
-                        .min(self.file_list.len().saturating_sub(1));
-                    true
-                }
-                KeyCode::Enter => {
-                    if let Some(path) = self.file_list.get(self.file_scroll).cloned() {
-                        if let Err(e) = self.load_file(&path) {
-                            self.message = Some(e);
-                        }
-                    }
-                    self.mode = PanelMode::Idle;
-                    true
-                }
-                KeyCode::Esc => {
-                    self.mode = PanelMode::Idle;
-                    true
-                }
-                _ => false,
-            },
+            PanelMode::EditingHex | PanelMode::AddingColor => self.handle_hex_input_key(code),
+            PanelMode::EditingName => self.handle_swatch_name_key(code),
+            PanelMode::Naming => self.handle_palette_name_key(code),
+            PanelMode::ChoosingFormat => self.handle_format_choice_key(code),
+            PanelMode::Loading => self.handle_file_list_key(code),
             PanelMode::Idle => {
-                // Lighting field editing (hex input)
+                // Lighting field editing (hex input) takes priority.
                 if let Some(field) = self.editing_lighting_field {
-                    return match code {
-                        KeyCode::Char(c) if c.is_ascii_hexdigit() || c == '#' => {
-                            if self.lighting_hex_buffer.len() < 7 {
-                                self.lighting_hex_buffer.push(c);
-                            }
-                            true
-                        }
-                        KeyCode::Backspace => {
-                            self.lighting_hex_buffer.pop();
-                            true
-                        }
-                        KeyCode::Enter => {
-                            if self.selected < self.swatches.len() {
-                                let hex = format!(
-                                    "#{:0>6}",
-                                    self.lighting_hex_buffer.trim_start_matches('#')
-                                );
-                                match field {
-                                    "lit" => self.swatches[self.selected].lit_hex = Some(hex),
-                                    "shadow" => self.swatches[self.selected].shadow_hex = Some(hex),
-                                    _ => {}
-                                }
-                                self.modified = true;
-                            }
-                            self.editing_lighting_field = None;
-                            self.lighting_hex_buffer.clear();
-                            true
-                        }
-                        KeyCode::Esc => {
-                            self.editing_lighting_field = None;
-                            self.lighting_hex_buffer.clear();
-                            true
-                        }
-                        _ => false,
-                    };
+                    return self.handle_lighting_field_key(field, code);
                 }
-
-                match code {
-                    KeyCode::Esc => {
-                        self.open = false;
-                        true
-                    }
-                    KeyCode::Up => {
-                        self.selected = self.selected.saturating_sub(1);
-                        true
-                    }
-                    KeyCode::Down => {
-                        self.selected = self
-                            .selected
-                            .saturating_add(1)
-                            .min(self.swatches.len().saturating_sub(1));
-                        true
-                    }
-                    KeyCode::Char('s') | KeyCode::Char('S') => {
-                        match self.save() {
-                            Ok(()) => self.message = Some("Saved".to_string()),
-                            Err(e) => self.message = Some(format!("Save error: {e}")),
-                        }
-                        true
-                    }
-                    KeyCode::Char('a') | KeyCode::Char('A') => {
-                        self.mode = PanelMode::AddingColor;
-                        self.lighting_hex_buffer.clear();
-                        self.message = None;
-                        true
-                    }
-                    KeyCode::Delete | KeyCode::Backspace => {
-                        if !self.swatches.is_empty() {
-                            self.delete_selected();
-                            self.message = None;
-                        }
-                        true
-                    }
-                    KeyCode::Char('e') | KeyCode::Char('E') => {
-                        if let Some(swatch) = self.swatches.get(self.selected) {
-                            let hex = swatch.hex.trim_start_matches('#').to_string();
-                            self.mode = PanelMode::EditingHex;
-                            self.lighting_hex_buffer = hex;
-                            self.message = None;
-                        }
-                        true
-                    }
-                    KeyCode::Char('n') | KeyCode::Char('N') => {
-                        if let Some(swatch) = self.swatches.get(self.selected) {
-                            self.mode = PanelMode::EditingName;
-                            self.name_buffer = swatch.name.clone();
-                            self.message = None;
-                        }
-                        true
-                    }
-                    KeyCode::Char('r') | KeyCode::Char('R') => {
-                        self.mode = PanelMode::Naming;
-                        self.name_buffer = self.name_buffer.clone();
-                        self.naming_is_rename = true;
-                        self.message = Some("Enter new palette name".to_string());
-                        true
-                    }
-                    KeyCode::Char('l') | KeyCode::Char('L') => {
-                        self.mode = PanelMode::ChoosingFormat;
-                        self.format_index = 0;
-                        true
-                    }
-                    KeyCode::Char('d') | KeyCode::Char('D') => {
-                        self.mode = PanelMode::Naming;
-                        self.name_buffer.clear();
-                        self.message = Some("Enter new name for duplicate".to_string());
-                        true
-                    }
-                    // Lighting mode toggles (only when lighting_pickers_visible)
-                    _ if self.lighting_pickers_visible => {
-                        match code {
-                            KeyCode::Char('L') => {
-                                // Edit lit color for selected swatch
-                                self.ensure_lighting_defaults(self.selected);
-                                if let Some(swatch) = self.swatches.get(self.selected) {
-                                    let hex = swatch
-                                        .lit_hex
-                                        .as_deref()
-                                        .unwrap_or(&swatch.hex)
-                                        .trim_start_matches('#')
-                                        .to_string();
-                                    self.editing_lighting_field = Some("lit");
-                                    self.lighting_hex_buffer = hex;
-                                }
-                                true
-                            }
-                            KeyCode::Char('l') => {
-                                // Toggle specular for selected swatch
-                                self.ensure_lighting_defaults(self.selected);
-                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
-                                    let current = swatch.specular.unwrap_or(false);
-                                    swatch.specular = Some(!current);
-                                    self.modified = true;
-                                }
-                                true
-                            }
-                            KeyCode::Char('S') => {
-                                // Edit shadow color for selected swatch
-                                self.ensure_lighting_defaults(self.selected);
-                                if let Some(swatch) = self.swatches.get(self.selected) {
-                                    let hex = swatch
-                                        .shadow_hex
-                                        .as_deref()
-                                        .unwrap_or(&Swatch::default_shadow_hex(&swatch.hex))
-                                        .trim_start_matches('#')
-                                        .to_string();
-                                    self.editing_lighting_field = Some("shadow");
-                                    self.lighting_hex_buffer = hex;
-                                }
-                                true
-                            }
-                            KeyCode::Char('s') => {
-                                // Cycle shininess for selected swatch
-                                self.ensure_lighting_defaults(self.selected);
-                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
-                                    let current = swatch.shininess.unwrap_or(32.0);
-                                    let new_val = if current >= 128.0 {
-                                        4.0
-                                    } else {
-                                        (current * 2.0).min(256.0)
-                                    };
-                                    swatch.shininess = Some(new_val);
-                                    self.modified = true;
-                                }
-                                true
-                            }
-                            KeyCode::Char('[') => {
-                                // Decrease shininess
-                                self.ensure_lighting_defaults(self.selected);
-                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
-                                    let current = swatch.shininess.unwrap_or(32.0);
-                                    swatch.shininess = Some((current / 2.0).max(1.0));
-                                    self.modified = true;
-                                }
-                                true
-                            }
-                            KeyCode::Char(']') => {
-                                // Increase shininess
-                                self.ensure_lighting_defaults(self.selected);
-                                if let Some(swatch) = self.swatches.get_mut(self.selected) {
-                                    let current = swatch.shininess.unwrap_or(32.0);
-                                    swatch.shininess = Some((current * 2.0).min(256.0));
-                                    self.modified = true;
-                                }
-                                true
-                            }
-                            _ => false,
-                        }
-                    }
-                    _ => false,
-                }
+                self.handle_idle_key(code)
             }
+        }
+    }
+
+    /// EditingHex / AddingColor: hex entry for the selected swatch or a
+    /// new swatch.
+    fn handle_hex_input_key(&mut self, code: KeyCode) -> bool {
+        let is_adding = matches!(self.mode, PanelMode::AddingColor);
+        match code {
+            KeyCode::Char(c) if c.is_ascii_hexdigit() || c == '#' => {
+                if self.lighting_hex_buffer.len() < 7 {
+                    self.lighting_hex_buffer.push(c);
+                }
+                true
+            }
+            KeyCode::Backspace => {
+                self.lighting_hex_buffer.pop();
+                true
+            }
+            KeyCode::Enter => {
+                let hex = format!("#{:0>6}", self.lighting_hex_buffer.trim_start_matches('#'));
+                if is_adding {
+                    let mut swatch = Swatch::new(format!("Color {}", self.swatches.len() + 1), hex);
+                    swatch.lit_hex = Some(swatch.hex.clone());
+                    swatch.shadow_hex = Some(Swatch::default_shadow_hex(&swatch.hex));
+                    self.swatches.push(swatch);
+                    self.selected = self.swatches.len().saturating_sub(1);
+                } else {
+                    self.edit_selected_hex(&hex);
+                }
+                self.modified = true;
+                self.message = None;
+                self.mode = PanelMode::Idle;
+                self.lighting_hex_buffer.clear();
+                true
+            }
+            KeyCode::Esc => {
+                self.mode = PanelMode::Idle;
+                self.lighting_hex_buffer.clear();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// EditingName: text entry for the selected swatch's name.
+    fn handle_swatch_name_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Char(c) if !c.is_control() => {
+                self.name_buffer.push(c);
+                true
+            }
+            KeyCode::Backspace => {
+                self.name_buffer.pop();
+                true
+            }
+            KeyCode::Enter => {
+                let name = self.name_buffer.clone();
+                if !name.trim().is_empty() {
+                    self.rename_selected(&name);
+                    self.message = None;
+                }
+                self.mode = PanelMode::Idle;
+                self.name_buffer.clear();
+                true
+            }
+            KeyCode::Esc => {
+                self.mode = PanelMode::Idle;
+                self.name_buffer.clear();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Naming: text entry for renaming the palette or duplicating it
+    /// under a new name.
+    fn handle_palette_name_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Char(c) => {
+                self.name_buffer.push(c);
+                true
+            }
+            KeyCode::Backspace => {
+                self.name_buffer.pop();
+                true
+            }
+            KeyCode::Enter => {
+                let name = self.name_buffer.trim().to_string();
+                if !name.is_empty() {
+                    if self.naming_is_rename {
+                        self.name_buffer = name.clone();
+                        self.message = Some(format!("Palette: {name}"));
+                        self.naming_is_rename = false;
+                    } else {
+                        let result = self.duplicate(&name);
+                        if let Err(e) = result {
+                            self.message = Some(format!("Duplicate error: {e}"));
+                        } else {
+                            self.message = Some("Duplicated".to_string());
+                        }
+                    }
+                }
+                self.mode = PanelMode::Idle;
+                true
+            }
+            KeyCode::Esc => {
+                self.mode = PanelMode::Idle;
+                self.naming_is_rename = false;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// ChoosingFormat: pick an import format, then open the file list.
+    fn handle_format_choice_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Up => {
+                self.format_index = self.format_index.saturating_sub(1);
+                true
+            }
+            KeyCode::Down => {
+                let max = ImportFormat::all().len(); // 5 formats
+                self.format_index = self.format_index.saturating_add(1).min(max);
+                true
+            }
+            KeyCode::Enter => {
+                let selected_format = if self.format_index == 0 {
+                    None
+                } else {
+                    Some(ImportFormat::all()[self.format_index - 1])
+                };
+                self.import_format = selected_format;
+                self.available_palettes(selected_format);
+                if self.file_list.is_empty() {
+                    let hint = match selected_format {
+                        Some(f) => format!("No {} files found", f.display_name()),
+                        None => "No palette files found".to_string(),
+                    };
+                    self.message = Some(hint);
+                    self.mode = PanelMode::Idle;
+                } else {
+                    self.mode = PanelMode::Loading;
+                    self.file_scroll = 0;
+                }
+                true
+            }
+            KeyCode::Esc => {
+                self.mode = PanelMode::Idle;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Loading: move through the palette file list and load one.
+    fn handle_file_list_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Up => {
+                self.file_scroll = self.file_scroll.saturating_sub(1);
+                true
+            }
+            KeyCode::Down => {
+                self.file_scroll = self
+                    .file_scroll
+                    .saturating_add(1)
+                    .min(self.file_list.len().saturating_sub(1));
+                true
+            }
+            KeyCode::Enter => {
+                if let Some(path) = self.file_list.get(self.file_scroll).cloned() {
+                    if let Err(e) = self.load_file(&path) {
+                        self.message = Some(e);
+                    }
+                }
+                self.mode = PanelMode::Idle;
+                true
+            }
+            KeyCode::Esc => {
+                self.mode = PanelMode::Idle;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Idle with a lighting field open: hex entry for the selected
+    /// swatch's lit or shadow colour.
+    fn handle_lighting_field_key(&mut self, field: &'static str, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Char(c) if c.is_ascii_hexdigit() || c == '#' => {
+                if self.lighting_hex_buffer.len() < 7 {
+                    self.lighting_hex_buffer.push(c);
+                }
+                true
+            }
+            KeyCode::Backspace => {
+                self.lighting_hex_buffer.pop();
+                true
+            }
+            KeyCode::Enter => {
+                if self.selected < self.swatches.len() {
+                    let hex = format!("#{:0>6}", self.lighting_hex_buffer.trim_start_matches('#'));
+                    match field {
+                        "lit" => self.swatches[self.selected].lit_hex = Some(hex),
+                        "shadow" => self.swatches[self.selected].shadow_hex = Some(hex),
+                        _ => {}
+                    }
+                    self.modified = true;
+                }
+                self.editing_lighting_field = None;
+                self.lighting_hex_buffer.clear();
+                true
+            }
+            KeyCode::Esc => {
+                self.editing_lighting_field = None;
+                self.lighting_hex_buffer.clear();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Idle: swatch navigation, panel commands and close. Keys not
+    /// claimed here fall through to the lighting toggles when the
+    /// lighting pickers are visible.
+    fn handle_idle_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Esc => {
+                self.open = false;
+                true
+            }
+            KeyCode::Up => {
+                self.selected = self.selected.saturating_sub(1);
+                true
+            }
+            KeyCode::Down => {
+                self.selected = self
+                    .selected
+                    .saturating_add(1)
+                    .min(self.swatches.len().saturating_sub(1));
+                true
+            }
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                match self.save() {
+                    Ok(()) => self.message = Some("Saved".to_string()),
+                    Err(e) => self.message = Some(format!("Save error: {e}")),
+                }
+                true
+            }
+            KeyCode::Char('a') | KeyCode::Char('A') => {
+                self.mode = PanelMode::AddingColor;
+                self.lighting_hex_buffer.clear();
+                self.message = None;
+                true
+            }
+            KeyCode::Delete | KeyCode::Backspace => {
+                if !self.swatches.is_empty() {
+                    self.delete_selected();
+                    self.message = None;
+                }
+                true
+            }
+            KeyCode::Char('e') | KeyCode::Char('E') => {
+                if let Some(swatch) = self.swatches.get(self.selected) {
+                    let hex = swatch.hex.trim_start_matches('#').to_string();
+                    self.mode = PanelMode::EditingHex;
+                    self.lighting_hex_buffer = hex;
+                    self.message = None;
+                }
+                true
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') => {
+                if let Some(swatch) = self.swatches.get(self.selected) {
+                    self.mode = PanelMode::EditingName;
+                    self.name_buffer = swatch.name.clone();
+                    self.message = None;
+                }
+                true
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                self.mode = PanelMode::Naming;
+                self.name_buffer = self.name_buffer.clone();
+                self.naming_is_rename = true;
+                self.message = Some("Enter new palette name".to_string());
+                true
+            }
+            KeyCode::Char('l') | KeyCode::Char('L') => {
+                self.mode = PanelMode::ChoosingFormat;
+                self.format_index = 0;
+                true
+            }
+            KeyCode::Char('d') | KeyCode::Char('D') => {
+                self.mode = PanelMode::Naming;
+                self.name_buffer.clear();
+                self.message = Some("Enter new name for duplicate".to_string());
+                true
+            }
+            // Lighting mode toggles (only when lighting_pickers_visible)
+            _ if self.lighting_pickers_visible => self.handle_lighting_toggle_key(code),
+            _ => false,
+        }
+    }
+
+    /// Idle with lighting pickers visible: per-swatch lighting edits for
+    /// keys the Idle commands did not claim. The `L`, `l`, `S` and `s`
+    /// arms are kept as they were but are currently shadowed by the
+    /// Idle Load and Save commands, so only `[` and `]` reach here.
+    fn handle_lighting_toggle_key(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Char('L') => {
+                // Edit lit color for selected swatch
+                self.ensure_lighting_defaults(self.selected);
+                if let Some(swatch) = self.swatches.get(self.selected) {
+                    let hex = swatch
+                        .lit_hex
+                        .as_deref()
+                        .unwrap_or(&swatch.hex)
+                        .trim_start_matches('#')
+                        .to_string();
+                    self.editing_lighting_field = Some("lit");
+                    self.lighting_hex_buffer = hex;
+                }
+                true
+            }
+            KeyCode::Char('l') => {
+                // Toggle specular for selected swatch
+                self.ensure_lighting_defaults(self.selected);
+                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                    let current = swatch.specular.unwrap_or(false);
+                    swatch.specular = Some(!current);
+                    self.modified = true;
+                }
+                true
+            }
+            KeyCode::Char('S') => {
+                // Edit shadow color for selected swatch
+                self.ensure_lighting_defaults(self.selected);
+                if let Some(swatch) = self.swatches.get(self.selected) {
+                    let hex = swatch
+                        .shadow_hex
+                        .as_deref()
+                        .unwrap_or(&Swatch::default_shadow_hex(&swatch.hex))
+                        .trim_start_matches('#')
+                        .to_string();
+                    self.editing_lighting_field = Some("shadow");
+                    self.lighting_hex_buffer = hex;
+                }
+                true
+            }
+            KeyCode::Char('s') => {
+                // Cycle shininess for selected swatch
+                self.ensure_lighting_defaults(self.selected);
+                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                    let current = swatch.shininess.unwrap_or(32.0);
+                    let new_val = if current >= 128.0 {
+                        4.0
+                    } else {
+                        (current * 2.0).min(256.0)
+                    };
+                    swatch.shininess = Some(new_val);
+                    self.modified = true;
+                }
+                true
+            }
+            KeyCode::Char('[') => {
+                // Decrease shininess
+                self.ensure_lighting_defaults(self.selected);
+                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                    let current = swatch.shininess.unwrap_or(32.0);
+                    swatch.shininess = Some((current / 2.0).max(1.0));
+                    self.modified = true;
+                }
+                true
+            }
+            KeyCode::Char(']') => {
+                // Increase shininess
+                self.ensure_lighting_defaults(self.selected);
+                if let Some(swatch) = self.swatches.get_mut(self.selected) {
+                    let current = swatch.shininess.unwrap_or(32.0);
+                    swatch.shininess = Some((current * 2.0).min(256.0));
+                    self.modified = true;
+                }
+                true
+            }
+            _ => false,
         }
     }
 }
