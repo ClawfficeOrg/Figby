@@ -1,17 +1,6 @@
 # Changelog
 
-## [Unreleased]
-
-### Removed
-- The autonomous Ralph loop: `scripts/ralph.sh`, `scripts/ralph-monitor.sh`, `skills/ralph.md`,
-  the F-20 sandbox policy and `docs/learnings.md`. Their references in AGENTS.md, README and
-  the docs index are gone too.
-
-### Changed
-- Placeholder `/home/user` paths in `scripts/make-tui-draw-cast.py` and the timelapse driver
-  helper now resolve relative to the script, so they work from any checkout.
-- The template test for `${HOME}` expansion uses `USERPROFILE` on Windows, so
-  `cargo test` passes with HOME unset.
+## [6.3.0] - 2026-11-12
 
 ### Added
 - Subcommands for the extension programs: `figby play`, `figby bake`, `figby image`, `figby font` and
@@ -29,21 +18,25 @@
 - Internal: the TUI's `tui/dispatch.rs` (4,600 lines) is split into `tui/dispatch/` by concern, and key
   and mouse handling are routers over one handler per component (review A1). The playback programs
   moved out of `main()` into `src/cli/playback.rs`. No behaviour change.
+- The placeholder `/home/user` paths in `scripts/make-tui-draw-cast.py` and the timelapse driver helper
+  now resolve relative to the script, so they work from any checkout.
+- `serde_yaml` (unmaintained) replaced with `serde_yaml_ng`.
+- `.gitattributes` forces LF line endings, so Windows checkouts (`core.autocrlf=true`) match the C reference output.
+- Removed a stale `fonts-external` entry from `.gitmodules`; `figby-fonts` now uses an HTTPS URL.
+- README: submodule init instructions; removed a link to a private local path.
+- Tracked asciinema recordings and scripts no longer contain a personal hostname or user name.
 
-## [6.3.0] - 2026-11-12
+### Removed
+- The autonomous Ralph loop: `scripts/ralph.sh`, `scripts/ralph-monitor.sh`, `skills/ralph.md`,
+  the F-20 sandbox policy and `docs/learnings.md`. Their references in AGENTS.md, README and
+  the docs index are gone too.
 
 ### Fixed
 - Output stops rendering once stdout is closed (e.g. `| head -1`), instead of rendering the rest of the input into the broken pipe.
 - Template image paths: rooted and drive-prefixed paths are rejected on every platform (Windows treated `/etc/passwd` as relative).
 - TUI: while the New Image dialog is open, the panel title reads " New Image " instead of the underlying mode.
 - Parity test listing of control files uses `/` separators on Windows.
-
-### Changed
-- `serde_yaml` (unmaintained) replaced with `serde_yaml_ng`.
-- `.gitattributes` forces LF line endings, so Windows checkouts (`core.autocrlf=true`) match the C reference output.
-- Removed a stale `fonts-external` entry from `.gitmodules`; `figby-fonts` now uses an HTTPS URL.
-- README: submodule init instructions; removed a link to a private local path.
-- Tracked asciinema recordings and scripts no longer contain a personal hostname or user name.
+- The template test for `${HOME}` expansion uses `USERPROFILE` on Windows, so `cargo test` passes with HOME unset.
 
 ## [6.2.9] - 2026-11-05
 
