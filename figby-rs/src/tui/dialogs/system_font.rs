@@ -209,14 +209,48 @@ impl SystemFontPickerDialog {
                 true
             }
             KeyCode::Enter => {
-                self.confirm();
+                self.advance();
                 true
             }
             KeyCode::Esc => {
-                self.close();
+                self.back();
                 true
             }
             _ => false,
+        }
+    }
+
+    /// Enter: step forward through the form (font list -> size -> charset).
+    /// Only Enter on the final (charset) field creates the font, so picking
+    /// a family never converts it before the size has been seen.
+    fn advance(&mut self) {
+        match self.selected_field {
+            Field::List => {
+                if self.filtered_indices().get(self.selected).is_none() {
+                    self.error_message = "Select a font family".to_string();
+                    return;
+                }
+                self.error_message.clear();
+                self.selected_field = Field::Size;
+            }
+            Field::Size => {
+                if self.parse_size().is_none() {
+                    self.error_message = "Size must be 4-200".to_string();
+                    return;
+                }
+                self.error_message.clear();
+                self.selected_field = Field::Charset;
+            }
+            Field::Charset => self.confirm(),
+        }
+    }
+
+    /// Esc: step back one field; on the font list it cancels the dialog.
+    fn back(&mut self) {
+        match self.selected_field {
+            Field::Charset => self.selected_field = Field::Size,
+            Field::Size => self.selected_field = Field::List,
+            Field::List => self.close(),
         }
     }
 }
@@ -320,8 +354,15 @@ pub fn render_system_font_dialog(dialog: &SystemFontPickerDialog, frame: &mut Fr
         )));
     }
 
+    let (enter_hint, esc_hint) = match dialog.selected_field {
+        Field::List => ("next", "cancel"),
+        Field::Size => ("next", "back"),
+        Field::Charset => ("create", "back"),
+    };
     lines.push(Line::from(Span::styled(
-        " Enter: create  Esc: cancel  Tab: switch field  \u{2191}\u{2193}/\u{2190}\u{2192}: select",
+        format!(
+            " Enter: {enter_hint}  Esc: {esc_hint}  Tab: switch field  \u{2191}\u{2193}/\u{2190}\u{2192}: select"
+        ),
         Style::default().fg(dialog.theme.dialog.meta),
     )));
 
@@ -385,6 +426,83 @@ mod tests {
         dialog.confirm();
         assert!(dialog.confirmed);
         assert_eq!(dialog.result_charset, expected);
+    }
+
+    fn dialog_with_font() -> SystemFontPickerDialog {
+        let mut dialog = SystemFontPickerDialog::new();
+        dialog.active = true;
+        dialog.families = vec![FontFamilyInfo {
+            family: "TestFont".to_string(),
+            styles: vec![],
+        }];
+        dialog
+    }
+
+    #[test]
+    fn test_enter_on_font_list_moves_to_size_without_creating() {
+        let mut dialog = dialog_with_font();
+        assert!(dialog.handle_key(KeyCode::Enter));
+        assert!(!dialog.confirmed, "Enter on the font list must not create");
+        assert!(dialog.active);
+        assert_eq!(dialog.selected_field, Field::Size);
+        // Size is editable from the keyboard once reached.
+        dialog.handle_key(KeyCode::Backspace);
+        dialog.handle_key(KeyCode::Backspace);
+        dialog.handle_key(KeyCode::Char('2'));
+        dialog.handle_key(KeyCode::Char('4'));
+        assert_eq!(dialog.size_buffer, "24");
+    }
+
+    #[test]
+    fn test_enter_on_empty_list_stays_and_errors() {
+        let mut dialog = SystemFontPickerDialog::new();
+        dialog.active = true;
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.selected_field, Field::List);
+        assert!(!dialog.confirmed);
+        assert!(!dialog.error_message.is_empty());
+    }
+
+    #[test]
+    fn test_enter_on_invalid_size_does_not_advance() {
+        let mut dialog = dialog_with_font();
+        dialog.handle_key(KeyCode::Enter);
+        dialog.size_buffer = "2".to_string();
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.selected_field, Field::Size);
+        assert!(!dialog.confirmed);
+        assert!(!dialog.error_message.is_empty());
+    }
+
+    #[test]
+    fn test_final_enter_creates_font_once() {
+        let mut dialog = dialog_with_font();
+        dialog.handle_key(KeyCode::Enter); // list -> size
+        dialog.size_buffer = "24".to_string();
+        dialog.handle_key(KeyCode::Enter); // size -> charset
+        assert_eq!(dialog.selected_field, Field::Charset);
+        assert!(!dialog.confirmed);
+        dialog.handle_key(KeyCode::Enter); // create
+        assert!(dialog.confirmed);
+        assert!(!dialog.active);
+        assert_eq!(dialog.result_family, "TestFont");
+        assert_eq!(dialog.result_size, 24.0);
+        assert_eq!(dialog.result_charset, "smooth");
+    }
+
+    #[test]
+    fn test_esc_steps_back_one_field_then_cancels() {
+        let mut dialog = dialog_with_font();
+        dialog.selected_field = Field::Charset;
+        dialog.handle_key(KeyCode::Esc);
+        assert_eq!(dialog.selected_field, Field::Size);
+        assert!(dialog.active);
+        dialog.handle_key(KeyCode::Esc);
+        assert_eq!(dialog.selected_field, Field::List);
+        assert!(dialog.active);
+        dialog.handle_key(KeyCode::Esc);
+        assert!(!dialog.active);
+        assert!(!dialog.confirmed);
     }
 
     #[test]

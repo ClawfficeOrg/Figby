@@ -42,6 +42,7 @@
   the docs index are gone too.
 
 ### Fixed
+- TUI: in New Font from System, Enter on the font list now moves to the size field instead of creating the font at once. Enter steps through size and charset, only Enter on the last field creates the font, and Esc goes back one field.
 - Palette editor: the lighting controls can be reached from the keyboard while the lighting pickers are visible. `I` edits the lit colour, `O` the shadow colour, `P` toggles specular and `G` cycles shininess. Before, Save (`S`) and Load (`L`) took those keys first.
 - Output stops rendering once stdout is closed (e.g. `| head -1`), instead of rendering the rest of the input into the broken pipe.
 - Template image paths: rooted and drive-prefixed paths are rejected on every platform (Windows treated `/etc/passwd` as relative).
