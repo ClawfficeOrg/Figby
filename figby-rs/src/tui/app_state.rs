@@ -1686,6 +1686,7 @@ impl TuiApp {
             || self.editor.layer_panel.renaming.is_some()
             || self.editor.font_editor.search_active
             || self.editor.font_editor.code_input_active
+            || self.editor.font_editor.preview_input_active
             || self.props_panel.mode != PropsPanelMode::Idle
             || self.animation.emitter_panel.editing
             || self.palette_editor.is_typing()

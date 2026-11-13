@@ -256,6 +256,76 @@ mod keybind_collision_tests {
         );
     }
 
+    // --- W key: edit the font editor preview text ---
+
+    fn press(app: &mut TuiApp, code: KeyCode) {
+        let _ = app.handle_key_event(KeyEvent::new(code, KeyModifiers::NONE));
+    }
+
+    #[test]
+    fn test_w_opens_preview_prompt_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        press(&mut app, KeyCode::Char('W'));
+        assert!(app.editor.font_editor.preview_input_active);
+        assert!(!app.editor.font_editor.search_active);
+        assert!(app.is_typing(), "open preview prompt counts as typing");
+    }
+
+    #[test]
+    fn test_preview_prompt_edit_applies_without_dirty_or_side_effects() {
+        let mut app = app_font_editor_overview();
+        app.editor.unsaved = false;
+        let revision = app.editor.revision;
+        let tool = app.editor.toolbox.selected;
+        let timeline = app.animation.timeline_visible;
+        press(&mut app, KeyCode::Char('W'));
+        for _ in 0..crate::tui::font_editor::PREVIEW_STRING.len() {
+            press(&mut app, KeyCode::Backspace);
+        }
+        // q quits, p/b select tools, T toggles the timeline, ? cycles the
+        // drawer elsewhere: inside the prompt they are just text.
+        for c in "qpbT?".chars() {
+            press(&mut app, KeyCode::Char(c));
+        }
+        press(&mut app, KeyCode::Enter);
+        assert_eq!(app.editor.font_editor.preview_text, "qpbT?");
+        assert!(!app.editor.font_editor.preview_input_active);
+        assert!(!app.ui.should_quit);
+        assert!(!app.dialogs.quit_confirm_dialog);
+        assert_eq!(app.editor.toolbox.selected, tool);
+        assert_eq!(app.animation.timeline_visible, timeline);
+        assert!(!app.editor.unsaved, "preview edit must not mark font dirty");
+        assert_eq!(app.editor.revision, revision);
+    }
+
+    #[test]
+    fn test_preview_prompt_esc_cancels_in_app() {
+        let mut app = app_font_editor_overview();
+        press(&mut app, KeyCode::Char('W'));
+        press(&mut app, KeyCode::Char('x'));
+        press(&mut app, KeyCode::Esc);
+        assert!(!app.editor.font_editor.preview_input_active);
+        assert_eq!(
+            app.editor.font_editor.preview_text,
+            crate::tui::font_editor::PREVIEW_STRING
+        );
+        assert!(!app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_preview_prompt_empty_resets_default_in_app() {
+        let mut app = app_font_editor_overview();
+        app.editor.font_editor.preview_text = "AB".to_string();
+        press(&mut app, KeyCode::Char('W'));
+        press(&mut app, KeyCode::Backspace);
+        press(&mut app, KeyCode::Backspace);
+        press(&mut app, KeyCode::Enter);
+        assert_eq!(
+            app.editor.font_editor.preview_text,
+            crate::tui::font_editor::PREVIEW_STRING
+        );
+    }
+
     #[test]
     fn test_s_opens_settings_outside_font_editor() {
         let mut app = app_not_font_editor();

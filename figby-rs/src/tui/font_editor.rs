@@ -13,7 +13,23 @@ use super::theme::Theme;
 use crate::font::{load_font, FIGfont};
 use crate::smush::{smush_horizontal, SmushMode};
 
-const PREVIEW_STRING: &str = "AaBbCc123!?";
+/// Default text for the Overview preview strip. The user can change it
+/// for the session with `W`; it is UI state only, never written to the font.
+pub const PREVIEW_STRING: &str = "AaBbCc123!?";
+
+/// Longest preview text the `W` prompt accepts, so the strip stays usable.
+pub const PREVIEW_MAX_CHARS: usize = 80;
+
+/// Overview hint footer, widest first. The renderer picks the first one
+/// that fits the available width (the last is clipped if none fits).
+const OVERVIEW_HINTS: [&str; 3] = [
+    " \u{2191}\u{2193}\u{2190}\u{2192} Navigate  Type Search  Enter Edit  W Preview  A Add  D Del  C Copy  H Header  S Smush  T Transform  Esc Close",
+    " \u{2191}\u{2193}\u{2190}\u{2192} Nav  Type Find  Enter Edit  W Preview  A Add  D Del  C Copy  H Hdr  S Smush  T Xform  Esc Close",
+    " Enter Edit  W Preview  A Add  D Del  C Copy  H Hdr  S Smush  T Xform  Esc",
+];
+
+const PREVIEW_PROMPT_HINT: &str =
+    " Enter Apply  Esc Cancel  Backspace Delete  (empty resets to default)";
 
 const SMUSH_RULE_LABELS: [(&str, u32); 6] = [
     ("Equal Char", SmushMode::EQUAL_CHARS),
@@ -209,6 +225,16 @@ impl Widget for &GlyphGridWidget<'_> {
     }
 }
 
+/// The widest Overview hint that fits in `width` columns (all hint glyphs
+/// are single-width), falling back to the shortest one.
+fn overview_hint(width: u16) -> &'static str {
+    OVERVIEW_HINTS
+        .iter()
+        .copied()
+        .find(|h| h.chars().count() <= width as usize)
+        .unwrap_or(OVERVIEW_HINTS[OVERVIEW_HINTS.len() - 1])
+}
+
 pub struct FontEditor {
     pub font: Option<FIGfont>,
     pub view: FontEditorView,
@@ -245,6 +271,13 @@ pub struct FontEditor {
     /// detect real mutations for dirty tracking without marking pure
     /// navigation as unsaved changes (GPT review F-08).
     pub mutation_epoch: u64,
+    /// Text rendered in the Overview preview strip. Session UI state:
+    /// survives font loads, is never saved into the font, and never
+    /// bumps `mutation_epoch`.
+    pub preview_text: String,
+    /// `W` prompt for editing `preview_text` is open.
+    pub preview_input_active: bool,
+    pub preview_input_buffer: String,
 }
 
 impl FontEditor {
@@ -281,6 +314,9 @@ impl FontEditor {
             theme: Theme::default(),
             grid_state: GlyphGridState::new(),
             mutation_epoch: 0,
+            preview_text: PREVIEW_STRING.to_string(),
+            preview_input_active: false,
+            preview_input_buffer: String::new(),
         }
     }
 
@@ -297,6 +333,10 @@ impl FontEditor {
         self.smush_selected = 0;
         self.code_input_active = false;
         self.code_input_buffer.clear();
+        // The preview text itself persists across fonts; only an open
+        // prompt is closed.
+        self.preview_input_active = false;
+        self.preview_input_buffer.clear();
         self.selected_transform = 0;
         self.input_buffer.clear();
         self.input_active = false;
@@ -502,7 +542,16 @@ impl FontEditor {
             ])
             .split(area);
 
-        if self.code_input_active {
+        if self.preview_input_active {
+            let prompt = format!(
+                " Preview text ({}/{}): {}|",
+                self.preview_input_buffer.chars().count(),
+                PREVIEW_MAX_CHARS,
+                self.preview_input_buffer
+            );
+            let search = Paragraph::new(prompt).block(Block::default().borders(Borders::ALL));
+            Widget::render(&search, chunks[0], buf);
+        } else if self.code_input_active {
             let prompt = match self.code_input_mode {
                 CodeInputMode::Add => format!(" Add code: {}|", self.code_input_buffer),
                 CodeInputMode::CopySource => {
@@ -538,10 +587,12 @@ impl FontEditor {
         }
 
         // Key hint footer
-        let hint = Paragraph::new(
-            " \u{2191}\u{2193}\u{2190}\u{2192} Navigate  Type Search  Enter Edit  A Add  D Del  C Copy  H Header  S Smush  T Transform  Esc Close",
-        )
-        .style(Style::default().fg(self.theme.menu.dim));
+        let hint_text = if self.preview_input_active {
+            PREVIEW_PROMPT_HINT
+        } else {
+            overview_hint(chunks[3].width)
+        };
+        let hint = Paragraph::new(hint_text).style(Style::default().fg(self.theme.menu.dim));
         Widget::render(&hint, chunks[3], buf);
 
         let grid_area = chunks[1];
@@ -568,10 +619,10 @@ impl FontEditor {
         // Preview strip
         if preview_height > 0 {
             if let Some(font) = &self.font {
-                let preview_rows = crate::render::render_string(font, PREVIEW_STRING);
+                let preview_rows = crate::render::render_string(font, &self.preview_text);
                 let block = Block::default()
                     .borders(Borders::ALL)
-                    .title(format!(" Preview: {} ", PREVIEW_STRING));
+                    .title(format!(" Preview: {} ", self.preview_text));
                 let paragraph = Paragraph::new(preview_rows.join("\n")).block(block);
                 Widget::render(&paragraph, chunks[2], buf);
             }
@@ -1472,6 +1523,9 @@ impl FontEditor {
         let filtered = self.filtered_codes();
         let cols = self.compute_cols(area_width);
 
+        if self.preview_input_active {
+            return self.handle_key_preview_input(code);
+        }
         if self.code_input_active {
             return self.handle_key_code_input(code);
         }
@@ -1483,7 +1537,7 @@ impl FontEditor {
                 if !c.is_control()
                     && !self.search_active
                     // Font editor action keys (handled by explicit arms below)
-                    && !matches!(c, 'H' | 'S' | 'T' | 'A' | 'D' | 'C')
+                    && !matches!(c, 'H' | 'S' | 'T' | 'A' | 'D' | 'C' | 'W')
                     // Global tool shortcuts (lowercase and uppercase).
                     // m/n select Emitter/Lighting via the tool catch-all
                     // below — they must not start a glyph search (live:
@@ -1599,9 +1653,46 @@ impl FontEditor {
                 self.error_message.clear();
                 true
             }
+            // W: edit the preview strip text (session UI state only).
+            KeyCode::Char('W') => {
+                self.preview_input_active = true;
+                self.preview_input_buffer = self.preview_text.clone();
+                true
+            }
             // All other keys fall through to normal handlers
             _ => false,
         }
+    }
+
+    /// `W` prompt: edits `preview_text`. Never calls `note_mutation`, so
+    /// the font is not marked dirty. Swallows every key while open so
+    /// typed letters cannot trigger tools or globals.
+    fn handle_key_preview_input(&mut self, code: KeyCode) -> bool {
+        match code {
+            KeyCode::Char(c) if !c.is_control() => {
+                if self.preview_input_buffer.chars().count() < PREVIEW_MAX_CHARS {
+                    self.preview_input_buffer.push(c);
+                }
+            }
+            KeyCode::Backspace => {
+                self.preview_input_buffer.pop();
+            }
+            KeyCode::Esc => {
+                self.preview_input_active = false;
+                self.preview_input_buffer.clear();
+            }
+            KeyCode::Enter => {
+                let text = std::mem::take(&mut self.preview_input_buffer);
+                self.preview_text = if text.trim().is_empty() {
+                    PREVIEW_STRING.to_string()
+                } else {
+                    text
+                };
+                self.preview_input_active = false;
+            }
+            _ => {}
+        }
+        true
     }
 
     /// Handle a mouse click on the glyph overview grid.
@@ -2469,9 +2560,168 @@ mod tests {
     fn test_preview_string_renders() {
         let editor = make_editor();
         let font = editor.font.as_ref().unwrap();
-        let preview_rows = crate::render::render_string(font, PREVIEW_STRING);
+        let preview_rows = crate::render::render_string(font, &editor.preview_text);
         assert!(!preview_rows.is_empty());
         assert_eq!(preview_rows.len(), font.charheight as usize);
+    }
+
+    // --- Editable preview text (W prompt) ---
+
+    fn press(editor: &mut FontEditor, code: KeyCode) -> bool {
+        editor.handle_key(code, KeyModifiers::NONE, 80)
+    }
+
+    fn type_str(editor: &mut FontEditor, s: &str) {
+        for c in s.chars() {
+            press(editor, KeyCode::Char(c));
+        }
+    }
+
+    fn render_overview_text(editor: &FontEditor, w: u16, h: u16) -> String {
+        let area = Rect::new(0, 0, w, h);
+        let mut buf = Buffer::empty(area);
+        Widget::render(editor, area, &mut buf);
+        let mut out = String::new();
+        for y in 0..h {
+            for x in 0..w {
+                out.push_str(buf[(x, y)].symbol());
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    #[test]
+    fn test_preview_text_defaults() {
+        let editor = make_editor();
+        assert_eq!(editor.preview_text, PREVIEW_STRING);
+        assert!(!editor.preview_input_active);
+    }
+
+    #[test]
+    fn test_w_opens_preview_prompt_with_current_text() {
+        let mut editor = make_editor();
+        assert!(press(&mut editor, KeyCode::Char('W')));
+        assert!(editor.preview_input_active);
+        assert!(!editor.search_active, "W must not start a glyph search");
+        assert_eq!(editor.preview_input_buffer, PREVIEW_STRING);
+    }
+
+    #[test]
+    fn test_preview_prompt_type_and_enter_applies() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('W'));
+        for _ in 0..PREVIEW_STRING.len() {
+            press(&mut editor, KeyCode::Backspace);
+        }
+        assert!(editor.preview_input_buffer.is_empty());
+        // Letters that are tool/global keys elsewhere must be typed here.
+        type_str(&mut editor, "ABq?Tb");
+        press(&mut editor, KeyCode::Enter);
+        assert!(!editor.preview_input_active);
+        assert_eq!(editor.preview_text, "ABq?Tb");
+        assert_eq!(editor.view, FontEditorView::Overview);
+    }
+
+    #[test]
+    fn test_preview_prompt_esc_cancels() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('W'));
+        type_str(&mut editor, "xyz");
+        assert!(press(&mut editor, KeyCode::Esc));
+        assert!(!editor.preview_input_active);
+        assert_eq!(editor.preview_text, PREVIEW_STRING);
+    }
+
+    #[test]
+    fn test_preview_prompt_empty_resets_to_default() {
+        let mut editor = make_editor();
+        editor.preview_text = "AB".to_string();
+        press(&mut editor, KeyCode::Char('W'));
+        press(&mut editor, KeyCode::Backspace);
+        press(&mut editor, KeyCode::Backspace);
+        press(&mut editor, KeyCode::Enter);
+        assert_eq!(editor.preview_text, PREVIEW_STRING);
+    }
+
+    #[test]
+    fn test_preview_prompt_caps_length() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('W'));
+        type_str(&mut editor, &"A".repeat(PREVIEW_MAX_CHARS * 2));
+        assert_eq!(
+            editor.preview_input_buffer.chars().count(),
+            PREVIEW_MAX_CHARS
+        );
+        press(&mut editor, KeyCode::Enter);
+        assert_eq!(editor.preview_text.chars().count(), PREVIEW_MAX_CHARS);
+    }
+
+    #[test]
+    fn test_preview_edit_does_not_bump_mutation_epoch() {
+        let mut editor = make_editor();
+        let epoch = editor.mutation_epoch;
+        let font_before = editor.font.clone();
+        press(&mut editor, KeyCode::Char('W'));
+        type_str(&mut editor, "BA");
+        press(&mut editor, KeyCode::Enter);
+        assert_eq!(editor.mutation_epoch, epoch);
+        assert_eq!(
+            format!("{:?}", editor.font.as_ref().map(|f| &f.chars)),
+            format!("{:?}", font_before.as_ref().map(|f| &f.chars)),
+            "preview text must not touch the font"
+        );
+    }
+
+    #[test]
+    fn test_preview_text_survives_font_load() {
+        let mut editor = make_editor();
+        editor.preview_text = "BAB".to_string();
+        editor.load_font(make_test_font());
+        assert_eq!(editor.preview_text, "BAB");
+    }
+
+    #[test]
+    fn test_preview_missing_glyphs_render_without_panic() {
+        let mut editor = make_editor();
+        press(&mut editor, KeyCode::Char('W'));
+        for _ in 0..PREVIEW_STRING.len() {
+            press(&mut editor, KeyCode::Backspace);
+        }
+        // Font only has 0, 'A', 'B': everything else is missing,
+        // including multi-byte and wide characters.
+        type_str(&mut editor, "Az\u{e9}\u{4e2d}\u{1F980}~");
+        press(&mut editor, KeyCode::Enter);
+        let font = editor.font.as_ref().unwrap();
+        let rows = crate::render::render_string(font, &editor.preview_text);
+        assert_eq!(rows.len(), font.charheight as usize);
+        let screen = render_overview_text(&editor, 60, 20);
+        assert!(screen.contains("Preview:"));
+    }
+
+    #[test]
+    fn test_preview_strip_and_prompt_render() {
+        let mut editor = make_editor();
+        editor.preview_text = "AB".to_string();
+        let screen = render_overview_text(&editor, 140, 20);
+        assert!(screen.contains("Preview: AB"));
+        assert!(screen.contains("W Preview"));
+        press(&mut editor, KeyCode::Char('W'));
+        let screen = render_overview_text(&editor, 140, 20);
+        assert!(screen.contains("Preview text (2/80): AB|"));
+        assert!(screen.contains("Enter Apply"));
+    }
+
+    #[test]
+    fn test_overview_hint_fits_width() {
+        for w in [60u16, 80, 100, 120, 200] {
+            let hint = overview_hint(w);
+            if w >= OVERVIEW_HINTS[OVERVIEW_HINTS.len() - 1].chars().count() as u16 {
+                assert!(hint.chars().count() <= w as usize, "hint overflows {w}");
+            }
+            assert!(hint.contains("W Preview"), "W hint missing at {w}");
+        }
+        assert_eq!(overview_hint(200), OVERVIEW_HINTS[0]);
     }
 
     #[test]
