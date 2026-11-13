@@ -510,11 +510,12 @@ impl FontEditor {
         };
         let cell_w = (font.maxlength as u16 + 2).max(8) as usize;
         let cell_h = (font.charheight as u16 + 1) as usize;
-        let cols = (area.width as usize / cell_w).max(1);
+        // The grid is drawn in the grid chunk of the Overview layout (below
+        // the search/prompt box), so every recorded rect, the column count
+        // and the visible row count come from that same chunk.
+        let grid_area = self.overview_grid_area(area);
+        let cols = (grid_area.width as usize / cell_w).max(1);
         self.grid_state.set_cols(cols);
-        // The grid itself is drawn in the middle chunk of the Overview
-        // layout, so the visible row count comes from that chunk.
-        let grid_area = self.overview_layout(area)[1];
         self.grid_state
             .set_visible_rows(grid_area.height as usize / cell_h);
 
@@ -526,7 +527,8 @@ impl FontEditor {
         let mut cell_idx = start_cell;
         let mut y_offset = 0u16;
 
-        while cell_idx < filtered.len() && (y_offset as usize) + cell_h <= area.height as usize {
+        while cell_idx < filtered.len() && (y_offset as usize) + cell_h <= grid_area.height as usize
+        {
             let end = (cell_idx + cols).min(filtered.len());
             let chunk = &filtered[cell_idx..end];
 
@@ -534,8 +536,8 @@ impl FontEditor {
                 self.grid_state.cell_rects.push((
                     code,
                     Rect::new(
-                        area.x + (ci * cell_w) as u16,
-                        area.y + y_offset,
+                        grid_area.x + (ci * cell_w) as u16,
+                        grid_area.y + y_offset,
                         cell_w as u16,
                         cell_h as u16,
                     ),
@@ -565,6 +567,13 @@ impl FontEditor {
                 Constraint::Length(1),
             ])
             .split(area)
+    }
+
+    /// The rect the glyph grid is drawn in: the grid chunk of
+    /// `overview_layout`. Used by both `render_overview` and `before_render`
+    /// so the click rects always sit on the glyphs as drawn.
+    fn overview_grid_area(&self, area: Rect) -> Rect {
+        self.overview_layout(area)[1]
     }
 
     fn render_overview(&self, area: Rect, buf: &mut Buffer) {
@@ -624,7 +633,7 @@ impl FontEditor {
         let hint = Paragraph::new(hint_text).style(Style::default().fg(self.theme.menu.dim));
         Widget::render(&hint, chunks[3], buf);
 
-        let grid_area = chunks[1];
+        let grid_area = self.overview_grid_area(area);
         let filtered = self.filtered_codes();
 
         if filtered.is_empty() {
@@ -2970,6 +2979,131 @@ mod tests {
                 editor.render(frame, frame.area());
             })
             .unwrap();
+    }
+
+    /// Run `before_render` then draw into a TestBackend, returning the drawn
+    /// buffer so tests can click where a glyph actually appears on screen.
+    fn render_editor_buffer(editor: &mut FontEditor, w: u16, h: u16) -> Buffer {
+        let backend = ratatui::backend::TestBackend::new(w, h);
+        let mut terminal = ratatui::Terminal::new(backend).unwrap();
+        editor.before_render(Rect::new(0, 0, w, h));
+        terminal
+            .draw(|frame| {
+                editor.render(frame, frame.area());
+            })
+            .unwrap();
+        terminal.backend().buffer().clone()
+    }
+
+    /// Screen cell where the grid label of `code` (right-aligned in 4
+    /// columns, then a space) is drawn. The label's left edge is the cell's
+    /// left edge.
+    fn find_glyph_label(buf: &Buffer, code: u32) -> (u16, u16) {
+        let label = format!("{:>4} ", code);
+        let area = buf.area;
+        for y in 0..area.height {
+            let line: String = (0..area.width).map(|x| buf[(x, y)].symbol()).collect();
+            let mut start = 0;
+            while let Some(pos) = line[start..].find(&label) {
+                let x = start + pos;
+                // Cells are 8 wide for make_editor_big, so labels start on
+                // a multiple of the cell width.
+                if x % 8 == 0 {
+                    return (x as u16, y);
+                }
+                start = x + 1;
+            }
+        }
+        panic!("label for code {code} not drawn");
+    }
+
+    fn selected_code(editor: &FontEditor) -> u32 {
+        editor.filtered_codes()[editor.selected_index]
+    }
+
+    #[test]
+    fn test_click_on_drawn_glyph_selects_it() {
+        let mut editor = make_editor_big();
+        let buf = render_editor_buffer(&mut editor, 120, 40);
+        // Grid starts below the 3-row search box.
+        let (x, y) = find_glyph_label(&buf, 20);
+        assert!(y >= 3, "grid must be drawn below the search box");
+        // Label row plus the 3 glyph-art rows all belong to code 20.
+        for dy in 0..4 {
+            editor.selected_index = 0;
+            assert!(editor.handle_mouse_click_overview(x + 2, y + dy));
+            assert_eq!(selected_code(&editor), 20, "click at row offset {dy}");
+            editor.grid_state.set_last_click(None);
+        }
+        // Rects sit exactly on the drawn cells.
+        let rect = editor
+            .grid_state
+            .cell_rects
+            .iter()
+            .find(|(c, _)| *c == 20)
+            .map(|(_, r)| *r)
+            .unwrap();
+        assert_eq!((rect.x, rect.y), (x, y));
+    }
+
+    #[test]
+    fn test_click_first_visible_row_when_scrolled() {
+        let mut editor = make_editor_big();
+        editor.grid_scroll = 2;
+        let buf = render_editor_buffer(&mut editor, 120, 40);
+        // 15 columns at 120 wide, so row 2 starts at code 30.
+        let (x, y) = find_glyph_label(&buf, 31);
+        assert_eq!(y, 3, "first visible row sits right under the search box");
+        for dy in 0..4 {
+            editor.selected_index = 0;
+            assert!(editor.handle_mouse_click_overview(x, y + dy));
+            assert_eq!(selected_code(&editor), 31, "click at row offset {dy}");
+            editor.grid_state.set_last_click(None);
+        }
+        assert_eq!(editor.grid_scroll, 2, "clicking does not scroll");
+    }
+
+    #[test]
+    fn test_click_outside_grid_is_ignored() {
+        let mut editor = make_editor_big();
+        editor.selected_index = 5;
+        let buf = render_editor_buffer(&mut editor, 120, 40);
+        // Search box rows.
+        for y in 0..3 {
+            assert!(!editor.handle_mouse_click_overview(10, y));
+        }
+        // Rows below the last drawn grid row: leftover grid space, the
+        // preview strip and the hint footer.
+        let last_y = editor
+            .grid_state
+            .cell_rects
+            .iter()
+            .map(|(_, r)| r.y + r.height)
+            .max()
+            .unwrap();
+        assert!(last_y < buf.area.height);
+        for y in last_y..buf.area.height {
+            assert!(!editor.handle_mouse_click_overview(10, y), "row {y}");
+        }
+        assert_eq!(editor.selected_index, 5);
+        assert_eq!(editor.view, FontEditorView::Overview);
+
+        // Same with the code prompt open in the top box.
+        editor.code_input_active = true;
+        render_editor_buffer(&mut editor, 120, 40);
+        assert!(!editor.handle_mouse_click_overview(10, 1));
+        assert_eq!(editor.selected_index, 5);
+    }
+
+    #[test]
+    fn test_double_click_on_drawn_glyph_opens_it() {
+        let mut editor = make_editor_big();
+        let buf = render_editor_buffer(&mut editor, 120, 40);
+        let (x, y) = find_glyph_label(&buf, 47);
+        assert!(editor.handle_mouse_click_overview(x + 1, y + 3));
+        assert_eq!(editor.view, FontEditorView::Overview);
+        assert!(editor.handle_mouse_click_overview(x + 1, y + 3));
+        assert_eq!(editor.view, FontEditorView::CharEditor(47));
     }
 
     #[test]
