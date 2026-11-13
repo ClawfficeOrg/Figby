@@ -597,6 +597,37 @@ pub const DEFAULT_FONT_DIRS: &[&str] = &[
     "/usr/share/figlet",       // Linux (system-wide)
 ];
 
+/// The C default font directory (`DEFAULTFONTDIR`), used when
+/// `FIGLET_FONTDIR` is unset or empty. The CLI's `fontdirname` starts here.
+pub const C_DEFAULT_FONT_DIR: &str = "/usr/share/figlet";
+
+/// The directory a bare `figby -f <name>` lookup searches first that
+/// actually exists: `$FIGLET_FONTDIR` (when non-empty) or
+/// [`C_DEFAULT_FONT_DIR`], then [`DEFAULT_FONT_DIRS`] — the same order the
+/// CLI passes to [`load_font`]. `None` when none of them is a directory.
+/// The TUI's Save dialog defaults here so a new font lands where figby
+/// will find it.
+pub fn resolve_figlet_font_dir() -> Option<std::path::PathBuf> {
+    let env = std::env::var("FIGLET_FONTDIR").ok();
+    resolve_figlet_font_dir_from(env.as_deref(), DEFAULT_FONT_DIRS)
+}
+
+/// [`resolve_figlet_font_dir`] with the environment value and fallback
+/// list injected (tests must not mutate process env).
+pub fn resolve_figlet_font_dir_from(
+    env_fontdir: Option<&str>,
+    defaults: &[&str],
+) -> Option<std::path::PathBuf> {
+    let primary = match env_fontdir {
+        Some(v) if !v.is_empty() => v,
+        _ => C_DEFAULT_FONT_DIR,
+    };
+    std::iter::once(primary)
+        .chain(defaults.iter().copied())
+        .map(std::path::PathBuf::from)
+        .find(|p| p.is_dir())
+}
+
 /// Decode font file text: UTF-8 when the bytes are valid UTF-8, otherwise
 /// ISO-8859-1. Classic FIGfonts are 8-bit files — several bundled ones
 /// (`bubble`, `digital`, `term`) store their Deutsch glyphs as Latin-1
@@ -1517,6 +1548,31 @@ mod tests {
 
         std::fs::remove_file(&zip_path).unwrap();
         std::fs::remove_dir(&tmpdir).unwrap();
+    }
+
+    #[test]
+    fn test_resolve_figlet_font_dir_prefers_env_then_defaults() {
+        let env_dir = tempfile::tempdir().unwrap();
+        let fallback = tempfile::tempdir().unwrap();
+        let env_s = env_dir.path().to_str().unwrap();
+        let fb_s = fallback.path().to_str().unwrap();
+        assert_eq!(
+            resolve_figlet_font_dir_from(Some(env_s), &[fb_s]),
+            Some(env_dir.path().to_path_buf()),
+            "an existing FIGLET_FONTDIR wins"
+        );
+        let missing = env_dir.path().join("does-not-exist");
+        let missing_s = missing.to_str().unwrap();
+        assert_eq!(
+            resolve_figlet_font_dir_from(Some(missing_s), &[missing_s, fb_s]),
+            Some(fallback.path().to_path_buf()),
+            "a missing FIGLET_FONTDIR falls through to the default list"
+        );
+        assert_eq!(
+            resolve_figlet_font_dir_from(Some(missing_s), &[missing_s]),
+            None,
+            "no existing directory resolves to None (caller keeps cwd)"
+        );
     }
 
     #[test]

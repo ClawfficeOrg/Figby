@@ -42,6 +42,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Save As for a new font now opens in the FIGlet font directory figby searches, always shows the absolute "Save to:" path, and Enter on a highlighted folder opens it instead of saving into the folder shown.
 - TUI: in New Font from System, Enter on the font list now moves to the size field instead of creating the font at once. Enter steps through size and charset, only Enter on the last field creates the font, and Esc goes back one field.
 - Palette editor: the lighting controls can be reached from the keyboard while the lighting pickers are visible. `I` edits the lit colour, `O` the shadow colour, `P` toggles specular and `G` cycles shininess. Before, Save (`S`) and Load (`L`) took those keys first.
 - Output stops rendering once stdout is closed (e.g. `| head -1`), instead of rendering the rest of the input into the broken pipe.

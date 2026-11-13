@@ -47,9 +47,13 @@ impl TuiApp {
         } else {
             self.editor.font_editor.font_storage_name.clone()
         };
-        self.dialogs.file_ops.enter_save_as(
+        // A never-saved font (e.g. one built from a system font) starts in
+        // the FIGlet font directory the font lookup searches, not the cwd.
+        let font_dir = crate::font::resolve_figlet_font_dir();
+        self.dialogs.file_ops.enter_save_font_as(
             self.editor.font_editor.current_path.as_deref(),
             &default_name,
+            font_dir.as_deref(),
         );
         self.frame.dirty = true;
     }

@@ -319,6 +319,78 @@ mod keybind_collision_tests {
     }
 
     #[test]
+    fn test_save_as_new_font_starts_in_figlet_font_dir() {
+        let mut app = app_font_editor_overview();
+        app.editor.font_editor.font_storage_name = "Bear Days".to_string();
+        app.start_save_as();
+        let expected = crate::font::resolve_figlet_font_dir()
+            .map(|d| d.to_string_lossy().to_string())
+            .unwrap_or_default();
+        assert_eq!(app.dialogs.file_ops.path_buffer, expected);
+        assert_eq!(app.dialogs.file_ops.filename_buffer, "Bear Days.flf");
+    }
+
+    #[test]
+    fn test_save_as_confirm_writes_shown_path_exactly_once() {
+        let key = |app: &mut TuiApp, code| {
+            let _ = app.handle_key_event(KeyEvent::new(code, KeyModifiers::NONE));
+        };
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("child")).unwrap();
+        let mut app = app_font_editor_overview();
+        app.editor.unsaved = true;
+        app.editor.font_editor.font_storage_name = "Bear Days".to_string();
+        app.start_save_as();
+        // Point the dialog at the temp dir as if it were the font dir.
+        app.dialogs
+            .file_ops
+            .enter_save_font_as(None, "Bear Days", Some(dir.path()));
+
+        key(&mut app, KeyCode::Down); // highlight child/
+        key(&mut app, KeyCode::Enter); // open it
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        assert!(app.dialogs.pending_save_revision.is_none(), "no save yet");
+        let shown = app.dialogs.file_ops.save_target_display();
+        assert_eq!(shown, dir.path().join("child").join("Bear Days.flf"));
+
+        key(&mut app, KeyCode::Tab); // filename field
+        key(&mut app, KeyCode::Enter); // confirm
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Idle
+        );
+        let mut completions = 0;
+        for _ in 0..300 {
+            if app.ctx.async_rx.is_none() {
+                break;
+            }
+            app.check_async_completion();
+            if app.ctx.async_rx.is_none() {
+                completions += 1;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert_eq!(completions, 1, "exactly one save ran");
+        assert!(app.ctx.async_rx.is_none(), "no second save queued");
+        assert!(shown.is_file(), "font written to the shown path");
+        assert_eq!(
+            app.editor.font_editor.current_path.as_deref(),
+            Some(shown.as_path())
+        );
+        assert!(!app.editor.unsaved);
+        let stray: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .filter(|e| e.path().is_file())
+            .collect();
+        assert!(stray.is_empty(), "nothing saved into the parent folder");
+    }
+
+    #[test]
     fn test_cancelled_save_as_from_quit_prompt_disarms_quit() {
         use crate::tui::app_state::PendingDocAction;
         let mut app = app_not_font_editor();

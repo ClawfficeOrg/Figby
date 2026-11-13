@@ -277,6 +277,25 @@ impl FileOpsDialog {
         self.enter_save_as_with_extension(current, default_name, "flf");
     }
 
+    /// `enter_save_as` for a font, starting in `default_dir` (the FIGlet
+    /// font directory, see [`crate::font::resolve_figlet_font_dir`]) when
+    /// the font has no path of its own yet, so a new font lands where
+    /// figby's font lookup finds it. `None` keeps the cwd default.
+    pub fn enter_save_font_as(
+        &mut self,
+        current: Option<&Path>,
+        default_name: &str,
+        default_dir: Option<&Path>,
+    ) {
+        self.enter_save_as(current, default_name);
+        if current.is_none() {
+            if let Some(dir) = default_dir {
+                self.path_buffer = dir.to_string_lossy().to_string();
+                self.refresh_directory();
+            }
+        }
+    }
+
     /// `enter_save_as` with an explicit default extension (e.g. `figmap`
     /// for project files). A typed filename that already carries an
     /// extension keeps it — only extensionless names gain the default
@@ -595,6 +614,66 @@ impl FileOpsDialog {
             p.set_extension("flf");
         }
         p
+    }
+
+    /// The Save dialog's folder as shown to the user: absolute, with an
+    /// empty or relative `path_buffer` resolved against the cwd, so the
+    /// dialog never shows a bare "." (the user could not tell where a
+    /// save would land). Display only; `save_target_path` is unchanged.
+    pub fn save_dir_display(&self) -> PathBuf {
+        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        if self.path_buffer.is_empty() {
+            return cwd;
+        }
+        let dir = PathBuf::from(&self.path_buffer);
+        if dir.is_absolute() {
+            dir
+        } else {
+            cwd.join(dir)
+        }
+    }
+
+    /// Absolute form of [`Self::save_target_path`] for the "Save to:" line.
+    pub fn save_target_display(&self) -> PathBuf {
+        let target = self.save_target_path();
+        if target.is_absolute() {
+            return target;
+        }
+        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        cwd.join(target.strip_prefix(".").unwrap_or(&target))
+    }
+
+    /// The highlighted listing entry when it is a folder Enter would open
+    /// (".." or a directory) in the Save dialog's list focus.
+    fn save_highlighted_folder(&self) -> Option<String> {
+        if self.save_focus != SaveFocus::Directory {
+            return None;
+        }
+        let entry = self.directory_entries.get(self.selected_entry)?;
+        if entry == ".." || self.current_parent_dir().join(entry).is_dir() {
+            Some(entry.clone())
+        } else {
+            None
+        }
+    }
+
+    /// Hint line for the Save dialog: names exactly what Enter does now.
+    fn save_enter_hint(&self) -> String {
+        if self.overwrite_armed.is_some() {
+            return " Enter: overwrite the file above  Esc: cancel".to_string();
+        }
+        if let Some(folder) = self.save_highlighted_folder() {
+            let shown = if folder == ".." {
+                "parent folder".to_string()
+            } else {
+                format!("{}/", crate::sanitize::sanitize_display(&folder))
+            };
+            return format!(
+                " Enter: open {shown}  Tab: filename (Enter there saves)  \u{2190}: up  Esc: cancel"
+            );
+        }
+        " Enter: save to the path above  \u{2191}\u{2193}: pick folder  Tab: switch field  Esc: cancel"
+            .to_string()
     }
 
     /// Mirror the highlighted file into the Save filename field (defect
@@ -966,19 +1045,27 @@ impl FileOpsDialog {
                 self.error_message.clear();
                 true
             }
+            // Up/Down browse the listing, so they move focus to it: Enter
+            // on a highlighted folder then opens it instead of saving into
+            // whatever folder happened to be shown (the user could not
+            // tell where the save went).
             KeyCode::Up => {
-                if !self.directory_entries.is_empty() && self.selected_entry > 0 {
-                    self.selected_entry -= 1;
-                    self.sync_save_filename_to_highlight();
+                if !self.directory_entries.is_empty() {
+                    self.save_focus = SaveFocus::Directory;
+                    if self.selected_entry > 0 {
+                        self.selected_entry -= 1;
+                        self.sync_save_filename_to_highlight();
+                    }
                 }
                 true
             }
             KeyCode::Down => {
-                if !self.directory_entries.is_empty()
-                    && self.selected_entry < self.directory_entries.len() - 1
-                {
-                    self.selected_entry += 1;
-                    self.sync_save_filename_to_highlight();
+                if !self.directory_entries.is_empty() {
+                    self.save_focus = SaveFocus::Directory;
+                    if self.selected_entry < self.directory_entries.len() - 1 {
+                        self.selected_entry += 1;
+                        self.sync_save_filename_to_highlight();
+                    }
                 }
                 true
             }
@@ -990,6 +1077,13 @@ impl FileOpsDialog {
             }
             KeyCode::Left => {
                 self.go_to_parent();
+                true
+            }
+            // List focus + folder highlighted: Enter opens that folder
+            // (the hint line says so). Everywhere else Enter saves to the
+            // "Save to:" path the dialog shows.
+            KeyCode::Enter if self.save_highlighted_folder().is_some() => {
+                self.select_entry();
                 true
             }
             KeyCode::Enter => {
@@ -1457,11 +1551,9 @@ impl FileOpsDialog {
             " Folder:",
             Style::default().add_modifier(Modifier::BOLD),
         )));
-        let dir_display = if self.path_buffer.is_empty() {
-            ".".to_string()
-        } else {
-            self.path_buffer.clone()
-        };
+        // Always absolute: a bare "." hid where the save would land.
+        let dir_display =
+            crate::sanitize::sanitize_display(&self.save_dir_display().to_string_lossy());
         lines.push(Line::from(Span::styled(
             format!(" {}", dir_display),
             dir_style,
@@ -1511,13 +1603,24 @@ impl FileOpsDialog {
                 Style::default().add_modifier(Modifier::BOLD),
             )));
 
-            let max_visible = (inner.height as usize).saturating_sub(7).min(10);
+            // Reserve the rows already used plus the 3-line footer, so the
+            // "Save to:" path and hint are never clipped by a long list.
+            let max_visible = (inner.height as usize)
+                .saturating_sub(lines.len() + 3)
+                .min(10);
             self.push_entry_lines(&mut lines, inner, max_visible);
         }
 
         lines.push(Line::from(""));
+        // Footer: the exact file a save writes, then what Enter does now.
+        let target =
+            crate::sanitize::sanitize_display(&self.save_target_display().to_string_lossy());
+        lines.push(Line::from(vec![
+            Span::styled(" Save to: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled(target, Style::default().fg(self.theme.dialog.highlight)),
+        ]));
         lines.push(Line::from(Span::styled(
-            " Tab: switch field  \u{2190}\u{2192}: browse  Enter: save  Esc: cancel  \u{2191}\u{2193}: select",
+            self.save_enter_hint(),
             Style::default().fg(self.theme.dialog.meta),
         )));
 
@@ -1825,6 +1928,95 @@ mod tests {
             dialog.filename_buffer, before,
             "typing while Directory is focused should not touch the filename field"
         );
+    }
+
+    fn render_save_dialog(dialog: &mut FileOpsDialog) -> String {
+        let backend = ratatui::backend::TestBackend::new(100, 24);
+        let mut terminal = ratatui::Terminal::new(backend).unwrap();
+        terminal.draw(|f| dialog.render(f, f.area())).unwrap();
+        let buf = terminal.backend().buffer();
+        (0..buf.area.height)
+            .map(|y| {
+                (0..buf.area.width)
+                    .map(|x| buf[(x, y)].symbol().to_string())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    #[test]
+    fn test_save_font_as_defaults_to_figlet_font_dir() {
+        let fontdir = tempfile::tempdir().unwrap();
+        let mut dialog = FileOpsDialog::new();
+        dialog.enter_save_font_as(None, "Bear Days", Some(fontdir.path()));
+        assert_eq!(PathBuf::from(&dialog.path_buffer), fontdir.path());
+        assert_eq!(
+            dialog.save_target_path(),
+            fontdir.path().join("Bear Days.flf")
+        );
+        assert_eq!(
+            dialog.save_target_display(),
+            fontdir.path().join("Bear Days.flf"),
+            "shown path is the exact save path"
+        );
+        let out = render_save_dialog(&mut dialog);
+        assert!(out.contains("Save to:"), "footer names the target:\n{out}");
+        assert!(out.contains("Bear Days.flf"), "{out}");
+        assert!(out.contains("Enter: save to the path above"), "{out}");
+
+        // A font that already has a path keeps its own folder.
+        let own = fontdir.path().join("sub").join("mine.flf");
+        dialog.enter_save_font_as(Some(&own), "x", Some(Path::new("/elsewhere")));
+        assert_eq!(
+            PathBuf::from(&dialog.path_buffer),
+            fontdir.path().join("sub")
+        );
+
+        // No FIGlet font dir: cwd as before, but shown absolute.
+        dialog.enter_save_font_as(None, "x", None);
+        assert!(dialog.path_buffer.is_empty());
+        assert!(dialog.save_dir_display().is_absolute());
+        assert_eq!(
+            dialog.save_target_display(),
+            std::env::current_dir().unwrap().join("x.flf")
+        );
+    }
+
+    #[test]
+    fn test_save_as_enter_on_highlighted_directory_navigates() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("child")).unwrap();
+        let mut dialog = FileOpsDialog::new();
+        dialog.enter_save_font_as(None, "Bear Days", Some(dir.path()));
+        assert_eq!(dialog.directory_entries, vec!["..", "child"]);
+        dialog.handle_key(KeyCode::Down);
+        assert_eq!(
+            dialog.save_focus,
+            SaveFocus::Directory,
+            "arrows focus the list"
+        );
+        assert!(
+            render_save_dialog(&mut dialog).contains("Enter: open child/"),
+            "hint names the folder Enter opens"
+        );
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(
+            dialog.mode,
+            FileOpsMode::SaveAs,
+            "Enter navigated, not saved"
+        );
+        assert_eq!(PathBuf::from(&dialog.path_buffer), dir.path().join("child"));
+        assert_eq!(dialog.filename_buffer, "Bear Days.flf");
+        assert_eq!(
+            dialog.save_target_path(),
+            dir.path().join("child").join("Bear Days.flf")
+        );
+        // With the filename focused, Enter saves even over a folder highlight.
+        dialog.handle_key(KeyCode::Tab);
+        assert_eq!(dialog.save_focus, SaveFocus::Filename);
+        dialog.handle_key(KeyCode::Enter);
+        assert_eq!(dialog.mode, FileOpsMode::Idle);
     }
 
     // --- Open dialog tests ---
