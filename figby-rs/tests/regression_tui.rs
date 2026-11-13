@@ -4,7 +4,7 @@ use ratatui::Terminal;
 /// Canvas widget round-trip: create, set cells, render, verify buffer.
 #[test]
 fn regression_tui_canvas_roundtrip() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
 
     let mut canvas = CanvasWidget::new(5, 3);
     canvas.buffer.set(
@@ -43,7 +43,7 @@ fn regression_tui_canvas_roundtrip() {
 /// Palette widget round-trip: color selection, apply to cell, render labels.
 #[test]
 fn regression_tui_palette_roundtrip() {
-    use figby::tui::palette::{Palette, ANSI_16_COLORS};
+    use figby_lib::tui::palette::{Palette, ANSI_16_COLORS};
 
     let mut palette = Palette::new();
     palette.select_color(2);
@@ -67,7 +67,7 @@ fn regression_tui_palette_roundtrip() {
 /// Toolbox widget round-trip: tool selection, render, verify displayed.
 #[test]
 fn regression_tui_toolbox_roundtrip() {
-    use figby::tui::toolbox::{Tool, Toolbox};
+    use figby_lib::tui::toolbox::{Tool, Toolbox};
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -89,7 +89,7 @@ fn regression_tui_toolbox_roundtrip() {
 /// CanvasSettings widget round-trip: construct, render, verify field labels.
 #[test]
 fn regression_tui_canvas_settings_roundtrip() {
-    use figby::tui::status::CanvasSettings;
+    use figby_lib::tui::status::CanvasSettings;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -113,7 +113,7 @@ fn regression_tui_canvas_settings_roundtrip() {
 /// MenuBar round-trip: construct, render, verify headers.
 #[test]
 fn regression_tui_menubar_roundtrip() {
-    use figby::tui::menu::{MenuBar, MenuBarState};
+    use figby_lib::tui::menu::{MenuBar, MenuBarState};
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -138,7 +138,7 @@ fn regression_tui_menubar_roundtrip() {
 /// Dialog widget round-trip: open FileOpsDialog, render, verify path entry.
 #[test]
 fn regression_tui_dialog_roundtrip() {
-    use figby::tui::file_ops::FileOpsDialog;
+    use figby_lib::tui::file_ops::FileOpsDialog;
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
@@ -162,7 +162,7 @@ fn regression_tui_dialog_roundtrip() {
 /// Full TuiApp render: verify all panels render without panic.
 #[test]
 fn regression_tui_full_app_render() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -182,7 +182,7 @@ fn regression_tui_full_app_render() {
 /// Canvas with zoom=2 and colored cells renders correctly.
 #[test]
 fn regression_tui_canvas_zoom_colored() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::style::Color;
@@ -215,7 +215,7 @@ fn regression_tui_canvas_zoom_colored() {
 /// BrushState render_preview returns expected number of rows.
 #[test]
 fn regression_tui_brush_preview_rows() {
-    use figby::tui::BrushState;
+    use figby_lib::tui::BrushState;
 
     let brush = BrushState::new();
     let preview = brush.render_preview(10);

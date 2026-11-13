@@ -7,9 +7,9 @@
 //! Open them with any image viewer, or play back in terminal:
 //!     figby --play figby-rs/target/particle_demos/rain.gif
 
-use figby::output::export_cells_to_gif;
-use figby::tui::canvas::CanvasBuffer;
-use figby::tui::particles::{
+use figby_lib::output::export_cells_to_gif;
+use figby_lib::tui::canvas::CanvasBuffer;
+use figby_lib::tui::particles::{
     EdgeMode, EmissionShape, ParticleConfig, ParticleKeyframe, ParticleSystem,
 };
 
@@ -18,19 +18,19 @@ const H: usize = 20;
 
 // ── CanvasBuffer → Vec<Vec<Vec<CanvasCell>>> conversion ───────────────
 
-fn buffer_to_cells(buf: &CanvasBuffer) -> Vec<Vec<figby::CanvasCell>> {
+fn buffer_to_cells(buf: &CanvasBuffer) -> Vec<Vec<figby_lib::CanvasCell>> {
     let mut rows = Vec::with_capacity(buf.height());
     for y in 0..buf.height() {
         let mut row = Vec::with_capacity(buf.width());
         for x in 0..buf.width() {
-            row.push(*buf.get(x, y).unwrap_or(&figby::CanvasCell::default()));
+            row.push(*buf.get(x, y).unwrap_or(&figby_lib::CanvasCell::default()));
         }
         rows.push(row);
     }
     rows
 }
 
-fn buffers_to_frame_cells(buffers: &[CanvasBuffer]) -> Vec<Vec<Vec<figby::CanvasCell>>> {
+fn buffers_to_frame_cells(buffers: &[CanvasBuffer]) -> Vec<Vec<Vec<figby_lib::CanvasCell>>> {
     buffers.iter().map(buffer_to_cells).collect()
 }
 
@@ -411,7 +411,7 @@ fn make_fireworks_system() -> ParticleSystem {
         let color = colors[i % colors.len()];
         system
             .active_particles
-            .push(figby::tui::particles::Particle {
+            .push(figby_lib::tui::particles::Particle {
                 x: cx,
                 y: cy,
                 vx: angle.cos() * speed,
@@ -422,7 +422,7 @@ fn make_fireworks_system() -> ParticleSystem {
                 character: '*',
                 opacity: 255,
                 keyframes: system.config.keyframes.clone(),
-                ..figby::tui::particles::Particle::default()
+                ..figby_lib::tui::particles::Particle::default()
             });
     }
     system

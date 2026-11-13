@@ -21,7 +21,7 @@ fn test_icons_yaml_all_keys_present() {
 
 #[test]
 fn test_tui_smoke_all_panels_render() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -49,7 +49,7 @@ fn test_tui_smoke_all_panels_render() {
 
 #[test]
 fn test_tui_mode_switching() {
-    use figby::tui::{AppMode, TuiApp};
+    use figby_lib::tui::{AppMode, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -77,7 +77,7 @@ fn test_tui_mode_switching() {
 
 #[test]
 fn test_tui_app_default_mode() {
-    use figby::tui::{AppMode, TuiApp};
+    use figby_lib::tui::{AppMode, TuiApp};
     let app = TuiApp::new();
     assert_eq!(app.ui.mode, AppMode::FontEditor);
     assert!(!app.ui.should_quit);
@@ -85,14 +85,14 @@ fn test_tui_app_default_mode() {
 
 #[test]
 fn test_tool_default_is_brush() {
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::{Tool, TuiApp};
     let app = TuiApp::new();
     assert_eq!(app.editor.toolbox.selected, Tool::Brush);
 }
 
 #[test]
 fn test_tool_selection_roundtrip() {
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -135,7 +135,7 @@ fn test_tool_selection_roundtrip() {
 
 #[test]
 fn test_toolbox_renders_tool_names() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -152,7 +152,7 @@ fn test_toolbox_renders_tool_names() {
 
 #[test]
 fn test_canvas_render_empty() {
-    use figby::tui::canvas::CanvasWidget;
+    use figby_lib::tui::canvas::CanvasWidget;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -170,7 +170,7 @@ fn test_canvas_render_empty() {
 
 #[test]
 fn test_canvas_render_cells() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -209,7 +209,7 @@ fn test_canvas_render_cells() {
 
 #[test]
 fn test_canvas_cursor_movement() {
-    use figby::tui::canvas::CanvasWidget;
+    use figby_lib::tui::canvas::CanvasWidget;
     use ratatui::crossterm::event::KeyCode;
 
     let mut canvas = CanvasWidget::new(10, 5);
@@ -230,7 +230,7 @@ fn test_canvas_cursor_movement() {
 
 #[test]
 fn test_canvas_zoom_in_out() {
-    use figby::tui::canvas::CanvasWidget;
+    use figby_lib::tui::canvas::CanvasWidget;
     use ratatui::crossterm::event::KeyCode;
 
     let mut canvas = CanvasWidget::new(10, 5);
@@ -263,7 +263,7 @@ fn test_canvas_zoom_in_out() {
 
 #[test]
 fn test_canvas_cursor_visible() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
     use ratatui::backend::TestBackend;
     use ratatui::style::Modifier;
     use ratatui::Terminal;
@@ -296,7 +296,7 @@ fn test_canvas_cursor_visible() {
 
 #[test]
 fn test_canvas_zoom_shows_grid() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
@@ -339,14 +339,14 @@ fn test_canvas_zoom_shows_grid() {
 
 #[test]
 fn test_palette_default_target_foreground() {
-    use figby::tui::palette::{ColorTarget, Palette};
+    use figby_lib::tui::palette::{ColorTarget, Palette};
     let palette = Palette::new();
     assert_eq!(palette.target, ColorTarget::Foreground);
 }
 
 #[test]
 fn test_palette_fg_bg_toggle() {
-    use figby::tui::palette::{ColorTarget, Palette};
+    use figby_lib::tui::palette::{ColorTarget, Palette};
     use ratatui::crossterm::event::KeyCode;
 
     let mut palette = Palette::new();
@@ -367,7 +367,7 @@ fn test_palette_fg_bg_toggle() {
 
 #[test]
 fn test_palette_select_color_updates_selected() {
-    use figby::tui::palette::{Palette, ANSI_16_COLORS};
+    use figby_lib::tui::palette::{Palette, ANSI_16_COLORS};
 
     let mut palette = Palette::new();
     palette.select_color(1);
@@ -379,7 +379,7 @@ fn test_palette_select_color_updates_selected() {
 
 #[test]
 fn test_palette_select_pushes_recent() {
-    use figby::tui::palette::{Palette, ANSI_16_COLORS};
+    use figby_lib::tui::palette::{Palette, ANSI_16_COLORS};
 
     let mut palette = Palette::new();
     assert!(palette.recent.is_empty());
@@ -399,7 +399,7 @@ fn test_palette_select_pushes_recent() {
 
 #[test]
 fn test_palette_custom_hex_applies() {
-    use figby::tui::palette::Palette;
+    use figby_lib::tui::palette::Palette;
     use ratatui::style::Color;
 
     let mut palette = Palette::new();
@@ -410,8 +410,8 @@ fn test_palette_custom_hex_applies() {
 
 #[test]
 fn test_palette_apply_to_cell_fg() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::palette::{Palette, ANSI_16_COLORS};
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::palette::{Palette, ANSI_16_COLORS};
 
     let mut palette = Palette::new();
     palette.select_color(2);
@@ -423,8 +423,8 @@ fn test_palette_apply_to_cell_fg() {
 
 #[test]
 fn test_palette_apply_to_cell_bg() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::palette::{Palette, ANSI_16_COLORS};
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::palette::{Palette, ANSI_16_COLORS};
 
     let mut palette = Palette::new();
     palette.toggle_target();
@@ -437,23 +437,23 @@ fn test_palette_apply_to_cell_bg() {
 
 #[test]
 fn test_brush_default_shape() {
-    use figby::tui::brush::BrushShape;
-    use figby::tui::BrushState;
+    use figby_lib::tui::brush::BrushShape;
+    use figby_lib::tui::BrushState;
     let brush = BrushState::new();
     assert_eq!(brush.shape, BrushShape::Square);
 }
 
 #[test]
 fn test_brush_default_size() {
-    use figby::tui::BrushState;
+    use figby_lib::tui::BrushState;
     let brush = BrushState::new();
     assert_eq!(brush.size, 1);
 }
 
 #[test]
 fn test_brush_cycle_shape() {
-    use figby::tui::brush::BrushShape;
-    use figby::tui::BrushState;
+    use figby_lib::tui::brush::BrushShape;
+    use figby_lib::tui::BrushState;
     let mut brush = BrushState::new();
     assert_eq!(brush.shape, BrushShape::Square);
     brush.cycle_shape();
@@ -470,7 +470,7 @@ fn test_brush_cycle_shape() {
 
 #[test]
 fn test_brush_size_up_down_key() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -485,8 +485,8 @@ fn test_brush_size_up_down_key() {
 
 #[test]
 fn test_brush_shape_cycle_key() {
-    use figby::tui::brush::BrushShape;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::brush::BrushShape;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -501,10 +501,10 @@ fn test_brush_shape_cycle_key() {
 
 #[test]
 fn test_brush_preview_square_integration() {
-    use figby::tui::BrushState;
+    use figby_lib::tui::BrushState;
 
     let brush = BrushState {
-        shape: figby::tui::brush::BrushShape::Square,
+        shape: figby_lib::tui::brush::BrushShape::Square,
         size: 3,
         ch: '\u{2588}',
         density: 35,
@@ -519,8 +519,8 @@ fn test_brush_preview_square_integration() {
 
 #[test]
 fn test_brush_preview_circle_integration() {
-    use figby::tui::brush::BrushShape;
-    use figby::tui::BrushState;
+    use figby_lib::tui::brush::BrushShape;
+    use figby_lib::tui::BrushState;
 
     let brush = BrushState {
         shape: BrushShape::Circle,
@@ -538,8 +538,8 @@ fn test_brush_preview_circle_integration() {
 
 #[test]
 fn test_brush_preview_spray_deterministic() {
-    use figby::tui::brush::BrushShape;
-    use figby::tui::BrushState;
+    use figby_lib::tui::brush::BrushShape;
+    use figby_lib::tui::BrushState;
 
     let a = BrushState {
         shape: BrushShape::SprayPaint,
@@ -560,8 +560,8 @@ fn test_brush_preview_spray_deterministic() {
 
 #[test]
 fn test_brush_preview_custom_center() {
-    use figby::tui::brush::BrushShape;
-    use figby::tui::BrushState;
+    use figby_lib::tui::brush::BrushShape;
+    use figby_lib::tui::BrushState;
 
     let brush = BrushState {
         shape: BrushShape::Custom,
@@ -576,7 +576,7 @@ fn test_brush_preview_custom_center() {
 
 #[test]
 fn test_brush_preview_respects_max_size() {
-    use figby::tui::BrushState;
+    use figby_lib::tui::BrushState;
 
     let mut brush = BrushState::new();
     brush.set_size(15);
@@ -589,8 +589,8 @@ fn test_brush_preview_respects_max_size() {
 
 #[test]
 fn test_brush_render_contains_shape_name() {
-    use figby::tui::TabId;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TabId;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -609,7 +609,7 @@ fn test_brush_render_contains_shape_name() {
 
 #[test]
 fn test_palette_render_contains_labels() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -629,8 +629,8 @@ fn test_palette_render_contains_labels() {
 
 #[test]
 fn test_status_bar_shows_cursor_position() {
-    use figby::tui::AppMode;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::AppMode;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
@@ -653,7 +653,7 @@ fn test_status_bar_shows_cursor_position() {
 
 #[test]
 fn test_status_bar_shows_zoom_level() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
@@ -672,7 +672,7 @@ fn test_status_bar_shows_zoom_level() {
 
 #[test]
 fn test_status_bar_shows_tool_name() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
@@ -691,7 +691,7 @@ fn test_status_bar_shows_tool_name() {
 
 #[test]
 fn test_status_bar_shows_mode_name() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -710,7 +710,7 @@ fn test_status_bar_shows_mode_name() {
 
 #[test]
 fn test_status_bar_unsaved_indicator() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -736,7 +736,7 @@ fn test_status_bar_unsaved_indicator() {
 
 #[test]
 fn test_settings_toggle_visibility() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::KeyCode;
     use ratatui::Terminal;
@@ -767,7 +767,7 @@ fn test_settings_toggle_visibility() {
 
 #[test]
 fn test_settings_changes_canvas_width() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -785,7 +785,7 @@ fn test_settings_changes_canvas_width() {
 
 #[test]
 fn test_settings_toggle_grid() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -800,7 +800,7 @@ fn test_settings_toggle_grid() {
 
 #[test]
 fn test_settings_toggle_snap_to_grid() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -819,8 +819,8 @@ fn test_settings_toggle_snap_to_grid() {
 
 #[test]
 fn test_fill_tool_keyboard() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -887,8 +887,8 @@ fn test_fill_tool_keyboard() {
 
 #[test]
 fn test_font_editor_grid_renders_102_chars() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::FontEditor;
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::FontEditor;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -917,7 +917,7 @@ fn test_font_editor_grid_renders_102_chars() {
             code
         );
     }
-    for &code in &figby::font::DEUTSCH_CHARS {
+    for &code in &figby_lib::font::DEUTSCH_CHARS {
         assert!(
             codes.contains(&code),
             "missing Deutsch code {} in filtered_codes",
@@ -936,8 +936,8 @@ fn test_font_editor_grid_renders_102_chars() {
 
 #[test]
 fn test_font_editor_search_by_code() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::FontEditor;
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::FontEditor;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -962,8 +962,8 @@ fn test_font_editor_search_by_code() {
 
 #[test]
 fn test_font_editor_search_by_char_value() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::FontEditor;
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::FontEditor;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -991,8 +991,8 @@ fn test_font_editor_search_by_char_value() {
 
 #[test]
 fn test_font_editor_select_opens_char_in_canvas() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::{FontEditor, FontEditorView};
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::{FontEditor, FontEditorView};
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
@@ -1020,8 +1020,8 @@ fn test_font_editor_select_opens_char_in_canvas() {
 
 #[test]
 fn test_font_editor_esc_returns_to_overview() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::{FontEditor, FontEditorView};
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::{FontEditor, FontEditorView};
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
@@ -1044,7 +1044,7 @@ fn test_font_editor_esc_returns_to_overview() {
 
 #[test]
 fn test_font_editor_empty_font_no_panic() {
-    use figby::tui::font_editor::FontEditor;
+    use figby_lib::tui::font_editor::FontEditor;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -1061,8 +1061,8 @@ fn test_font_editor_empty_font_no_panic() {
 
 #[test]
 fn test_font_editor_grid_navigation() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::FontEditor;
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::FontEditor;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
@@ -1098,11 +1098,14 @@ fn test_font_editor_grid_navigation() {
 
 // --- Header Editor tests ---
 
-fn header_editor_setup() -> (figby::tui::font_editor::FontEditor, figby::font::FIGfont) {
-    use figby::font::parse_tlf_font;
+fn header_editor_setup() -> (
+    figby_lib::tui::font_editor::FontEditor,
+    figby_lib::font::FIGfont,
+) {
+    use figby_lib::font::parse_tlf_font;
     let content = include_str!("../assets/fonts/standard.flf");
     let font = parse_tlf_font(content).expect("standard font should parse");
-    let mut editor = figby::tui::font_editor::FontEditor::new();
+    let mut editor = figby_lib::tui::font_editor::FontEditor::new();
     let header_font = font.clone();
     editor.load_font(font);
     (editor, header_font)
@@ -1110,7 +1113,7 @@ fn header_editor_setup() -> (figby::tui::font_editor::FontEditor, figby::font::F
 
 #[test]
 fn test_font_editor_header_open_close() {
-    use figby::tui::font_editor::FontEditorView;
+    use figby_lib::tui::font_editor::FontEditorView;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
@@ -1321,7 +1324,7 @@ fn test_font_editor_header_maxlength_edit() {
 
 #[test]
 fn test_smush_editor_open_close() {
-    use figby::tui::font_editor::FontEditorView;
+    use figby_lib::tui::font_editor::FontEditorView;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
@@ -1335,7 +1338,7 @@ fn test_smush_editor_open_close() {
 
 #[test]
 fn test_smush_rule_toggle() {
-    use figby::smush::SmushMode;
+    use figby_lib::smush::SmushMode;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
@@ -1363,7 +1366,7 @@ fn test_smush_rule_toggle() {
 
 #[test]
 fn test_smush_rule_multiple_toggles() {
-    use figby::smush::SmushMode;
+    use figby_lib::smush::SmushMode;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
@@ -1439,7 +1442,7 @@ fn test_smush_editor_navigation() {
 
 #[test]
 fn test_smush_preview_changes_on_toggle() {
-    use figby::smush::SmushMode;
+    use figby_lib::smush::SmushMode;
     use ratatui::backend::TestBackend;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
     use ratatui::Terminal;
@@ -1496,7 +1499,7 @@ fn test_smush_preview_changes_on_toggle() {
 
 #[test]
 fn test_transform_editor_open_close() {
-    use figby::tui::font_editor::FontEditorView;
+    use figby_lib::tui::font_editor::FontEditorView;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let (mut editor, _) = header_editor_setup();
@@ -1640,7 +1643,7 @@ fn test_transform_rename_via_editor() {
 
 #[test]
 fn test_brush_tool_keyboard_paint() {
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1665,7 +1668,7 @@ fn test_brush_tool_keyboard_paint() {
 
 #[test]
 fn test_braille_tool_shortcut_key_selects_it_in_font_editor() {
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     // 'k' must reach the toolbox tool-selector rather than being swallowed
@@ -1679,7 +1682,7 @@ fn test_braille_tool_shortcut_key_selects_it_in_font_editor() {
 
 #[test]
 fn test_braille_tool_keyboard_dot_toggle() {
-    use figby::tui::{AppMode, Tool, TuiApp};
+    use figby_lib::tui::{AppMode, Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1722,7 +1725,7 @@ fn test_braille_tool_keyboard_dot_toggle() {
 
 #[test]
 fn test_braille_sub_cursor_clamps_within_cell() {
-    use figby::tui::{AppMode, Tool, TuiApp};
+    use figby_lib::tui::{AppMode, Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1747,8 +1750,8 @@ fn test_braille_sub_cursor_clamps_within_cell() {
 
 #[test]
 fn test_eraser_tool_keyboard_erase() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1783,7 +1786,7 @@ fn test_eraser_tool_keyboard_erase() {
 
 #[test]
 fn test_line_tool_keyboard_paint() {
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1809,7 +1812,7 @@ fn test_line_tool_keyboard_paint() {
 
 #[test]
 fn test_spray_tool_keyboard_paint() {
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1852,8 +1855,8 @@ fn test_spray_tool_keyboard_paint() {
 
 #[test]
 fn test_eyedropper_tool_keyboard_does_not_paint() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -1886,7 +1889,7 @@ fn test_eyedropper_tool_keyboard_does_not_paint() {
 
 #[test]
 fn test_text_tool_commit_block_requires_font() {
-    use figby::tui::tools::text::TextToolState;
+    use figby_lib::tui::tools::text::TextToolState;
 
     // Use absolute path to fonts directory from manifest dir
     let font_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../fonts");
@@ -1913,8 +1916,8 @@ fn test_text_tool_commit_block_requires_font() {
 
 #[test]
 fn test_selection_copy_delete_keyboard() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -1932,7 +1935,7 @@ fn test_selection_copy_delete_keyboard() {
 
     // Create selection and set clipboard manually
     let sel =
-        figby::tui::tools::selection::Selection::marquee(&app.editor.canvas.buffer, 0, 0, 1, 1);
+        figby_lib::tui::tools::selection::Selection::marquee(&app.editor.canvas.buffer, 0, 0, 1, 1);
     let clip = sel.copy_from(&app.editor.canvas.buffer);
     app.editor.clipboard = Some(clip);
     app.editor.selection = Some(sel);
@@ -1947,7 +1950,7 @@ fn test_selection_copy_delete_keyboard() {
 
     // Paste clipboard directly (no Ctrl+V since toolbox intercepts 'v')
     if let Some(ref clip_data) = app.editor.clipboard {
-        figby::tui::tools::selection::Selection::paste_into(
+        figby_lib::tui::tools::selection::Selection::paste_into(
             &mut app.editor.canvas.buffer,
             clip_data,
             3,
@@ -1963,8 +1966,8 @@ fn test_selection_copy_delete_keyboard() {
 
 #[test]
 fn test_selection_cut_direct() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::TuiApp;
 
     let mut app = TuiApp::new();
 
@@ -1980,7 +1983,7 @@ fn test_selection_cut_direct() {
     );
 
     let sel =
-        figby::tui::tools::selection::Selection::marquee(&app.editor.canvas.buffer, 0, 0, 1, 1);
+        figby_lib::tui::tools::selection::Selection::marquee(&app.editor.canvas.buffer, 0, 0, 1, 1);
     let clip = sel.cut_from(&mut app.editor.canvas.buffer);
     assert_eq!(
         app.editor.canvas.buffer.get(0, 0).unwrap().ch,
@@ -1992,7 +1995,7 @@ fn test_selection_cut_direct() {
 
 #[test]
 fn test_canvas_scroll_on_cursor_move() {
-    use figby::tui::canvas::CanvasWidget;
+    use figby_lib::tui::canvas::CanvasWidget;
     use ratatui::crossterm::event::KeyCode;
 
     let mut canvas = CanvasWidget::new(100, 50);
@@ -2022,7 +2025,7 @@ fn test_canvas_scroll_on_cursor_move() {
 
 #[test]
 fn test_undo_redo_integration() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2055,7 +2058,7 @@ fn test_undo_redo_integration() {
 
 #[test]
 fn test_redo_via_ctrl_shift_z() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2082,7 +2085,7 @@ fn test_redo_via_ctrl_shift_z() {
 
 #[test]
 fn test_file_ops_dialog_open_close() {
-    use figby::tui::file_ops::{FileOpsDialog, FileOpsMode};
+    use figby_lib::tui::file_ops::{FileOpsDialog, FileOpsMode};
     use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = FileOpsDialog::new();
@@ -2104,7 +2107,7 @@ fn test_file_ops_dialog_open_close() {
 
 #[test]
 fn test_file_ops_dialog_save_as() {
-    use figby::tui::file_ops::{FileOpsDialog, FileOpsMode};
+    use figby_lib::tui::file_ops::{FileOpsDialog, FileOpsMode};
     use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = FileOpsDialog::new();
@@ -2135,7 +2138,7 @@ fn test_file_ops_dialog_save_as() {
 
 #[test]
 fn test_export_dialog_open_via_ctrl_e() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2154,7 +2157,7 @@ fn test_export_dialog_open_via_ctrl_e() {
 
 #[test]
 fn test_export_dialog_format_toggle() {
-    use figby::tui::export::{ExportDialog, ExportMode};
+    use figby_lib::tui::export::{ExportDialog, ExportMode};
     use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = ExportDialog::new();
@@ -2190,11 +2193,11 @@ fn test_export_dialog_format_toggle() {
 
 #[test]
 fn test_export_dialog_path_entry() {
-    use figby::tui::export::ExportDialog;
+    use figby_lib::tui::export::ExportDialog;
     use ratatui::crossterm::event::KeyCode;
 
     let mut dialog = ExportDialog::new();
-    dialog.enter_export(figby::tui::ExportMode::Png);
+    dialog.enter_export(figby_lib::tui::ExportMode::Png);
     assert_eq!(dialog.path_buffer, "export.png");
 
     // Type additional path chars (avoid 't','l','p' which toggle format/layers/alpha).
@@ -2220,8 +2223,8 @@ fn test_export_dialog_path_entry() {
 
 #[test]
 fn test_image_editor_mode_switch_and_toggle() {
-    use figby::tui::image_editor::AsciiMode;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::image_editor::AsciiMode;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -2229,7 +2232,7 @@ fn test_image_editor_mode_switch_and_toggle() {
 
     // Tab to Image Editor mode
     app.handle_key_event(KeyCode::Tab);
-    assert_eq!(app.ui.mode, figby::tui::AppMode::ImageEditor);
+    assert_eq!(app.ui.mode, figby_lib::tui::AppMode::ImageEditor);
 
     // Default mode is Grayscale
     assert_eq!(
@@ -2257,7 +2260,7 @@ fn test_image_editor_mode_switch_and_toggle() {
 
 #[test]
 fn test_menu_bar_alt_f_opens_file_menu() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2277,7 +2280,7 @@ fn test_menu_bar_alt_f_opens_file_menu() {
 
 #[test]
 fn test_menu_bar_navigate_and_select() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2297,8 +2300,8 @@ fn test_menu_bar_navigate_and_select() {
 
 #[test]
 fn test_menu_edit_redo_via_keyboard_nav() {
-    use figby::tui::menu::MenuAction;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::menu::MenuAction;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2321,14 +2324,14 @@ fn test_menu_edit_redo_via_keyboard_nav() {
 
     // The event should be a Menu action carrying EditRedo
     assert!(event.is_some(), "Enter on Redo should produce event");
-    if let Some(figby::tui::events::AppEvent::Menu(action)) = event {
+    if let Some(figby_lib::tui::events::AppEvent::Menu(action)) = event {
         assert_eq!(action, MenuAction::EditRedo);
     }
 }
 
 #[test]
 fn test_menu_help_keybindings() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2362,8 +2365,8 @@ fn test_menu_help_keybindings() {
 
 #[test]
 fn test_layout_drawer_toggle() {
-    use figby::tui::side_panel::TabId;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::side_panel::TabId;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2397,7 +2400,7 @@ fn test_layout_drawer_toggle() {
 
 #[test]
 fn test_zen_mode_toggle_f11() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2414,7 +2417,7 @@ fn test_zen_mode_toggle_f11() {
 
 #[test]
 fn test_keybindings_overlay_toggle() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2433,7 +2436,7 @@ fn test_keybindings_overlay_toggle() {
 
 #[test]
 fn test_canvas_ensure_cursor_visible_scrolls() {
-    use figby::tui::canvas::CanvasWidget;
+    use figby_lib::tui::canvas::CanvasWidget;
 
     let mut canvas = CanvasWidget::new(100, 50);
 
@@ -2464,8 +2467,8 @@ fn test_canvas_ensure_cursor_visible_scrolls() {
 
 #[test]
 fn test_selection_escape_deselects() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2483,7 +2486,7 @@ fn test_selection_escape_deselects() {
     );
 
     let sel =
-        figby::tui::tools::selection::Selection::marquee(&app.editor.canvas.buffer, 0, 0, 1, 1);
+        figby_lib::tui::tools::selection::Selection::marquee(&app.editor.canvas.buffer, 0, 0, 1, 1);
     app.editor.selection = Some(sel);
     assert!(
         app.editor.selection.as_ref().is_some_and(|s| s.is_active()),
@@ -2497,8 +2500,8 @@ fn test_selection_escape_deselects() {
 
 #[test]
 fn test_font_editor_char_editor_toggle_cell() {
-    use figby::font::parse_tlf_font;
-    use figby::tui::font_editor::{FontEditor, FontEditorView};
+    use figby_lib::font::parse_tlf_font;
+    use figby_lib::tui::font_editor::{FontEditor, FontEditorView};
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     let content = include_str!("../assets/fonts/standard.flf");
@@ -2525,7 +2528,7 @@ fn test_font_editor_char_editor_toggle_cell() {
 
 #[test]
 fn test_canvas_grid_toggle_g_key() {
-    use figby::tui::{AppMode, TuiApp};
+    use figby_lib::tui::{AppMode, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -2539,8 +2542,8 @@ fn test_canvas_grid_toggle_g_key() {
 
 #[test]
 fn test_palette_fg_keyboard_shortcut() {
-    use figby::tui::palette::ColorTarget;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::palette::ColorTarget;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -2548,7 +2551,7 @@ fn test_palette_fg_keyboard_shortcut() {
 
     // Switch to ImageEditor mode so font editor doesn't intercept palette keys
     app.handle_key_event(KeyCode::Tab);
-    assert_eq!(app.ui.mode, figby::tui::AppMode::ImageEditor);
+    assert_eq!(app.ui.mode, figby_lib::tui::AppMode::ImageEditor);
 
     assert_eq!(
         app.editor.palette.target,
@@ -2583,9 +2586,9 @@ fn test_palette_fg_keyboard_shortcut() {
 
 #[test]
 fn test_selection_perimeter_delete() {
-    use figby::tui::canvas::CanvasCell;
-    use figby::tui::tools::selection::Selection;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::canvas::CanvasCell;
+    use figby_lib::tui::tools::selection::Selection;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2664,13 +2667,13 @@ fn test_selection_perimeter_delete() {
 
 #[test]
 fn test_text_tool_edit_text_buffer() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
 
     // Select Text tool
-    app.editor.toolbox.selected = figby::tui::Tool::Text;
+    app.editor.toolbox.selected = figby_lib::tui::Tool::Text;
 
     // Activate editing and type directly into buffer
     app.editor.text_tool.editing = true;
@@ -2682,8 +2685,8 @@ fn test_text_tool_edit_text_buffer() {
 
 #[test]
 fn test_text_tool_commit_text() {
-    use figby::font::load_font;
-    use figby::tui::TuiApp;
+    use figby_lib::font::load_font;
+    use figby_lib::tui::TuiApp;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -2696,7 +2699,7 @@ fn test_text_tool_commit_text() {
     }
 
     // Select Text tool and activate editing
-    app.editor.toolbox.selected = figby::tui::Tool::Text;
+    app.editor.toolbox.selected = figby_lib::tui::Tool::Text;
     app.editor.text_tool.editing = true;
 
     // Type "ab"
@@ -2722,14 +2725,14 @@ fn test_text_tool_commit_text() {
 
 #[test]
 fn test_text_tool_cancel_text() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
 
     // Select Text tool and activate editing
-    app.editor.toolbox.selected = figby::tui::Tool::Text;
+    app.editor.toolbox.selected = figby_lib::tui::Tool::Text;
     app.editor.text_tool.editing = true;
 
     // Type "ab"
@@ -2756,16 +2759,16 @@ fn test_text_tool_cancel_text() {
     );
     assert_eq!(
         app.editor.toolbox.selected,
-        figby::tui::Tool::Brush,
+        figby_lib::tui::Tool::Brush,
         "Esc on empty Text tool exits to Brush"
     );
 }
 
 #[test]
 fn test_cli_dispatch_view_zoom_in_via_menu() {
-    use figby::tui::events::AppEvent;
-    use figby::tui::menu::MenuAction;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::events::AppEvent;
+    use figby_lib::tui::menu::MenuAction;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2790,9 +2793,9 @@ fn test_cli_dispatch_view_zoom_in_via_menu() {
 
 #[test]
 fn test_cli_dispatch_tools_select_brush_via_menu() {
-    use figby::tui::events::AppEvent;
-    use figby::tui::menu::MenuAction;
-    use figby::tui::{Tool, TuiApp};
+    use figby_lib::tui::events::AppEvent;
+    use figby_lib::tui::menu::MenuAction;
+    use figby_lib::tui::{Tool, TuiApp};
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     let mut app = TuiApp::new();
@@ -2828,9 +2831,9 @@ fn test_cli_dispatch_tools_select_brush_via_menu() {
 
 #[test]
 fn test_multiple_widgets_interaction() {
-    use figby::tui::palette::{ColorTarget, ANSI_16_COLORS};
-    use figby::tui::Tool;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::palette::{ColorTarget, ANSI_16_COLORS};
+    use figby_lib::tui::Tool;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -2874,9 +2877,9 @@ fn test_multiple_widgets_interaction() {
 
 #[test]
 fn test_rotate_tool_arrow_key_rotates_whole_layer() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
-    use figby::tui::layers::LayerStack;
-    use figby::tui::{AppMode, Tool, TuiApp};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::layers::LayerStack;
+    use figby_lib::tui::{AppMode, Tool, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -2917,7 +2920,7 @@ fn test_rotate_tool_arrow_key_rotates_whole_layer() {
 
 #[test]
 fn test_welcome_screen_shortcuts_work_with_or_without_shift() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     // 'A' (Animated GIF Import) opens the gif_import sizing dialog.
@@ -2937,8 +2940,8 @@ fn test_welcome_screen_shortcuts_work_with_or_without_shift() {
 
 #[test]
 fn test_welcome_screen_font_and_image_import_keys_do_not_collide() {
-    use figby::tui::welcome::WelcomeAction;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::welcome::WelcomeAction;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
     // 'I'/'i' previously matched two different actions (FontNewFromFile and
@@ -2962,8 +2965,8 @@ fn test_welcome_screen_font_and_image_import_keys_do_not_collide() {
 
 #[test]
 fn test_f8_starts_playback_and_toggles_pause() {
-    use figby::tui::timeline::TimelineFrame;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::timeline::TimelineFrame;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     // F8 is the dedicated play key now that Space paints only. With no
@@ -3018,9 +3021,9 @@ fn test_f8_starts_playback_and_toggles_pause() {
 
 #[test]
 fn test_space_paints_even_with_layers_panel_open() {
-    use figby::tui::side_panel::TabId;
-    use figby::tui::timeline::TimelineFrame;
-    use figby::tui::TuiApp;
+    use figby_lib::tui::side_panel::TabId;
+    use figby_lib::tui::timeline::TimelineFrame;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
 
     // Space is the paint key. Timeline frames must not redirect it to
@@ -3030,7 +3033,7 @@ fn test_space_paints_even_with_layers_panel_open() {
     app.welcome.screen.show = false;
     app.side_panel.open = true;
     app.side_panel.active_tab = TabId::Layers;
-    app.editor.toolbox.selected = figby::tui::toolbox::Tool::Brush;
+    app.editor.toolbox.selected = figby_lib::tui::toolbox::Tool::Brush;
     app.animation.timeline_state.add_frame(TimelineFrame {
         delay: 10,
         thumbnail: vec![],
@@ -3072,10 +3075,10 @@ fn test_space_paints_even_with_layers_panel_open() {
 
 #[test]
 fn test_timeline_frame_edits_persist_on_switch() {
-    use figby::tui::canvas::{CanvasCell, CanvasWidget};
-    use figby::tui::layers::LayerStack;
-    use figby::tui::timeline::TimelineFrame;
-    use figby::tui::{AppMode, TuiApp};
+    use figby_lib::tui::canvas::{CanvasCell, CanvasWidget};
+    use figby_lib::tui::layers::LayerStack;
+    use figby_lib::tui::timeline::TimelineFrame;
+    use figby_lib::tui::{AppMode, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -3169,7 +3172,7 @@ fn test_timeline_frame_edits_persist_on_switch() {
 /// keep the document dirty; a deferred quit must not be honored.
 #[test]
 fn test_save_complete_keeps_unsaved_when_edited_during_save() {
-    use figby::tui::{AsyncResult, TuiApp};
+    use figby_lib::tui::{AsyncResult, TuiApp};
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.editor.mark_dirty();
@@ -3203,7 +3206,7 @@ fn test_save_complete_keeps_unsaved_when_edited_during_save() {
 /// clears the unsaved flag and honors a deferred quit as before.
 #[test]
 fn test_save_complete_clears_unsaved_when_untouched_during_save() {
-    use figby::tui::{AsyncResult, TuiApp};
+    use figby_lib::tui::{AsyncResult, TuiApp};
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.editor.mark_dirty();
@@ -3231,7 +3234,7 @@ fn test_save_complete_clears_unsaved_when_untouched_during_save() {
 /// the very next redraw. The paint must survive.
 #[test]
 fn test_render_does_not_overwrite_paint_with_stale_image_cache() {
-    use figby::tui::{canvas, canvas::CanvasCell, AppMode, TuiApp};
+    use figby_lib::tui::{canvas, canvas::CanvasCell, AppMode, TuiApp};
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -3308,28 +3311,28 @@ fn test_render_does_not_overwrite_paint_with_stale_image_cache() {
 /// clean document.
 #[test]
 fn test_new_file_with_unsaved_changes_asks_confirmation() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::{KeyCode, KeyModifiers};
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.editor.mark_dirty();
 
     // Trigger New via the same path the welcome action uses.
-    app.request_transition(figby::tui::PendingDocAction::NewFileSession);
+    app.request_transition(figby_lib::tui::PendingDocAction::NewFileSession);
     assert!(
         app.dialogs.quit_confirm_dialog,
         "confirm dialog should open"
     );
     assert_eq!(
         app.dialogs.pending_transition,
-        Some(figby::tui::PendingDocAction::NewFileSession)
+        Some(figby_lib::tui::PendingDocAction::NewFileSession)
     );
 
     // Paint something so we can verify it is discarded on N.
     app.editor.layer_stack.active_layer_mut().buffer_mut().set(
         0,
         0,
-        figby::tui::canvas::CanvasCell {
+        figby_lib::tui::canvas::CanvasCell {
             ch: 'Z',
             fg: None,
             bg: None,
@@ -3363,12 +3366,12 @@ fn test_new_file_with_unsaved_changes_asks_confirmation() {
 /// F-08 (GPT review): Cancel keeps the current document untouched.
 #[test]
 fn test_new_file_cancel_keeps_document() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
     app.editor.mark_dirty();
-    app.request_transition(figby::tui::PendingDocAction::NewFileSession);
+    app.request_transition(figby_lib::tui::PendingDocAction::NewFileSession);
 
     app.handle_key_event(KeyCode::Esc);
     assert!(!app.dialogs.quit_confirm_dialog);
@@ -3383,8 +3386,8 @@ fn test_new_file_cancel_keeps_document() {
 /// a `.figmap`; confirming a path saves, then the quit proceeds.
 #[test]
 fn test_quit_save_option_in_image_mode_saves_then_quits() {
-    use figby::tui::file_ops::FileOpsMode;
-    use figby::tui::{AppMode, TuiApp};
+    use figby_lib::tui::file_ops::FileOpsMode;
+    use figby_lib::tui::{AppMode, TuiApp};
     use ratatui::crossterm::event::KeyCode;
     let dir = tempfile::tempdir().unwrap();
     let mut app = TuiApp::new();
@@ -3406,7 +3409,7 @@ fn test_quit_save_option_in_image_mode_saves_then_quits() {
 
     let saved = dir.path().join("quit-save.figmap");
     assert!(saved.exists(), "save must write the .figmap");
-    assert!(figby::figmap::load_figmap(&saved).is_ok());
+    assert!(figby_lib::figmap::load_figmap(&saved).is_ok());
     assert!(!app.editor.unsaved);
     assert!(app.ui.should_quit, "quit proceeds after a successful save");
 }
@@ -3415,7 +3418,7 @@ fn test_quit_save_option_in_image_mode_saves_then_quits() {
 /// navigation keys do not.
 #[test]
 fn test_font_editor_dirty_tracking_via_mutation_epoch() {
-    use figby::tui::TuiApp;
+    use figby_lib::tui::TuiApp;
     use ratatui::crossterm::event::KeyCode;
     let mut app = TuiApp::new();
     app.welcome.screen.show = false;
@@ -3423,7 +3426,7 @@ fn test_font_editor_dirty_tracking_via_mutation_epoch() {
 
     // The smush toggle needs an actual font to mutate.
     let content = include_str!("../assets/fonts/standard.flf");
-    let font = figby::font::parse_tlf_font(content).expect("standard.flf should parse");
+    let font = figby_lib::font::parse_tlf_font(content).expect("standard.flf should parse");
     app.editor.font_editor.font = Some(font);
 
     // Navigation keys in the glyph editor must not dirty the document.
@@ -3434,7 +3437,7 @@ fn test_font_editor_dirty_tracking_via_mutation_epoch() {
 
     // A real mutation (smush rule toggle) must mark dirty. Switch to the
     // smush editor view first via the font editor's own state.
-    app.editor.font_editor.view = figby::tui::font_editor::FontEditorView::SmushRuleEditor;
+    app.editor.font_editor.view = figby_lib::tui::font_editor::FontEditorView::SmushRuleEditor;
     app.handle_key_event(KeyCode::Enter);
     assert!(
         app.editor.unsaved && app.editor.revision > rev0,
@@ -3446,7 +3449,7 @@ fn test_font_editor_dirty_tracking_via_mutation_epoch() {
 /// Previously the lock flag was cosmetic.
 #[test]
 fn test_locked_layer_blocks_keyboard_paint() {
-    use figby::tui::{AppMode, TuiApp};
+    use figby_lib::tui::{AppMode, TuiApp};
     use ratatui::crossterm::event::KeyCode;
 
     let mut app = TuiApp::new();
@@ -3490,7 +3493,7 @@ fn test_locked_layer_blocks_keyboard_paint() {
 
 #[test]
 fn test_document_tab_strip_shows_all_tabs_with_rects() {
-    use figby::tui::{DocumentKind, TuiApp};
+    use figby_lib::tui::{DocumentKind, TuiApp};
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 

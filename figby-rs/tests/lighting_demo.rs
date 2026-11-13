@@ -2,10 +2,10 @@
 //!
 //!     cargo test --manifest-path figby-rs/Cargo.toml --test lighting_demo -- --nocapture
 
-use figby::font_gen::font_file_to_figfont;
-use figby::output::export_cells_to_gif;
-use figby::render::render_string;
-use figby::tui::lighting::{
+use figby_lib::font_gen::font_file_to_figfont;
+use figby_lib::output::export_cells_to_gif;
+use figby_lib::render::render_string;
+use figby_lib::tui::lighting::{
     compute_normal_map_figfont, shade_canvas, Attenuation, Light, LightTarget, Rgb, Scene,
 };
 
@@ -106,7 +106,7 @@ fn shade_to_cells(
     lum: &[Vec<f32>],
     mask: &[Vec<bool>],
     tint: (u8, u8, u8),
-) -> Vec<Vec<figby::CanvasCell>> {
+) -> Vec<Vec<figby_lib::CanvasCell>> {
     lum.iter()
         .enumerate()
         .map(|(y, row)| {
@@ -117,7 +117,7 @@ fn shade_to_cells(
                     let r = (tint.0 as f32 * t) as u8;
                     let g = (tint.1 as f32 * t) as u8;
                     let b = (tint.2 as f32 * t) as u8;
-                    figby::CanvasCell {
+                    figby_lib::CanvasCell {
                         ch: if t > 0.1 { '#' } else { ' ' },
                         fg: Some(ratatui::style::Color::Rgb(r, g, b)),
                         bg: Some(ratatui::style::Color::Rgb(10, 10, 18)),
@@ -235,7 +235,7 @@ fn export_lighting_pngs() {
     // ── Animated GIF: light sweep ──
     println!("Rendering animated light sweep...");
     let num_frames = 30;
-    let frame_cells: Vec<Vec<Vec<figby::CanvasCell>>> = (0..num_frames)
+    let frame_cells: Vec<Vec<Vec<figby_lib::CanvasCell>>> = (0..num_frames)
         .map(|i| {
             let t = i as f32 / (num_frames - 1) as f32;
             let light_x = t * w as f32;

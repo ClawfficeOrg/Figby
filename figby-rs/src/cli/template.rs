@@ -2,17 +2,17 @@
 //! stdout or `--to-file` / `--output`. Moved out of `main()` verbatim.
 
 use crate::{c_atoi, get_columns, write_output_file, CliArgs};
-use figby::font;
-use figby::template;
+use figby_lib::font;
+use figby_lib::template;
 use std::io::{self, Write};
 use std::process;
 
 /// Render the template at `path`. Exits with status 1 on a read, parse or
 /// render error.
 pub(crate) fn run_template(args: &CliArgs, path: &str) {
-    let content = match figby::bounded_io::read_bounded_string(
+    let content = match figby_lib::bounded_io::read_bounded_string(
         std::path::Path::new(path),
-        figby::bounded_io::MAX_TEXT_BYTES,
+        figby_lib::bounded_io::MAX_TEXT_BYTES,
     ) {
         Ok(c) => c,
         Err(e) => {

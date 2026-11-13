@@ -2,15 +2,15 @@
 //!
 //!     cargo test --manifest-path figby-rs/Cargo.toml --test light_keyframe_e2e -- --nocapture
 
-use figby::font_gen::font_file_to_figfont;
-use figby::output::export_cells_to_gif;
-use figby::render::render_string;
-use figby::tui::canvas::{CanvasBuffer, CanvasCell};
-use figby::tui::lighting::{
+use figby_lib::font_gen::font_file_to_figfont;
+use figby_lib::output::export_cells_to_gif;
+use figby_lib::render::render_string;
+use figby_lib::tui::canvas::{CanvasBuffer, CanvasCell};
+use figby_lib::tui::lighting::{
     self, interpolate_scene, Attenuation, Light, LightKeyframe, LightProperties, LightTarget, Rgb,
     Scene,
 };
-use figby::tui::timeline::EasingFunction;
+use figby_lib::tui::timeline::EasingFunction;
 
 const SD: u16 = 5;
 
@@ -24,7 +24,7 @@ fn shade_to_cells(
     lum: &[Vec<f32>],
     mask: &[Vec<bool>],
     tint: (u8, u8, u8),
-) -> Vec<Vec<figby::CanvasCell>> {
+) -> Vec<Vec<figby_lib::CanvasCell>> {
     lum.iter()
         .enumerate()
         .map(|(y, row)| {
@@ -35,7 +35,7 @@ fn shade_to_cells(
                     let r = (tint.0 as f32 * t) as u8;
                     let g = (tint.1 as f32 * t) as u8;
                     let b = (tint.2 as f32 * t) as u8;
-                    figby::CanvasCell {
+                    figby_lib::CanvasCell {
                         ch: if t > 0.1 { '#' } else { ' ' },
                         fg: Some(ratatui::style::Color::Rgb(r, g, b)),
                         bg: Some(ratatui::style::Color::Rgb(10, 10, 18)),
@@ -145,7 +145,7 @@ fn light_sweep_animation() {
     let mut sorted_kfs = keyframes.clone();
     lighting::sort_light_keyframes(&mut sorted_kfs);
 
-    let frame_cells: Vec<Vec<Vec<figby::CanvasCell>>> = (0..num_frames)
+    let frame_cells: Vec<Vec<Vec<figby_lib::CanvasCell>>> = (0..num_frames)
         .map(|i| {
             let t = i as f32 / (num_frames - 1) as f32;
             let scene = interpolate_scene(&base_scene, &sorted_kfs, t);
@@ -301,9 +301,9 @@ fn light_keyframe_easing_comparison() {
 /// Test 3: Figmap roundtrip with light keyframes.
 #[test]
 fn figmap_roundtrip_with_light_keyframes() {
-    use figby::figmap::{self, FigmapKind, FigmapTimeline};
-    use figby::tui::layers::{Layer, LayerStack};
-    use figby::tui::timeline::TimelineFrame;
+    use figby_lib::figmap::{self, FigmapKind, FigmapTimeline};
+    use figby_lib::tui::layers::{Layer, LayerStack};
+    use figby_lib::tui::timeline::TimelineFrame;
 
     let mut layer = Layer::new(4, 2, "Test".to_string());
     layer.buffer.set(
@@ -521,7 +521,7 @@ fn multi_light_independent_keyframes() {
 /// Test 5: Hex color serde roundtrip for lighting::Rgb.
 #[test]
 fn rgb_hex_serde_roundtrip() {
-    use figby::tui::lighting::Rgb;
+    use figby_lib::tui::lighting::Rgb;
 
     // Hex string format
     let hex_json = "\"#FF8040\"";

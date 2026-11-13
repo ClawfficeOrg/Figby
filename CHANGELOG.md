@@ -10,6 +10,7 @@
   the same status. All existing options keep working unchanged; `figby --help` lists the subcommands.
 
 ### Changed
+- Internal: the library crate is renamed `figby_lib` (was `figby`), so the lib and the `figby` binary no longer share an output file name. The binary and its CLI are unchanged. Code that imports the library must use `figby_lib::`.
 - Font editor overview: press `/` to search glyphs. Letters (H, S, T, A, D, C, W and tool shortcuts) are always commands and no longer start a search; Esc ends a search.
 - **CLI:** when the *first* argument is exactly `play`, `bake`, `image`, `font` or `tui`, it is now a
   subcommand instead of a one-word banner message. `figby play` used to print "play" in large letters;

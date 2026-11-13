@@ -1,4 +1,4 @@
-use figby::image_input::{
+use figby_lib::image_input::{
     self, apply_brightness, apply_negative, bilinear_resize, floyd_steinberg_dither,
     image_to_ascii, image_to_braille, image_to_colored_ascii, load_luminance_matrix,
     load_rgb_matrix, luminance_to_ascii, luminance_to_braille, ImageColorConfig, DEFAULT_CHAR_MAP,

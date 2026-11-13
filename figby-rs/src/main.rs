@@ -1,14 +1,14 @@
-// On wasm32 `main` only runs `figby::web`; the FIGlet CLI below is native-only
+// On wasm32 `main` only runs `figby_lib::web`; the FIGlet CLI below is native-only
 // and would otherwise trip dead-code lints in the wasm clippy job.
 #![cfg_attr(target_arch = "wasm32", allow(dead_code, unused_imports))]
 
 use clap::Parser;
-use figby::config::{self, FigbyConfig};
-use figby::control::{self, CharReader};
-use figby::font::{self, FIGfont};
-use figby::input;
-use figby::render::{lookup_char, render_line, Justification, OutputLine};
-use figby::smush::SmushMode;
+use figby_lib::config::{self, FigbyConfig};
+use figby_lib::control::{self, CharReader};
+use figby_lib::font::{self, FIGfont};
+use figby_lib::input;
+use figby_lib::render::{lookup_char, render_line, Justification, OutputLine};
+use figby_lib::smush::SmushMode;
 use std::cell::Cell;
 use std::io::{self, IsTerminal, Read, Write};
 use std::process;
@@ -1136,7 +1136,7 @@ fn run(config: CliConfig, message: Vec<String>) {
 /// Atomically replace `path` with `bytes` for `--to-file` / `--output`;
 /// exits with status 1 if the write fails.
 fn write_output_file(path: &str, bytes: &[u8]) {
-    if let Err(e) = figby::atomic_io::atomic_write(std::path::Path::new(path), bytes) {
+    if let Err(e) = figby_lib::atomic_io::atomic_write(std::path::Path::new(path), bytes) {
         eprintln!("Error writing to '{path}': {e}");
         process::exit(1);
     }
@@ -1172,7 +1172,7 @@ fn has_figlet_flags(args: &CliArgs) -> bool {
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    figby::web::run_web().expect("Figby web error");
+    figby_lib::web::run_web().expect("Figby web error");
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1209,11 +1209,11 @@ fn main() {
     }
 
     if args.flag_tui {
-        let mut app = figby::tui::TuiApp::new();
+        let mut app = figby_lib::tui::TuiApp::new();
         if let Some(mode) = args.tui_render_mode.as_deref() {
             match mode {
-                "fast" | "Fast" => app.ctx.render_mode = figby::tui::RenderMode::Fast,
-                "dirty" | "Dirty" => app.ctx.render_mode = figby::tui::RenderMode::Dirty,
+                "fast" | "Fast" => app.ctx.render_mode = figby_lib::tui::RenderMode::Fast,
+                "dirty" | "Dirty" => app.ctx.render_mode = figby_lib::tui::RenderMode::Dirty,
                 other => eprintln!("Unknown render mode '{other}', using default"),
             }
         }
@@ -1261,7 +1261,7 @@ fn main() {
         && !args.flag_v
         && std::io::stdin().is_terminal()
     {
-        let mut app = figby::tui::TuiApp::new();
+        let mut app = figby_lib::tui::TuiApp::new();
         if let Err(e) = app.run() {
             eprintln!("TUI error: {e}");
             process::exit(1);
@@ -1395,7 +1395,7 @@ mod tests {
         assert_eq!(strip_font_suffix("big"), "big");
     }
 
-    use figby::font::DEUTSCH_CHARS;
+    use figby_lib::font::DEUTSCH_CHARS;
 
     #[test]
     fn test_default_values() {
@@ -1858,11 +1858,11 @@ mod tests {
     #[test]
     fn test_config_cli_override_hierarchy() {
         let config_file = FigbyConfig {
-            cli: figby::config::CliSection {
+            cli: figby_lib::config::CliSection {
                 font: Some("big".to_string()),
                 output_width: Some(100),
             },
-            tui: figby::config::TuiSection::default(),
+            tui: figby_lib::config::TuiSection::default(),
         };
 
         let args = CliArgs::try_parse_from(["figby", "-f", "small", "-w", "120"]).unwrap();
@@ -1875,11 +1875,11 @@ mod tests {
     #[test]
     fn test_config_cli_fallback_to_config() {
         let config_file = FigbyConfig {
-            cli: figby::config::CliSection {
+            cli: figby_lib::config::CliSection {
                 font: Some("big".to_string()),
                 output_width: Some(100),
             },
-            tui: figby::config::TuiSection::default(),
+            tui: figby_lib::config::TuiSection::default(),
         };
 
         let args = CliArgs::try_parse_from(["figby"]).unwrap();
@@ -1892,11 +1892,11 @@ mod tests {
     #[test]
     fn test_config_partial_cli_mix() {
         let config_file = FigbyConfig {
-            cli: figby::config::CliSection {
+            cli: figby_lib::config::CliSection {
                 font: None,
                 output_width: Some(100),
             },
-            tui: figby::config::TuiSection::default(),
+            tui: figby_lib::config::TuiSection::default(),
         };
 
         let args = CliArgs::try_parse_from(["figby", "-f", "small"]).unwrap();

@@ -2,7 +2,7 @@
 //! on stdout. Moved out of `main.rs` verbatim.
 
 use crate::{get_columns, CliArgs};
-use figby::image_input;
+use figby_lib::image_input;
 use std::io::{self, Write};
 
 #[derive(Debug, Clone)]

@@ -49,7 +49,7 @@ codegen-units = 1
 opt-level = 3
 
 [lib]
-name = "figby"
+name = "figby_lib"
 path = "src/lib.rs"
 crate-type = ["cdylib", "lib"]
 

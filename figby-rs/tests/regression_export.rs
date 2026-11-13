@@ -1,5 +1,5 @@
-use figby::output::{export_cells_to_gif, export_cells_to_png, export_cells_to_txt};
-use figby::tui::canvas::CanvasCell;
+use figby_lib::output::{export_cells_to_gif, export_cells_to_png, export_cells_to_txt};
+use figby_lib::tui::canvas::CanvasCell;
 use ratatui::style::Color;
 
 fn make_test_cells(rows: usize, cols: usize, ch: char) -> Vec<Vec<CanvasCell>> {
@@ -145,7 +145,7 @@ fn regression_export_gif_to_file() {
 /// TXT export preserves multi-byte chars.
 #[test]
 fn regression_export_txt_unicode() {
-    use figby::tui::canvas::CanvasCell;
+    use figby_lib::tui::canvas::CanvasCell;
     let cells = vec![
         vec![CanvasCell {
             ch: '\u{2603}',

@@ -3,11 +3,11 @@ use std::sync::OnceLock;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use figby::font::{parse_tlf_font, FIGcharacter, FIGfont};
-use figby::render::{
+use figby_lib::font::{parse_tlf_font, FIGcharacter, FIGfont};
+use figby_lib::render::{
     add_char, calc_smush_amount, lookup_char, render_line, split_line, Justification, OutputLine,
 };
-use figby::smush::{smush_horizontal, SmushMode};
+use figby_lib::smush::{smush_horizontal, SmushMode};
 
 const STANDARD_FLF: &[u8] = include_bytes!("../../fonts/standard.flf");
 

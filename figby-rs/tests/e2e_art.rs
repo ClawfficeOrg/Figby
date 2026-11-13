@@ -16,19 +16,19 @@ fn art_dir() -> PathBuf {
         .join("e2e-art")
 }
 
-fn load(name: &str) -> figby::figmap::FigmapFile {
+fn load(name: &str) -> figby_lib::figmap::FigmapFile {
     let path = art_dir().join(name);
-    figby::figmap::load_figmap(&path).unwrap_or_else(|e| panic!("{name} must load: {e}"))
+    figby_lib::figmap::load_figmap(&path).unwrap_or_else(|e| panic!("{name} must load: {e}"))
 }
 
-fn painted(buf: &figby::tui::canvas::CanvasBuffer) -> usize {
+fn painted(buf: &figby_lib::tui::canvas::CanvasBuffer) -> usize {
     (0..buf.height())
         .flat_map(|y| (0..buf.width()).map(move |x| (x, y)))
         .filter(|&(x, y)| buf.get(x, y).is_some_and(|c| c.ch != ' '))
         .count()
 }
 
-fn gold(buf: &figby::tui::canvas::CanvasBuffer) -> usize {
+fn gold(buf: &figby_lib::tui::canvas::CanvasBuffer) -> usize {
     (0..buf.height())
         .flat_map(|y| (0..buf.width()).map(move |x| (x, y)))
         .filter(|&(x, y)| {
@@ -78,7 +78,7 @@ fn e2e_art_castle_has_three_named_layers() {
 #[test]
 fn e2e_art_banner_is_animation_with_lights() {
     let fig = load("banner-figby-finale.figmap");
-    assert_eq!(fig.kind, figby::figmap::FigmapKind::Animation);
+    assert_eq!(fig.kind, figby_lib::figmap::FigmapKind::Animation);
     assert_eq!((fig.width, fig.height), (64, 24));
     let tl = fig.timeline.as_ref().expect("banner has a timeline");
     assert_eq!(tl.frames.len(), 6);
@@ -103,7 +103,7 @@ fn e2e_art_banner_is_animation_with_lights() {
 #[test]
 fn e2e_art_banner_into_runtime_composites() {
     let fig = load("banner-figby-finale.figmap");
-    let (layers, timeline, lights, _palette, _text_blocks) = figby::figmap::into_runtime(fig);
+    let (layers, timeline, lights, _palette, _text_blocks) = figby_lib::figmap::into_runtime(fig);
     assert!(!layers.layers.is_empty());
     assert_eq!(lights.len(), 2);
     let tl = timeline.expect("banner timeline survives into_runtime");

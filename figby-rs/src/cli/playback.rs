@@ -20,11 +20,11 @@ pub(crate) fn run_bake(args: &CliArgs, path: &str, hold_last_cs: u16) {
         }
     };
     let out_path = std::path::Path::new(out);
-    let intent = figby::figseq::PlaybackIntent {
+    let intent = figby_lib::figseq::PlaybackIntent {
         loop_enabled: args.play_loop,
         hold_last_frame_cs: hold_last_cs,
     };
-    match figby::figseq::bake_figmap(std::path::Path::new(path), Some(out_path), intent) {
+    match figby_lib::figseq::bake_figmap(std::path::Path::new(path), Some(out_path), intent) {
         Ok(seq) => {
             let mut notes = String::new();
             if seq.loop_enabled {
@@ -61,9 +61,9 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
         .and_then(|e| e.to_str())
         .unwrap_or("");
 
-    if ext.eq_ignore_ascii_case(figby::figseq::FIGSEQ_EXTENSION) {
+    if ext.eq_ignore_ascii_case(figby_lib::figseq::FIGSEQ_EXTENSION) {
         // ─── .figseq playback ───────────────────────────────────
-        let seq = match figby::figseq::load_figseq(std::path::Path::new(path)) {
+        let seq = match figby_lib::figseq::load_figseq(std::path::Path::new(path)) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!("Error loading figseq '{path}': {e}");
@@ -75,7 +75,7 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
         // goes to the timed player (which needs a tty).
         let cells = seq.cells_for_playback();
         if cells.len() == 1 {
-            print!("{}", figby::output::export_cells_to_ansi(&cells[0]));
+            print!("{}", figby_lib::output::export_cells_to_ansi(&cells[0]));
             return;
         }
         // Otherwise: hand the flat, per-frame-timed screens straight to the
@@ -90,11 +90,11 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
         } else {
             seq.hold_last_frame_cs
         };
-        if let Err(e) = figby::tui::player::play_raw_timed(
+        if let Err(e) = figby_lib::tui::player::play_raw_timed(
             cells,
             seq.fps_fallback(),
             Some(seq.frame_delays()),
-            figby::tui::player::PlayOptions {
+            figby_lib::tui::player::PlayOptions {
                 loop_playback: args.play_loop || seq.loop_enabled,
                 inline: args.play_inline,
                 show_timeline: args.play_timeline,
@@ -109,14 +109,15 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
 
     if ext.eq_ignore_ascii_case("figmap") {
         // ─── .figmap playback ───────────────────────────────────
-        let figmap = match figby::figmap::load_figmap(std::path::Path::new(path)) {
+        let figmap = match figby_lib::figmap::load_figmap(std::path::Path::new(path)) {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("Error loading figmap '{path}': {e}");
                 process::exit(1);
             }
         };
-        let (layers, timeline, lights, _palette, text_blocks) = figby::figmap::into_runtime(figmap);
+        let (layers, timeline, lights, _palette, text_blocks) =
+            figby_lib::figmap::into_runtime(figmap);
         // Static figmap (kind=Image, no timeline frames): not an error —
         // display the still. Plain stdout print via the ANSI exporter:
         // no screen clear, no raw mode, cursor stays put, so this is
@@ -126,14 +127,14 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
             _ => {
                 let composite = layers.composite();
                 let (w, h) = (composite.width(), composite.height());
-                let cells: Vec<Vec<figby::CanvasCell>> = (0..h)
+                let cells: Vec<Vec<figby_lib::CanvasCell>> = (0..h)
                     .map(|y| {
                         (0..w)
                             .map(|x| composite.get(x, y).copied().unwrap_or_default())
                             .collect()
                     })
                     .collect();
-                print!("{}", figby::output::export_cells_to_ansi(&cells));
+                print!("{}", figby_lib::output::export_cells_to_ansi(&cells));
                 return;
             }
         };
@@ -150,17 +151,17 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
 
         // Build frames with light keyframing
         let mut sorted_kfs = timeline.light_keyframes.clone();
-        figby::tui::lighting::sort_light_keyframes(&mut sorted_kfs);
+        figby_lib::tui::lighting::sort_light_keyframes(&mut sorted_kfs);
 
         let scene = if lights.is_empty() {
-            figby::tui::lighting::Scene::new()
+            figby_lib::tui::lighting::Scene::new()
         } else {
-            figby::tui::lighting::Scene {
+            figby_lib::tui::lighting::Scene {
                 lights: lights.clone(),
             }
         };
 
-        let frame_cells: Vec<Vec<Vec<figby::CanvasCell>>> = timeline
+        let frame_cells: Vec<Vec<Vec<figby_lib::CanvasCell>>> = timeline
             .frames
             .iter()
             .enumerate()
@@ -168,7 +169,7 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
                 // Use committed document_state if available
                 let composite = if !frame.document_state.is_empty() {
                     // Composite layers from document_state with keyframe transforms
-                    let mut buf = figby::tui::canvas::CanvasBuffer::new(w, h);
+                    let mut buf = figby_lib::tui::canvas::CanvasBuffer::new(w, h);
                     for (layer_idx, state_buf) in frame.document_state.iter().enumerate() {
                         let props = timeline.get_interpolated_properties(frame_idx, layer_idx);
                         if props.opacity == 0 {
@@ -212,12 +213,12 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
                     let total = timeline.frames.len().max(1) as f32;
                     let t = frame_idx as f32 / total;
                     let interpolated =
-                        figby::tui::lighting::interpolate_scene(&scene, &sorted_kfs, t);
-                    let nmap = figby::tui::lighting::compute_normal_map_figfont(
+                        figby_lib::tui::lighting::interpolate_scene(&scene, &sorted_kfs, t);
+                    let nmap = figby_lib::tui::lighting::compute_normal_map_figfont(
                         &heightfield_from_composite(&composite),
                         0.5,
                     );
-                    let (fg_lum, bg_lum) = figby::tui::lighting::shade_canvas_heightfield(
+                    let (fg_lum, bg_lum) = figby_lib::tui::lighting::shade_canvas_heightfield(
                         &interpolated,
                         &nmap,
                         |x: u16, y: u16| {
@@ -226,7 +227,7 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
                                 .filter(|c| c.ch != ' ' || c.fg.is_some() || c.bg.is_some())
                                 .map(|c| {
                                     c.height.unwrap_or(0) as f32 / 255.0
-                                        * figby::tui::lighting::SHADOW_HEIGHT_UNITS
+                                        * figby_lib::tui::lighting::SHADOW_HEIGHT_UNITS
                                 })
                         },
                         50,
@@ -252,11 +253,11 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
             .checked_div(delays.first().copied().unwrap_or(10).max(1))
             .map(|f| f.clamp(1, 60) as u8)
             .unwrap_or(10);
-        if let Err(e) = figby::tui::player::play_raw_timed(
+        if let Err(e) = figby_lib::tui::player::play_raw_timed(
             frame_cells,
             fps,
             Some(delays),
-            figby::tui::player::PlayOptions {
+            figby_lib::tui::player::PlayOptions {
                 loop_playback: args.play_loop,
                 inline: args.play_inline,
                 show_timeline: args.play_timeline,
@@ -271,25 +272,26 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
 
     // ─── GIF playback (existing) ──────────────────────────────
     let scale = match args.play_width {
-        Some(w) => figby::gif_import::GifScaleTarget::FitWidth(w),
+        Some(w) => figby_lib::gif_import::GifScaleTarget::FitWidth(w),
         None => {
             // Fit within the current terminal, reserving 1 row for the
             // playback progress bar. Falls back to a common default if
             // the terminal size can't be queried (e.g. not a real tty).
             let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
-            figby::gif_import::GifScaleTarget::FitBox(
+            figby_lib::gif_import::GifScaleTarget::FitBox(
                 cols as usize,
                 (rows as usize).saturating_sub(1).max(1),
             )
         }
     };
-    let gif_result = match figby::gif_import::import_gif_scaled(std::path::Path::new(path), scale) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Error importing GIF '{path}': {e}");
-            process::exit(1);
-        }
-    };
+    let gif_result =
+        match figby_lib::gif_import::import_gif_scaled(std::path::Path::new(path), scale) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Error importing GIF '{path}': {e}");
+                process::exit(1);
+            }
+        };
     // Per-frame delays from the source GIF are passed through so
     // playback honors its real (possibly variable) timing instead of a
     // uniform FPS approximation (GPT review F-26). `fps` below remains
@@ -299,11 +301,11 @@ pub(crate) fn run_play(args: &CliArgs, path: &str, hold_last_cs: u16) {
         .checked_div(first_delay_cs.max(1))
         .map(|f| f.clamp(1, 60) as u8)
         .unwrap_or(10);
-    if let Err(e) = figby::tui::player::play_raw_timed(
+    if let Err(e) = figby_lib::tui::player::play_raw_timed(
         gif_result.frames,
         fps,
         Some(gif_result.frame_delays),
-        figby::tui::player::PlayOptions {
+        figby_lib::tui::player::PlayOptions {
             loop_playback: args.play_loop,
             inline: args.play_inline,
             show_timeline: args.play_timeline,
@@ -402,7 +404,9 @@ pub(crate) fn run_spawned_playback(args: &CliArgs) -> bool {
 }
 
 /// Build a heightfield from a composite CanvasBuffer (for lighting normal map).
-pub(crate) fn heightfield_from_composite(buf: &figby::tui::canvas::CanvasBuffer) -> Vec<Vec<f32>> {
+pub(crate) fn heightfield_from_composite(
+    buf: &figby_lib::tui::canvas::CanvasBuffer,
+) -> Vec<Vec<f32>> {
     (0..buf.height())
         .map(|y| {
             (0..buf.width())
@@ -417,13 +421,13 @@ pub(crate) fn heightfield_from_composite(buf: &figby::tui::canvas::CanvasBuffer)
 
 /// Apply luminance shading to a composite, producing lit CanvasCells.
 pub(crate) fn apply_luminance_to_composite(
-    buf: &figby::tui::canvas::CanvasBuffer,
+    buf: &figby_lib::tui::canvas::CanvasBuffer,
     fg_lum: &[Vec<f32>],
     bg_lum: &[Vec<f32>],
-) -> figby::tui::canvas::CanvasBuffer {
+) -> figby_lib::tui::canvas::CanvasBuffer {
     let w = buf.width();
     let h = buf.height();
-    let mut result = figby::tui::canvas::CanvasBuffer::new(w, h);
+    let mut result = figby_lib::tui::canvas::CanvasBuffer::new(w, h);
     for y in 0..h {
         for x in 0..w {
             if let Some(cell) = buf.get(x, y) {
@@ -456,7 +460,7 @@ pub(crate) fn apply_luminance_to_composite(
                 result.set(
                     x,
                     y,
-                    figby::CanvasCell {
+                    figby_lib::CanvasCell {
                         ch: cell.ch,
                         fg,
                         bg,

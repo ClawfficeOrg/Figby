@@ -559,7 +559,7 @@ pub fn save_figseq(seq: &FigSeqFile, path: &Path) -> Result<(), FigSeqError> {
 /// a symlinked destination rather than writing through it, and keeps an
 /// existing file's permissions.
 ///
-/// This mirrors `figby::atomic_io::atomic_write`; it is duplicated (small,
+/// This mirrors `figby_lib::atomic_io::atomic_write`; it is duplicated (small,
 /// private) because this crate deliberately does not depend on `figby`.
 fn write_atomic(dest: &Path, data: &[u8]) -> std::io::Result<()> {
     use std::io::Write;

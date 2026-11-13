@@ -11,7 +11,7 @@ use std::process;
 pub(crate) fn run_create_font(args: &CliArgs) -> bool {
     // Shared helpers for --create-font and --create-font-path
     let resolve_create_font_charset = || -> &'static [&'static str] {
-        figby::font_gen::resolve_charset(&args.create_font_charset).unwrap_or_else(|| {
+        figby_lib::font_gen::resolve_charset(&args.create_font_charset).unwrap_or_else(|| {
             let leaked: &'static [&'static str] = Box::leak(
                 args.create_font_charset
                     .split(',')
@@ -36,7 +36,8 @@ pub(crate) fn run_create_font(args: &CliArgs) -> bool {
 
     if let Some(ref name) = args.create_font_name {
         let charset = resolve_create_font_charset();
-        let result = figby::font_gen::system_font_to_figfont(name, args.create_font_size, charset);
+        let result =
+            figby_lib::font_gen::system_font_to_figfont(name, args.create_font_size, charset);
         let font = match result {
             Ok(f) => f,
             Err(e) => {
@@ -44,14 +45,14 @@ pub(crate) fn run_create_font(args: &CliArgs) -> bool {
                 process::exit(1);
             }
         };
-        let content = figby::font_gen::generate_figfont(&font);
+        let content = figby_lib::font_gen::generate_figfont(&font);
         write_font_output(&content);
         return true;
     }
 
     if let Some(ref path_str) = args.create_font_path {
         let charset = resolve_create_font_charset();
-        let result = figby::font_gen::font_file_to_figfont(
+        let result = figby_lib::font_gen::font_file_to_figfont(
             std::path::Path::new(path_str),
             args.create_font_size,
             charset,
@@ -63,7 +64,7 @@ pub(crate) fn run_create_font(args: &CliArgs) -> bool {
                 process::exit(1);
             }
         };
-        let content = figby::font_gen::generate_figfont(&font);
+        let content = figby_lib::font_gen::generate_figfont(&font);
         write_font_output(&content);
         return true;
     }

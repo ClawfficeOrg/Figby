@@ -3,7 +3,7 @@
 //! glyphs on screen. A separate test binary because it sets a
 //! process-wide environment variable that the other TUI tests must not see.
 
-use figby::tui::{IconSet, TuiApp};
+use figby_lib::tui::{IconSet, TuiApp};
 use ratatui::backend::TestBackend;
 use ratatui::crossterm::event::KeyCode;
 use ratatui::Terminal;

@@ -3,7 +3,7 @@
 // Each test generates random (often malformed) inputs and asserts
 // the parser never panics — only returns Ok or Err.
 
-use figby::font::{parse_char_data, parse_codetagged, parse_header, parse_tlf_font, FIGfont};
+use figby_lib::font::{parse_char_data, parse_codetagged, parse_header, parse_tlf_font, FIGfont};
 use proptest::prelude::*;
 
 proptest! {
@@ -48,38 +48,38 @@ proptest! {
 proptest! {
     #[test]
     fn fuzz_parse_hex_rgb_arbitrary_string(s in any::<String>()) {
-        let _ = figby::tui::theme::parse_hex_rgb(&s);
+        let _ = figby_lib::tui::theme::parse_hex_rgb(&s);
     }
 
     #[test]
     fn fuzz_paletty_json_arbitrary_bytes(s in any::<Vec<u8>>()) {
-        let _ = figby::palette_import::import_swatches(
+        let _ = figby_lib::palette_import::import_swatches(
             &s,
-            figby::palette_import::ImportFormat::PalettyJson,
+            figby_lib::palette_import::ImportFormat::PalettyJson,
         );
     }
 
     #[test]
     fn fuzz_wezterm_json_arbitrary_bytes(s in any::<Vec<u8>>()) {
-        let _ = figby::palette_import::import_swatches(
+        let _ = figby_lib::palette_import::import_swatches(
             &s,
-            figby::palette_import::ImportFormat::WezTermJson,
+            figby_lib::palette_import::ImportFormat::WezTermJson,
         );
     }
 
     #[test]
     fn fuzz_windows_terminal_json_arbitrary_bytes(s in any::<Vec<u8>>()) {
-        let _ = figby::palette_import::import_swatches(
+        let _ = figby_lib::palette_import::import_swatches(
             &s,
-            figby::palette_import::ImportFormat::WindowsTerminalJson,
+            figby_lib::palette_import::ImportFormat::WindowsTerminalJson,
         );
     }
 
     #[test]
     fn fuzz_ase_arbitrary_bytes(buf in prop::collection::vec(any::<u8>(), 0..1024)) {
-        let _ = figby::palette_import::import_swatches(
+        let _ = figby_lib::palette_import::import_swatches(
             &buf,
-            figby::palette_import::ImportFormat::AdobeAse,
+            figby_lib::palette_import::ImportFormat::AdobeAse,
         );
     }
 }
