@@ -133,7 +133,7 @@ impl TuiApp {
             let overlay = super::centered_overlay(frame.area());
             frame.render_widget(Clear, overlay);
             dialogs::system_font::render_system_font_dialog(
-                &self.dialogs.system_font,
+                &mut self.dialogs.system_font,
                 frame,
                 overlay,
             );

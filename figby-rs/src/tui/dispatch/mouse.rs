@@ -139,10 +139,24 @@ impl TuiApp {
         true
     }
 
-    /// Settings, file-ops, export and rascii dialogs. Only the file-ops
-    /// dialog takes mouse input; the others just block the canvas.
+    /// Settings, file-ops, system-font, export and rascii dialogs. The
+    /// file-ops and system-font dialogs take mouse input; the others just
+    /// block the canvas. Every event is consumed while one is open.
     fn mouse_modal_dialogs(&mut self, mouse: MouseEvent) -> bool {
         if self.dialogs.settings.settings_open {
+            return true;
+        }
+
+        // New Font from System picker: wheel/click drive the dialog; a click
+        // never creates the font (only the final Enter does).
+        if self.dialogs.system_font.active {
+            if self
+                .dialogs
+                .system_font
+                .handle_mouse(mouse.column, mouse.row, mouse.kind)
+            {
+                self.frame.dirty = true;
+            }
             return true;
         }
 
@@ -492,5 +506,112 @@ impl TuiApp {
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod system_font_mouse_tests {
+    use super::*;
+    use crate::font_gen::FontFamilyInfo;
+
+    fn mouse(kind: MouseEventKind, column: u16, row: u16) -> MouseEvent {
+        MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers: KeyModifiers::NONE,
+        }
+    }
+
+    fn draw(app: &mut TuiApp) {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(80, 24)).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
+    }
+
+    /// Canvas app with the Brush selected, so any click that reaches the
+    /// canvas paints and marks the document dirty.
+    fn brush_app() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::AsciiPreview;
+        app.animation.timeline_visible = false;
+        app.editor.toolbox.selected = Tool::Brush;
+        app
+    }
+
+    fn open_picker(app: &mut TuiApp, n: usize) {
+        let d = &mut app.dialogs.system_font;
+        d.active = true;
+        d.families = (0..n)
+            .map(|i| FontFamilyInfo {
+                family: format!("Family{i:02}"),
+                styles: vec![],
+            })
+            .collect();
+    }
+
+    fn click_everywhere(app: &mut TuiApp) {
+        for row in 0..24 {
+            for col in 0..80 {
+                app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Left), col, row));
+                app.handle_mouse_event(mouse(MouseEventKind::Drag(MouseButton::Left), col, row));
+                app.handle_mouse_event(mouse(MouseEventKind::Up(MouseButton::Left), col, row));
+            }
+        }
+    }
+
+    #[test]
+    fn test_clicks_with_picker_open_never_reach_canvas() {
+        let mut app = brush_app();
+        open_picker(&mut app, 30);
+        draw(&mut app);
+        let revision = app.editor.revision;
+        click_everywhere(&mut app);
+        for _ in 0..5 {
+            app.handle_mouse_event(mouse(MouseEventKind::ScrollDown, 40, 12));
+        }
+        assert_eq!(app.editor.revision, revision, "canvas must not be painted");
+        assert!(!app.editor.unsaved);
+        // Control: with the picker closed the same clicks do paint.
+        app.dialogs.system_font.close();
+        click_everywhere(&mut app);
+        assert_ne!(app.editor.revision, revision, "control: canvas reachable");
+    }
+
+    #[test]
+    fn test_picker_click_outside_neither_closes_nor_creates() {
+        let mut app = brush_app();
+        open_picker(&mut app, 30);
+        draw(&mut app);
+        let dialog_rect = app.dialogs.system_font.hit.dialog;
+        assert!(dialog_rect.width > 0, "render must record the dialog rect");
+        app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Left), 0, 23));
+        app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Left), 79, 23));
+        let d = &app.dialogs.system_font;
+        assert!(d.active);
+        assert!(!d.confirmed);
+    }
+
+    #[test]
+    fn test_picker_wheel_and_click_routed_to_dialog() {
+        let mut app = brush_app();
+        open_picker(&mut app, 30);
+        draw(&mut app);
+        app.handle_mouse_event(mouse(MouseEventKind::ScrollDown, 40, 12));
+        app.handle_mouse_event(mouse(MouseEventKind::ScrollDown, 40, 12));
+        assert_eq!(app.dialogs.system_font.selected, 2);
+        app.handle_mouse_event(mouse(MouseEventKind::ScrollUp, 40, 12));
+        assert_eq!(app.dialogs.system_font.selected, 1);
+        draw(&mut app);
+        let (row, rect) = app.dialogs.system_font.hit.list_rows[4];
+        app.handle_mouse_event(mouse(
+            MouseEventKind::Down(MouseButton::Left),
+            rect.x + 1,
+            rect.y,
+        ));
+        let d = &app.dialogs.system_font;
+        assert_eq!(d.selected, row);
+        assert!(d.active && !d.confirmed, "click must not create the font");
     }
 }

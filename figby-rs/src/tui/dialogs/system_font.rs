@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::{KeyCode, MouseButton, MouseEventKind};
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -52,6 +52,24 @@ pub struct SystemFontPickerDialog {
     pub result_size: f32,
     pub result_charset: String,
     pub theme: Theme,
+    /// Hit rects stored by the last render, for mouse handling.
+    pub hit: SystemFontHitRects,
+}
+
+/// Screen rects recorded by `render_system_font_dialog` so mouse events can
+/// be hit-tested against exactly what was drawn.
+#[derive(Debug, Clone, Default)]
+pub struct SystemFontHitRects {
+    /// The whole dialog (border included).
+    pub dialog: Rect,
+    /// Visible family rows: (row index into `filtered_indices()`, rect).
+    pub list_rows: Vec<(usize, Rect)>,
+    /// The whole "Size:" line.
+    pub size_row: Rect,
+    /// The whole "Charset:" line.
+    pub charset_row: Rect,
+    /// Just the charset value on the "Charset:" line.
+    pub charset_value: Rect,
 }
 
 impl SystemFontPickerDialog {
@@ -70,6 +88,7 @@ impl SystemFontPickerDialog {
             result_size: 12.0,
             result_charset: CHARSET_NAMES[DEFAULT_CHARSET_INDEX].to_string(),
             theme: Theme::default(),
+            hit: SystemFontHitRects::default(),
         }
     }
 
@@ -82,6 +101,7 @@ impl SystemFontPickerDialog {
         self.selected_field = Field::List;
         self.error_message.clear();
         self.confirmed = false;
+        self.hit = SystemFontHitRects::default();
         match font_gen::list_system_fonts() {
             Ok(mut families) => {
                 families.sort_by_key(|a| a.family.to_lowercase());
@@ -220,6 +240,58 @@ impl SystemFontPickerDialog {
         }
     }
 
+    /// Mouse input while the dialog is open. Wheel moves the family
+    /// selection (render keeps the selected row in view); left click on a
+    /// family row selects it, on the Size line focuses Size, on the Charset
+    /// line focuses Charset (and clicking the charset value cycles it).
+    /// A click never creates the font or closes the dialog. Returns true
+    /// when the dialog state changed.
+    pub fn handle_mouse(&mut self, col: u16, row: u16, kind: MouseEventKind) -> bool {
+        if !self.active {
+            return false;
+        }
+        match kind {
+            MouseEventKind::ScrollUp => {
+                let before = self.selected;
+                self.selected = self.selected.saturating_sub(1);
+                self.selected != before
+            }
+            MouseEventKind::ScrollDown => {
+                let count = self.filtered_indices().len();
+                if self.selected + 1 < count {
+                    self.selected += 1;
+                    true
+                } else {
+                    false
+                }
+            }
+            MouseEventKind::Down(MouseButton::Left) => {
+                let pos = (col, row).into();
+                if let Some(&(idx, _)) = self.hit.list_rows.iter().find(|(_, r)| r.contains(pos)) {
+                    self.selected = idx;
+                    self.selected_field = Field::List;
+                    self.error_message.clear();
+                    true
+                } else if self.hit.charset_value.contains(pos) {
+                    if self.selected_field == Field::Charset {
+                        self.cycle_charset(true);
+                    }
+                    self.selected_field = Field::Charset;
+                    true
+                } else if self.hit.charset_row.contains(pos) {
+                    self.selected_field = Field::Charset;
+                    true
+                } else if self.hit.size_row.contains(pos) {
+                    self.selected_field = Field::Size;
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
     /// Enter: step forward through the form (font list -> size -> charset).
     /// Only Enter on the final (charset) field creates the font, so picking
     /// a family never converts it before the size has been seen.
@@ -261,7 +333,15 @@ impl Default for SystemFontPickerDialog {
     }
 }
 
-pub fn render_system_font_dialog(dialog: &SystemFontPickerDialog, frame: &mut Frame, area: Rect) {
+pub fn render_system_font_dialog(
+    dialog: &mut SystemFontPickerDialog,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    dialog.hit = SystemFontHitRects {
+        dialog: area,
+        ..SystemFontHitRects::default()
+    };
     frame.render_widget(Clear, area);
     let block = Block::default()
         .title(" New Font from System ")
@@ -309,6 +389,11 @@ pub fn render_system_font_dialog(dialog: &SystemFontPickerDialog, frame: &mut Fr
                 format!(" {}", dialog.families[idx].family),
                 style,
             )));
+            let row_y = inner.y + (lines.len() - 1) as u16;
+            dialog
+                .hit
+                .list_rows
+                .push((row, Rect::new(inner.x, row_y, inner.width, 1)));
         }
     }
 
@@ -316,6 +401,8 @@ pub fn render_system_font_dialog(dialog: &SystemFontPickerDialog, frame: &mut Fr
         lines.push(Line::from(""));
     }
 
+    let row_rect = |index: usize| Rect::new(inner.x, inner.y + index as u16, inner.width, 1);
+    dialog.hit.size_row = row_rect(lines.len());
     let size_style = if dialog.selected_field == Field::Size {
         Style::default().add_modifier(Modifier::REVERSED)
     } else {
@@ -330,17 +417,23 @@ pub fn render_system_font_dialog(dialog: &SystemFontPickerDialog, frame: &mut Fr
         ),
     ]));
 
+    dialog.hit.charset_row = row_rect(lines.len());
+    let charset_label = " Charset: ";
+    let charset_name = CHARSET_NAMES[dialog.charset_index];
+    dialog.hit.charset_value = Rect::new(
+        inner.x + charset_label.len() as u16,
+        dialog.hit.charset_row.y,
+        (charset_name.len() as u16).min(inner.width.saturating_sub(charset_label.len() as u16)),
+        1,
+    );
     let charset_style = if dialog.selected_field == Field::Charset {
         Style::default().add_modifier(Modifier::REVERSED)
     } else {
         Style::default()
     };
     lines.push(Line::from(vec![
-        Span::styled(" Charset: ", Style::default().add_modifier(Modifier::BOLD)),
-        Span::styled(
-            format!("{}  ", CHARSET_NAMES[dialog.charset_index]),
-            charset_style,
-        ),
+        Span::styled(charset_label, Style::default().add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{charset_name}  "), charset_style),
         Span::styled(
             "(\u{2190}/\u{2192} to change)",
             Style::default().fg(dialog.theme.dialog.meta),
@@ -516,5 +609,138 @@ mod tests {
         );
         dialog.cycle_charset(true);
         assert_eq!(dialog.charset_index, start);
+    }
+
+    fn dialog_with_families(n: usize) -> SystemFontPickerDialog {
+        let mut dialog = SystemFontPickerDialog::new();
+        dialog.active = true;
+        dialog.families = (0..n)
+            .map(|i| FontFamilyInfo {
+                family: format!("Family{i:02}"),
+                styles: vec![],
+            })
+            .collect();
+        dialog
+    }
+
+    /// Render into a 60x20 test terminal (dialog fills it); returns the
+    /// screen text so tests can check what is visible.
+    fn draw(dialog: &mut SystemFontPickerDialog) -> String {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(60, 20)).unwrap();
+        terminal
+            .draw(|f| render_system_font_dialog(dialog, f, f.area()))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let mut text = String::new();
+        for y in 0..buf.area.height {
+            for x in 0..buf.area.width {
+                text.push_str(buf[(x, y)].symbol());
+            }
+            text.push('\n');
+        }
+        text
+    }
+
+    fn selected_row_visible(dialog: &SystemFontPickerDialog) -> bool {
+        dialog
+            .hit
+            .list_rows
+            .iter()
+            .any(|(row, _)| *row == dialog.selected)
+    }
+
+    #[test]
+    fn test_mouse_scroll_moves_selection_and_keeps_it_visible() {
+        let mut dialog = dialog_with_families(40);
+        draw(&mut dialog);
+        let visible = dialog.hit.list_rows.len();
+        assert!(visible > 0 && visible < 40, "list must need scrolling");
+        for i in 1..40 {
+            assert!(dialog.handle_mouse(5, 5, MouseEventKind::ScrollDown));
+            assert_eq!(dialog.selected, i);
+            let screen = draw(&mut dialog);
+            assert!(selected_row_visible(&dialog), "row {i} scrolled out");
+            assert!(screen.contains(&format!("Family{i:02}")));
+        }
+        // Clamped at the end of the list.
+        assert!(!dialog.handle_mouse(5, 5, MouseEventKind::ScrollDown));
+        assert_eq!(dialog.selected, 39);
+        for i in (0..39).rev() {
+            dialog.handle_mouse(5, 5, MouseEventKind::ScrollUp);
+            assert_eq!(dialog.selected, i);
+            draw(&mut dialog);
+            assert!(selected_row_visible(&dialog));
+        }
+        assert!(!dialog.handle_mouse(5, 5, MouseEventKind::ScrollUp));
+        assert_eq!(dialog.selected, 0);
+        assert!(!dialog.confirmed);
+    }
+
+    #[test]
+    fn test_mouse_click_selects_family_row() {
+        let mut dialog = dialog_with_families(40);
+        dialog.selected_field = Field::Size;
+        draw(&mut dialog);
+        let (row, rect) = dialog.hit.list_rows[3];
+        assert!(dialog.handle_mouse(rect.x + 2, rect.y, MouseEventKind::Down(MouseButton::Left)));
+        assert_eq!(dialog.selected, row);
+        assert_eq!(dialog.selected_field, Field::List);
+        assert!(dialog.active && !dialog.confirmed, "click must not create");
+        // Clicking the selected row again still never creates.
+        dialog.handle_mouse(rect.x + 2, rect.y, MouseEventKind::Down(MouseButton::Left));
+        assert!(dialog.active && !dialog.confirmed);
+    }
+
+    #[test]
+    fn test_mouse_click_hits_filtered_list() {
+        let mut dialog = dialog_with_families(40);
+        // Digits go to the Size field from the keyboard, so set it directly.
+        dialog.filter = "Family3".to_string();
+        let screen = draw(&mut dialog);
+        assert!(screen.contains("Family30") && !screen.contains("Family29"));
+        let (row, rect) = dialog.hit.list_rows[2];
+        dialog.handle_mouse(rect.x + 1, rect.y, MouseEventKind::Down(MouseButton::Left));
+        assert_eq!(dialog.selected, row);
+        let family = &dialog.families[dialog.filtered_indices()[dialog.selected]].family;
+        assert_eq!(family, "Family32");
+    }
+
+    #[test]
+    fn test_mouse_click_focuses_size_and_charset() {
+        let mut dialog = dialog_with_families(5);
+        draw(&mut dialog);
+        let size = dialog.hit.size_row;
+        dialog.handle_mouse(size.x + 1, size.y, MouseEventKind::Down(MouseButton::Left));
+        assert_eq!(dialog.selected_field, Field::Size);
+
+        let charset_row = dialog.hit.charset_row;
+        let start = dialog.charset_index;
+        // Click on the label part of the line: focus only.
+        dialog.handle_mouse(
+            charset_row.x + 1,
+            charset_row.y,
+            MouseEventKind::Down(MouseButton::Left),
+        );
+        assert_eq!(dialog.selected_field, Field::Charset);
+        assert_eq!(dialog.charset_index, start);
+        // Click on the value once focused: cycles forward.
+        let value = dialog.hit.charset_value;
+        dialog.handle_mouse(value.x, value.y, MouseEventKind::Down(MouseButton::Left));
+        assert_eq!(dialog.charset_index, (start + 1) % CHARSET_NAMES.len());
+        assert!(dialog.active && !dialog.confirmed, "click must not create");
+    }
+
+    #[test]
+    fn test_mouse_click_outside_dialog_changes_nothing() {
+        let mut dialog = dialog_with_families(5);
+        draw(&mut dialog);
+        // The border corner and a point far outside: no field is hit.
+        assert!(!dialog.handle_mouse(59, 19, MouseEventKind::Down(MouseButton::Left)));
+        assert!(!dialog.handle_mouse(200, 100, MouseEventKind::Down(MouseButton::Left)));
+        assert!(dialog.active);
+        assert!(!dialog.confirmed);
+        assert_eq!(dialog.selected, 0);
+        assert_eq!(dialog.selected_field, Field::List);
     }
 }
