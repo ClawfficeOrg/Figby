@@ -28,6 +28,9 @@
 - Internal: the palette editor's 363-line `handle_key` in `tui/palette_editor.rs` is now a router over
   one handler per panel mode (hex entry, swatch name, palette name, format choice, file list, lighting
   field, Idle commands, lighting toggles). No behaviour change.
+- Internal: the font creation (`--create-font`, `--create-font-path`), template (`--render-template`)
+  and image (`--image`) code moved out of `main.rs` into `src/cli/create_font.rs`,
+  `src/cli/template.rs` and `src/cli/image.rs`. No behaviour change.
 - `.gitattributes` forces LF line endings, so Windows checkouts (`core.autocrlf=true`) match the C reference output.
 - Removed a stale `fonts-external` entry from `.gitmodules`; `figby-fonts` now uses an HTTPS URL.
 - README: submodule init instructions; removed a link to a private local path.
@@ -39,6 +42,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Palette editor: the lighting controls can be reached from the keyboard while the lighting pickers are visible. `I` edits the lit colour, `O` the shadow colour, `P` toggles specular and `G` cycles shininess. Before, Save (`S`) and Load (`L`) took those keys first.
 - Output stops rendering once stdout is closed (e.g. `| head -1`), instead of rendering the rest of the input into the broken pipe.
 - Template image paths: rooted and drive-prefixed paths are rejected on every platform (Windows treated `/etc/passwd` as relative).
 - TUI: while the New Image dialog is open, the panel title reads " New Image " instead of the underlying mode.
