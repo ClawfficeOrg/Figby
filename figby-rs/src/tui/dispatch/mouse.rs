@@ -195,6 +195,11 @@ impl TuiApp {
                     .font_editor
                     .handle_mouse_click_overview(mouse.column, mouse.row) =>
             {
+                // A double-click opens the glyph: load it into the canvas
+                // now, as Enter does, before anything writes the canvas
+                // back into it.
+                self.editor.note_font_view_change();
+                self.editor.sync_font_char_to_canvas();
                 self.frame.dirty = true;
                 true
             }

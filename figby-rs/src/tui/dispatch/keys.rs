@@ -1023,6 +1023,7 @@ impl TuiApp {
                 // dirty tracking is neither missed nor spurious (F-08).
                 self.editor.mark_dirty();
             }
+            self.editor.note_font_view_change();
             if self.editor.font_editor.view != font_editor::FontEditorView::Overview {
                 self.editor.sync_font_char_to_canvas();
             }

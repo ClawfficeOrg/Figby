@@ -162,6 +162,10 @@ pub struct EditorState {
     /// `.figmap`. Lets Save (and the unsaved-changes dialog) write in place
     /// instead of always going through Save As.
     pub figmap_path: Option<std::path::PathBuf>,
+    /// The glyph whose rows the canvas currently holds, set when the
+    /// character editor loads it. The canvas is written back into the
+    /// glyph only while this matches the open glyph.
+    pub font_char_loaded: Option<u32>,
 }
 
 impl EditorState {
@@ -267,41 +271,71 @@ impl EditorState {
         Some((bx, by))
     }
 
+    /// Write the canvas back into the open glyph. Only valid once that
+    /// glyph has been loaded into the canvas: until then the canvas holds
+    /// whatever was there before (another glyph, the default blank page)
+    /// and writing it back would replace the glyph's art. In that case the
+    /// glyph is loaded instead, whichever input path opened the editor.
     pub(crate) fn sync_canvas_to_font_char(&mut self) {
         if let font_editor::FontEditorView::CharEditor(code) = self.font_editor.view {
+            if self.font_char_loaded != Some(code) {
+                self.sync_font_char_to_canvas();
+                return;
+            }
             self.font_editor.sync_from_canvas(code, &self.canvas.buffer);
         }
     }
 
-    pub(crate) fn sync_font_char_to_canvas(&mut self) {
-        if let Some((_, ch)) = self.font_editor.selected_char() {
-            let w = ch.width().max(1);
-            let h = ch.rows().len().max(1);
-            if self.canvas.buffer.width() != w || self.canvas.buffer.height() != h {
-                self.canvas = canvas::CanvasWidget::new(w as u16, h as u16);
-                self.layer_stack.resize_all(w, h);
-            }
-            let mut buf = self.layer_stack.active_layer().buffer.clone();
-            for y in 0..h {
-                let row = &ch.rows()[y];
-                for (x, c) in row.chars().enumerate() {
-                    if x < w {
-                        buf.set(
-                            x,
-                            y,
-                            canvas::CanvasCell {
-                                ch: c,
-                                fg: None,
-                                bg: None,
-                                height: None,
-                            },
-                        );
-                    }
-                }
-            }
-            *self.layer_stack.active_layer_mut().buffer_mut() = buf;
-            self.recomposite_canvas();
+    /// Forget which glyph the canvas holds once the character editor is
+    /// left, so the next entry (even into the same glyph, which may have
+    /// been transformed or resized meanwhile) reloads it.
+    pub(crate) fn note_font_view_change(&mut self) {
+        if !matches!(
+            self.font_editor.view,
+            font_editor::FontEditorView::CharEditor(_)
+        ) {
+            self.font_char_loaded = None;
         }
+    }
+
+    /// Load the open glyph into the canvas: the font's Char Height rows
+    /// tall (glyph rows beyond the glyph's own count are blank, rows past
+    /// Char Height are not shown), every cell rewritten so nothing of a
+    /// previous glyph survives.
+    pub(crate) fn sync_font_char_to_canvas(&mut self) {
+        let Some((code, ch)) = self.font_editor.selected_char() else {
+            self.font_char_loaded = None;
+            return;
+        };
+        let charheight = self
+            .font_editor
+            .font
+            .as_ref()
+            .map_or(0, |f| f.charheight as usize);
+        let w = ch.width().max(1);
+        let h = charheight.max(1);
+        let mut buf = canvas::CanvasBuffer::new(w, h);
+        for (y, row) in ch.rows().iter().take(h).enumerate() {
+            for (x, c) in row.chars().take(w).enumerate() {
+                buf.set(
+                    x,
+                    y,
+                    canvas::CanvasCell {
+                        ch: c,
+                        fg: None,
+                        bg: None,
+                        height: None,
+                    },
+                );
+            }
+        }
+        if self.canvas.buffer.width() != w || self.canvas.buffer.height() != h {
+            self.canvas = canvas::CanvasWidget::new(w as u16, h as u16);
+            self.layer_stack.resize_all(w, h);
+        }
+        *self.layer_stack.active_layer_mut().buffer_mut() = buf;
+        self.recomposite_canvas();
+        self.font_char_loaded = Some(code);
     }
 
     pub(crate) fn sync_image_to_canvas(&mut self) {
@@ -1552,6 +1586,7 @@ impl TuiApp {
                     line_state: tools::line::LineState::default(),
                     selection_polygon_points: Vec::new(),
                     figmap_path: None,
+                    font_char_loaded: None,
                 };
                 editor.recomposite_canvas();
                 editor
@@ -1788,6 +1823,7 @@ mod editor_state_tests {
             line_state: tools::line::LineState::default(),
             selection_polygon_points: Vec::new(),
             figmap_path: None,
+            font_char_loaded: None,
         }
     }
 
@@ -2328,6 +2364,153 @@ mod font_mode_chrome_tests {
         key(&mut app, KeyCode::Esc);
         assert_eq!(app.editor.font_editor.view, FontEditorView::Overview);
         assert!(!draw(&mut app).contains(" Tools "), "back: no toolbox");
+    }
+
+    /// Set Char Height the way the header editor's H field does: only the
+    /// header value changes, glyph rows are kept as they are.
+    fn set_header_height(app: &mut TuiApp, h: u32) {
+        app.editor.font_editor.font.as_mut().unwrap().charheight = h;
+    }
+
+    fn double_click_glyph(app: &mut TuiApp, code: u32) {
+        draw(app);
+        let rect = app
+            .editor
+            .font_editor
+            .grid_state
+            .cell_rects
+            .iter()
+            .find(|(c, _)| *c == code)
+            .map(|(_, r)| *r)
+            .expect("glyph cell drawn");
+        for _ in 0..2 {
+            app.handle_mouse_event(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: rect.x + 1,
+                row: rect.y + 1,
+                modifiers: KeyModifiers::NONE,
+            });
+        }
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::CharEditor(code)
+        );
+    }
+
+    fn canvas_rows(app: &TuiApp) -> Vec<String> {
+        let b = &app.editor.canvas.buffer;
+        (0..b.height())
+            .map(|y| {
+                (0..b.width())
+                    .map(|x| b.get(x, y).map_or(' ', |c| c.ch))
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn glyph_rows(app: &TuiApp, code: u32) -> Vec<String> {
+        app.editor.font_editor.font.as_ref().unwrap().chars[&code]
+            .rows()
+            .to_vec()
+    }
+
+    #[test]
+    fn test_double_click_after_height_increase_shows_glyph() {
+        let mut app = font_app();
+        set_header_height(&mut app, 7);
+        double_click_glyph(&mut app, 66);
+        draw(&mut app);
+        let rows = canvas_rows(&app);
+        assert_eq!(rows.len(), 7, "canvas sized to the new height");
+        for row in &rows[..3] {
+            assert_eq!(row, "BBB  ", "glyph art visible in the canvas");
+        }
+        for row in &rows[3..] {
+            assert_eq!(row.trim(), "", "padding rows are blank");
+        }
+        // Write-back keeps the art and fills the full height.
+        let glyph = glyph_rows(&app, 66);
+        assert_eq!(glyph.len(), 7);
+        assert_eq!(glyph[0], "BBB  ");
+        assert_eq!(glyph[2], "BBB  ");
+        // Paint into a new row: it is saved, and the art stays.
+        let mut buf = app.editor.layer_stack.active_layer().buffer.clone();
+        buf.set(
+            1,
+            5,
+            crate::tui::canvas::CanvasCell {
+                ch: '#',
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+        *app.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
+        app.editor.recomposite_canvas();
+        draw(&mut app);
+        let glyph = glyph_rows(&app, 66);
+        assert_eq!(glyph[0], "BBB  ");
+        assert_eq!(glyph[5], " #   ");
+    }
+
+    #[test]
+    fn test_double_click_after_height_decrease_shows_glyph() {
+        let mut app = font_app();
+        set_header_height(&mut app, 2);
+        double_click_glyph(&mut app, 67);
+        draw(&mut app);
+        assert_eq!(canvas_rows(&app), vec!["CCC  ", "CCC  "]);
+        assert_eq!(glyph_rows(&app, 67), vec!["CCC  ", "CCC  "]);
+    }
+
+    #[test]
+    fn test_glyph_with_fewer_rows_than_height_is_padded() {
+        let mut app = font_app();
+        app.editor
+            .font_editor
+            .font
+            .as_mut()
+            .unwrap()
+            .chars
+            .insert(65, FIGcharacter::from(vec!["X X  ".to_string()]));
+        // Keyboard entry (Enter on the first glyph) and mouse entry agree.
+        draw(&mut app);
+        key(&mut app, KeyCode::Enter);
+        assert_eq!(app.editor.font_editor.view, FontEditorView::CharEditor(65));
+        draw(&mut app);
+        assert_eq!(canvas_rows(&app), vec!["X X  ", "     ", "     "]);
+        assert_eq!(glyph_rows(&app, 65).len(), 3);
+        key(&mut app, KeyCode::Esc);
+        double_click_glyph(&mut app, 65);
+        draw(&mut app);
+        assert_eq!(canvas_rows(&app), vec!["X X  ", "     ", "     "]);
+    }
+
+    #[test]
+    fn test_reopening_after_other_glyph_shows_current_glyph() {
+        let mut app = font_app();
+        double_click_glyph(&mut app, 66);
+        draw(&mut app);
+        key(&mut app, KeyCode::Esc);
+        set_header_height(&mut app, 5);
+        double_click_glyph(&mut app, 68);
+        draw(&mut app);
+        let rows = canvas_rows(&app);
+        assert_eq!(rows.len(), 5);
+        assert_eq!(rows[0], "DDD  ", "no stale B from the previous glyph");
+        assert_eq!(glyph_rows(&app, 66)[0], "BBB  ", "other glyph untouched");
+    }
+
+    #[test]
+    fn test_overview_renders_taller_glyph_after_height_increase() {
+        let mut app = font_app();
+        set_header_height(&mut app, 5);
+        double_click_glyph(&mut app, 66);
+        draw(&mut app);
+        key(&mut app, KeyCode::Esc);
+        let out = draw(&mut app);
+        assert!(out.contains(" BBB"), "glyph art still drawn in the grid");
+        assert_eq!(glyph_rows(&app, 66).len(), 5);
     }
 
     #[test]

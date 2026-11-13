@@ -119,6 +119,7 @@ impl Document {
             line_state: tools::line::LineState::default(),
             selection_polygon_points: Vec::new(),
             figmap_path: None,
+            font_char_loaded: None,
         };
         editor.recomposite_canvas();
 

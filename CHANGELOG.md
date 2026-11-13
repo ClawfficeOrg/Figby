@@ -46,6 +46,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Font editor: double-clicking a glyph opens the character editor with the glyph's art (padded to the current Char Height) instead of a blank canvas that overwrote the glyph on return.
 - Font editor: clicking a glyph in the overview grid now selects the glyph under the pointer; clicks were off by the 3-row search box and could select the glyph in the row below.
 - Layer groups work with the mouse: click a group's header to collapse or expand it, drag layers into and out of groups, Ctrl+click several layers and press Grp to group them, and new layers land inside the active group. Collapsing now hides every member, and empty groups are removed.
 - Font editor preview-text prompt (Shift+W): typed letters such as m/M, Enter and Backspace no longer go to the open Layers drawer (merging layers, toggling masks or visibility). Every printable key is now text, Enter applies and Esc cancels.
