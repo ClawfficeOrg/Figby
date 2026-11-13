@@ -46,6 +46,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Switching app mode (Tab, Shift+Tab, Lighting) while a glyph was open in the character editor could write the other mode's canvas, or a timeline frame, into that glyph. The glyph now reloads on return, and edits made in the character editor are still saved.
 - Unsaved-changes prompt: the whole Save / Discard / Cancel label is now clickable, not only the `[Y]`/`[N]`/`[C]` letters, and it highlights on hover like the welcome screen buttons.
 - Font editor: double-clicking a glyph opens the character editor with the glyph's art (padded to the current Char Height) instead of a blank canvas that overwrote the glyph on return.
 - Font editor: clicking a glyph in the overview grid now selects the glyph under the pointer; clicks were off by the 3-row search box and could select the glyph in the row below.

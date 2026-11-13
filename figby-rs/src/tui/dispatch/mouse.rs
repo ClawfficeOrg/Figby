@@ -9,6 +9,7 @@ use super::*;
 impl TuiApp {
     pub(crate) fn handle_mouse_event(&mut self, mouse: MouseEvent) {
         self.sync_side_panel_mode();
+        self.sync_font_char_owner();
         // Modal layers and full-screen views, highest priority first.
         if self.mouse_quit_prompt(mouse)
             || self.mouse_menu_bar(mouse)
@@ -363,7 +364,7 @@ impl TuiApp {
                     self.animation.commit_current_timeline_frame(&self.editor);
                     self.animation.timeline_state.current_frame = idx;
                     self.animation.load_current_timeline_frame(&mut self.editor);
-                    self.editor.sync_canvas_to_font_char();
+                    self.sync_canvas_to_open_glyph();
                     self.frame.dirty = true;
                     return true;
                 }
@@ -425,7 +426,7 @@ impl TuiApp {
             .timeline_state
             .sync_layer_names(&self.editor.layer_stack);
         self.animation.load_current_timeline_frame(&mut self.editor);
-        self.editor.sync_canvas_to_font_char();
+        self.sync_canvas_to_open_glyph();
         self.frame.dirty = true;
     }
 

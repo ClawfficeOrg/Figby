@@ -72,6 +72,7 @@ pub use toolbox::Tool;
 impl TuiApp {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
         self.sync_side_panel_mode();
+        self.sync_font_char_owner();
         self.check_async_completion();
         self.ctx.throbber.tick();
 
@@ -498,11 +499,9 @@ impl TuiApp {
             frame.render_widget(block, canvas_area);
             frame.render_widget(&self.editor.font_editor, inner);
         } else {
-            if self.ui.mode == AppMode::FontEditor {
-                // Read-only w.r.t. the document: copies canvas content
-                // into the font editor's display cache.
-                self.editor.sync_canvas_to_font_char();
-            }
+            // Saves the character editor's canvas into its glyph (only
+            // while the char editor owns the canvas).
+            self.sync_canvas_to_open_glyph();
             // NOTE (GPT review F-06): rendering must not mutate document
             // state. Image-editor → canvas synchronization used to run on
             // every render here, letting the image editor's stale cell

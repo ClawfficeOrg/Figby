@@ -14,6 +14,7 @@ impl TuiApp {
     pub fn handle_key_event(&mut self, key: impl Into<KeyEvent>) -> Option<AppEvent> {
         let key = key.into();
         self.sync_side_panel_mode();
+        self.sync_font_char_owner();
         let handlers: &[fn(&mut Self, KeyEvent) -> KeyRoute] = &[
             Self::key_keybindings_overlay,
             Self::key_quit_prompt,
@@ -648,6 +649,9 @@ impl TuiApp {
             .animation
             .handle_key(code, modifiers, &mut self.editor, &mut self.frame.dirty)
         {
+            // Frame navigation replaces the canvas; in the character
+            // editor that frame is the glyph's new art.
+            self.sync_canvas_to_open_glyph();
             return ControlFlow::Break(None);
         }
         ControlFlow::Continue(())

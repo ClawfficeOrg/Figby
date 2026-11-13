@@ -1254,7 +1254,6 @@ impl AnimationState {
                         self.timeline_state.scroll_offset = cf;
                     }
                     self.load_current_timeline_frame(editor);
-                    editor.sync_canvas_to_font_char();
                     *dirty = true;
                     return true;
                 }
@@ -1270,7 +1269,6 @@ impl AnimationState {
                             cf.saturating_sub(max_vis.saturating_sub(1));
                     }
                     self.load_current_timeline_frame(editor);
-                    editor.sync_canvas_to_font_char();
                     *dirty = true;
                     return true;
                 }
@@ -1733,6 +1731,41 @@ impl TuiApp {
     pub(crate) fn sync_side_panel_mode(&mut self) {
         self.side_panel
             .sync_mode(self.ui.mode == AppMode::FontEditor);
+    }
+
+    /// Whether the canvas belongs to the glyph character editor: font mode
+    /// with a glyph open. In every other mode or view the shared canvas
+    /// holds something else and must never be written into a glyph.
+    pub(crate) fn char_editor_active(&self) -> bool {
+        self.ui.mode == AppMode::FontEditor
+            && matches!(
+                self.editor.font_editor.view,
+                font_editor::FontEditorView::CharEditor(_)
+            )
+    }
+
+    /// Keep the glyph and the canvas marker consistent at every event and
+    /// frame boundary. Called at the top of render and of key/mouse
+    /// dispatch. While the character editor is active the canvas is saved
+    /// into its glyph (so edits are kept whatever the next key does, a
+    /// mode switch included). Anywhere else the marker is cleared, so a
+    /// canvas changed by another mode is never written into the glyph and
+    /// the glyph is reloaded when its editor is shown again.
+    pub(crate) fn sync_font_char_owner(&mut self) {
+        if self.char_editor_active() {
+            self.editor.sync_canvas_to_font_char();
+        } else {
+            self.editor.font_char_loaded = None;
+        }
+    }
+
+    /// Write the canvas back into the open glyph after a canvas change
+    /// (timeline frame navigation), only while the character editor owns
+    /// the canvas.
+    pub(crate) fn sync_canvas_to_open_glyph(&mut self) {
+        if self.char_editor_active() {
+            self.editor.sync_canvas_to_font_char();
+        }
     }
 
     /// The toolbox/palette column is shown everywhere except the font
@@ -2624,5 +2657,147 @@ mod font_mode_chrome_tests {
         }
         assert_eq!(app.editor.toolbox.selected, Tool::Brush);
         assert_eq!(app.editor.revision, revision, "canvas painted");
+    }
+
+    /// Paint `ch` at (x, y) of the active layer, as a canvas tool does.
+    fn paint_cell(app: &mut TuiApp, x: usize, y: usize, ch: char) {
+        let mut buf = app.editor.layer_stack.active_layer().buffer.clone();
+        buf.set(
+            x,
+            y,
+            crate::tui::canvas::CanvasCell {
+                ch,
+                fg: None,
+                bg: None,
+                height: None,
+            },
+        );
+        *app.editor.layer_stack.active_layer_mut().buffer_mut() = buf;
+        app.editor.recomposite_canvas();
+    }
+
+    fn shift_tab(app: &mut TuiApp) {
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT));
+    }
+
+    /// Open glyph 65 with Enter and draw, so its rows are in the canvas.
+    fn open_glyph_a(app: &mut TuiApp) {
+        draw(app);
+        key(app, KeyCode::Enter);
+        assert_eq!(app.editor.font_editor.view, FontEditorView::CharEditor(65));
+        draw(app);
+        assert_eq!(canvas_rows(app), vec!["AAA  "; 3]);
+    }
+
+    #[test]
+    fn test_mode_switch_does_not_write_other_canvas_into_glyph() {
+        let mut app = font_app();
+        open_glyph_a(&mut app);
+        // Tab to the image editor and paint there.
+        key(&mut app, KeyCode::Tab);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        draw(&mut app);
+        paint_cell(&mut app, 0, 0, '@');
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3], "image paint leaked");
+        // Back to the font editor: the glyph is reloaded, not overwritten.
+        app.ui.mode = AppMode::FontEditor;
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3], "image paint saved");
+        assert_eq!(canvas_rows(&app), vec!["AAA  "; 3], "glyph reloaded");
+    }
+
+    #[test]
+    fn test_mode_cycle_and_back_does_not_write_other_canvas_into_glyph() {
+        let mut app = font_app();
+        open_glyph_a(&mut app);
+        // Tab, Tab, Tab: image, ASCII preview, back to font, painting the
+        // shared canvas in each other mode without a render in between.
+        key(&mut app, KeyCode::Tab);
+        paint_cell(&mut app, 1, 0, '@');
+        key(&mut app, KeyCode::Tab);
+        assert_eq!(app.ui.mode, AppMode::AsciiPreview);
+        paint_cell(&mut app, 2, 1, '%');
+        key(&mut app, KeyCode::Tab);
+        assert_eq!(app.ui.mode, AppMode::FontEditor);
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3]);
+        assert_eq!(canvas_rows(&app), vec!["AAA  "; 3]);
+        // Shift+Tab out and back the other way.
+        shift_tab(&mut app);
+        paint_cell(&mut app, 0, 2, '!');
+        draw(&mut app);
+        app.ui.mode = AppMode::FontEditor;
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3]);
+    }
+
+    #[test]
+    fn test_lighting_mode_does_not_write_canvas_into_glyph() {
+        let mut app = font_app();
+        open_glyph_a(&mut app);
+        app.ui.mode = AppMode::Lighting;
+        draw(&mut app);
+        paint_cell(&mut app, 0, 1, '*');
+        draw(&mut app);
+        app.ui.mode = AppMode::FontEditor;
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3]);
+    }
+
+    #[test]
+    fn test_char_editor_edits_reach_glyph_before_mode_switch() {
+        let mut app = font_app();
+        open_glyph_a(&mut app);
+        // Paint and switch mode in the same frame (no render between).
+        paint_cell(&mut app, 4, 0, '#');
+        key(&mut app, KeyCode::Tab);
+        assert_eq!(glyph_rows(&app, 65)[0], "AAA #", "char-editor edit lost");
+        draw(&mut app);
+        app.ui.mode = AppMode::FontEditor;
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65)[0], "AAA #");
+        assert_eq!(canvas_rows(&app)[0], "AAA #");
+    }
+
+    #[test]
+    fn test_timeline_nav_in_other_mode_leaves_glyph_and_canvas_alone() {
+        let mut app = font_app();
+        open_glyph_a(&mut app);
+        key(&mut app, KeyCode::Tab);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        draw(&mut app);
+        // Two timeline frames with image art, then step between them.
+        paint_cell(&mut app, 0, 0, '1');
+        key(&mut app, KeyCode::Char('A'));
+        paint_cell(&mut app, 0, 0, '2');
+        key(&mut app, KeyCode::Char('A'));
+        assert_eq!(app.animation.timeline_state.frames.len(), 2);
+        app.animation.timeline_visible = true;
+        for code in [KeyCode::Left, KeyCode::Right, KeyCode::Left] {
+            key(&mut app, code);
+            let row0 = canvas_rows(&app)[0].clone();
+            assert!(row0.starts_with(['1', '2']), "glyph loaded: {row0}");
+            assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3], "frame leaked");
+        }
+        draw(&mut app);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  "; 3]);
+    }
+
+    #[test]
+    fn test_esc_leave_saves_char_editor_edits() {
+        let mut app = font_app();
+        open_glyph_a(&mut app);
+        paint_cell(&mut app, 3, 1, '#');
+        draw(&mut app);
+        paint_cell(&mut app, 4, 2, '+');
+        key(&mut app, KeyCode::Esc);
+        assert_eq!(app.editor.font_editor.view, FontEditorView::Overview);
+        assert_eq!(glyph_rows(&app, 65), vec!["AAA  ", "AAA# ", "AAA +"]);
+        // Enter reopens the same glyph with the saved edits.
+        draw(&mut app);
+        key(&mut app, KeyCode::Enter);
+        draw(&mut app);
+        assert_eq!(canvas_rows(&app), vec!["AAA  ", "AAA# ", "AAA +"]);
     }
 }
