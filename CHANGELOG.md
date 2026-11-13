@@ -1,4 +1,20 @@
 # Changelog
+
+## [6.3.0] - 2026-11-12
+
+### Fixed
+- Output stops rendering once stdout is closed (e.g. `| head -1`), instead of rendering the rest of the input into the broken pipe.
+- Template image paths: rooted and drive-prefixed paths are rejected on every platform (Windows treated `/etc/passwd` as relative).
+- TUI: while the New Image dialog is open, the panel title reads " New Image " instead of the underlying mode.
+- Parity test listing of control files uses `/` separators on Windows.
+
+### Changed
+- `serde_yaml` (unmaintained) replaced with `serde_yaml_ng`.
+- `.gitattributes` forces LF line endings, so Windows checkouts (`core.autocrlf=true`) match the C reference output.
+- Removed a stale `fonts-external` entry from `.gitmodules`; `figby-fonts` now uses an HTTPS URL.
+- README: submodule init instructions; removed a link to a private local path.
+- Tracked asciinema recordings and scripts no longer contain a personal hostname or user name.
+
 ## [6.2.9] - 2026-11-05
 
 ### Fixed
@@ -1337,7 +1353,7 @@ Part Twah 8.1 (manual-note #3).
 - Collapsed `if` blocks flagged by clippy (mod.rs mouse handler)
 - Integration tests updated for new layout, status bar format, and EditorState field paths
 
-## [Unreleased] — Rust Port
+## [6.3.0] - 2026-11-12 — Rust Port
 
 ### Added
 

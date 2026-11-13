@@ -17,7 +17,7 @@ import subprocess
 import sys
 import time
 
-REPO = "/Users/hippo/git_repos/Figby"
+REPO = "/home/user/git_repos/Figby"
 SOCK = "figbyrev"
 SESSION = "tuidraw-cast"
 BIN = "./figby-rs/target/debug/figby"

@@ -67,6 +67,16 @@ with this `fonts/` directory.
 
 ---
 
+## Where we left off (2026-11-12, unreleased)
+
+Since 6.2.9 (uncommitted, see CHANGELOG "Unreleased"): P2 (stop on closed stdout, a02875b),
+U4 (New Image title), D2 (`serde_yaml` → `serde_yaml_ng`), R5 (submodule note), CI `fmt --all`
+(a02875b), `.gitattributes` LF normalisation (Windows checkouts were failing 64 parity tests),
+Windows path fix in the control-file listing test, and removal of personal host/user names from
+tracked recordings and scripts. Local gates: all test binaries pass on Windows, fmt and clippy clean.
+Still open: step 8 (A1/A2 structural, needs an agreed plan), CI on GitHub (Actions still not run),
+and the wasm32 clippy gate (target not installed on this machine).
+
 ## Where we left off (2026-11-05)
 
 Steps 1–7 of §5 are done (6.2.2–6.2.8), plus part of the small-items batch

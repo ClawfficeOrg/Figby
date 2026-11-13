@@ -106,15 +106,14 @@ After completing any implementation work, do ALL of the following (or ask the us
    - One-line description per change
    ```
 6. **Check off task** in `docs/todo-v*.md`.
-7. Add entries to `docs/memory.md` and `docs/learnings.md` if there's anything non-obvious to preserve.
+7. Add entries to `docs/learnings.md` if there's anything non-obvious to preserve.
 
 **Auto mode:** do steps 1–7 without asking. **Interactive mode:** summarize + verify first, then ask "Commit, bump version, and update changelog?" before proceeding.
 
 ### Memory Updates
 
 After completing any implementation work:
-1. Add entries to `docs/memory.md`
-2. Add insights to `docs/learnings.md`
+1. Add insights to `docs/learnings.md`
 3. Check off the task in `docs/todo-v*.md`
 
 ### Architectural Invariants
@@ -192,6 +191,6 @@ scripts/
 └── ralph-monitor.sh      # Rate-limit monitor cron
 docs/                     # See docs/README.md for the index
 ├── todo.md               # Master todo index (milestones)
-├── memory.md, learnings.md, ralph-log.md   # Agent memory and logs (paths used by ralph.sh)
+├── learnings.md                            # Agent learnings (ralph memory/log files were removed)
 └── full-review-2026-11-04.md               # Latest full review and fix status
 ```

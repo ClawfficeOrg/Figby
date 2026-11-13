@@ -467,6 +467,7 @@ impl TuiApp {
         }
 
         let mode_title = match self.ui.mode {
+            _ if self.dialogs.new_image.active => " New Image ".to_string(),
             AppMode::ImageEditor => {
                 if self.editor.image_editor.entering_path() {
                     format!(

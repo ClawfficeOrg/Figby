@@ -483,7 +483,7 @@ impl From<ThemeYaml> for Theme {
 }
 
 pub fn load_default() -> Theme {
-    let yaml: ThemeYaml = serde_yaml::from_str(DEFAULT_THEME_YAML).unwrap_or_default();
+    let yaml: ThemeYaml = serde_yaml_ng::from_str(DEFAULT_THEME_YAML).unwrap_or_default();
     Theme::from(yaml)
 }
 
@@ -495,7 +495,7 @@ pub fn load_custom(path: &str) -> Theme {
         Ok(c) => c,
         Err(_) => return load_default(),
     };
-    let yaml: Result<ThemeYaml, _> = serde_yaml::from_str(&content);
+    let yaml: Result<ThemeYaml, _> = serde_yaml_ng::from_str(&content);
     match yaml {
         Ok(y) => Theme::from(y),
         Err(_) => load_default(),

@@ -228,8 +228,14 @@ are available from the FIGlet font archive:
 - [Patriotic fonts](http://patorjk.com/figlet/fonts/) (patched for modern FIGlet)
 - [FIGlet font archive](https://github.com/xero/figlet-fonts) (community)
 
-The community collection lives in the `figby-fonts` git submodule. Install it plus
-the bundled fonts with one command (initialises the submodule if needed, copies into
+The community collection lives in the `figby-fonts` git submodule. A plain `git clone`
+leaves it empty, so either initialise it first:
+
+```bash
+git submodule update --init figby-fonts
+```
+
+or let the install script do it. The script below initialises the submodule if needed, then copies into
 `/usr/local/share/figlet`, which figby searches by default):
 
 ```bash
@@ -381,8 +387,7 @@ cargo test --manifest-path figby-rs/Cargo.toml
 `scripts/ralph.sh` drives the autonomous task loop used by the maintainer.
 This repo is now feature-complete and in bug-chasing mode, so ralph is rarely
 run here. **Discussion, issues, and improvements for the ralph skill/loop
-belong in the [`~/Zoidot`](file:///Users/hippo/git_repos/Zoidot) repo**, not
-this one. See [`docs/f-20-ralph-sandbox-policy.md`](docs/f-20-ralph-sandbox-policy.md)
+belong in the maintainer's separate tooling repo**, not this one. See [`docs/f-20-ralph-sandbox-policy.md`](docs/f-20-ralph-sandbox-policy.md)
 for the current ralph sandboxing policy.
 
 ### Pull requests

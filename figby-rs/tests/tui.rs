@@ -5,7 +5,7 @@ const ICONS_YAML: &str = include_str!("../assets/icons.yaml");
 #[test]
 fn test_icons_yaml_all_keys_present() {
     let map: BTreeMap<String, String> =
-        serde_yaml::from_str(ICONS_YAML).expect("failed to parse icons.yaml");
+        serde_yaml_ng::from_str(ICONS_YAML).expect("failed to parse icons.yaml");
 
     assert!(
         map.len() >= 120,

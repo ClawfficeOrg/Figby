@@ -60,20 +60,10 @@ next full review.
   [5.0-manual-testing-notes.md](5.0-manual-testing-notes.md),
   [4.0-manual-testing-notes.md](4.0-manual-testing-notes.md)
 
-## Handovers
-
-[handover-file-dialogs.md](handover-file-dialogs.md),
-[handoff-2026-06-22.md](handoff-2026-06-22.md) (v6 session; its test-failure
-count is stale, see the 2026-06-18 audit)
-
 ## Agent memory and logs
 
-Working files for the autonomous loop, large and append-only. Not user
-documentation.
+Working files for the autonomous loop. Not user documentation.
 
 | File | What |
 |---|---|
-| [memory.md](memory.md) | Cross-cutting decisions (read by `skills/ralph.md`) |
 | [learnings.md](learnings.md) | Surprises and gotchas |
-| [ralph-log.md](ralph-log.md) | Loop run log (written by `scripts/ralph.sh`) |
-| [memory-v1.md](memory-v1.md), [memory-v2.md](memory-v2.md), [memory-v3.md](memory-v3.md), [memory-v5.md](memory-v5.md) | Per-milestone memory archives |

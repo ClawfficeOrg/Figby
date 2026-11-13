@@ -1,6 +1,6 @@
 [package]
 name = "figby"
-version = "6.2.9"
+version = "6.3.0"
 edition = "2021"
 description = "FIGlet deluxe: drop in rust replacement but with more time-wasting toys"
 license = "BSD-3-Clause"
@@ -19,7 +19,7 @@ flate2 = { version = "1", default-features = false, features = ["rust_backend"] 
 image = { version = "0.24", features = ["jpeg", "png", "bmp", "webp"] }
 toml = "0.8"
 serde_json = "1"
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 gif = "0.13"
 png = "0.18"
 rascii_art = "0.4.5"

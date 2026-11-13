@@ -100,7 +100,8 @@ fn list_control_files_output() -> Vec<u8> {
         .map(|e| {
             let p = e.path();
             let rel = p.strip_prefix(&root).unwrap();
-            rel.to_str().unwrap().to_string()
+            // Windows separators would otherwise differ from the C-generated listing.
+            rel.to_str().unwrap().replace('\\', "/")
         })
         .collect();
     flc_names.sort();

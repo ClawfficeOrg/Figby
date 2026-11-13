@@ -47,7 +47,7 @@ impl IconSet {
             IconSet::Nerd => ICONS_YAML,
             IconSet::Ascii => ICONS_ASCII_YAML,
         };
-        serde_yaml::from_str(yaml).unwrap_or_default()
+        serde_yaml_ng::from_str(yaml).unwrap_or_default()
     }
 }
 

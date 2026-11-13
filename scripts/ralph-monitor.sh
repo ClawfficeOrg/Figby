@@ -2,7 +2,7 @@
 # ralph-monitor.sh — detects rate-limit events and switches to paid provider.
 # Run every 15 min via cron. Idempotent after switch.
 
-REPO="/home/hippo/git_repos/Figby"
+REPO="/home/user/git_repos/Figby"
 LOG="$REPO/docs/ralph-log.md"
 RALPH_PID_FILE="/tmp/ralph.pid"
 STOP_FILE="$REPO/scripts/STOP.md"
