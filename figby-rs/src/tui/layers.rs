@@ -222,10 +222,22 @@ impl LayerStack {
         &mut self.layers[idx]
     }
 
+    /// Add a new layer and make it active. With the active layer inside a
+    /// group, the new layer joins that group directly above the active one
+    /// (so the group stays contiguous); otherwise it goes on top of the
+    /// stack as before.
     pub fn add(&mut self, width: usize, height: usize) -> usize {
+        let name = format!("Layer {}", self.layers.len() + 1);
+        let mut layer = Layer::new(width, height, name);
+        if let Some(g) = self.valid_group_of(self.active) {
+            layer.group = Some(g);
+            let idx = self.active + 1;
+            self.layers.insert(idx, layer);
+            self.active = idx;
+            return idx;
+        }
         let idx = self.layers.len();
-        self.layers
-            .push(Layer::new(width, height, format!("Layer {}", idx + 1)));
+        self.layers.push(layer);
         self.active = idx;
         idx
     }
@@ -240,18 +252,148 @@ impl LayerStack {
         } else if self.active > 0 && index <= self.active {
             self.active = self.active.saturating_sub(1);
         }
+        self.prune_empty_groups();
         true
     }
 
+    /// Duplicate a layer and make the copy active. A grouped layer's copy
+    /// lands right above it, inside the same group; an ungrouped layer's
+    /// copy goes on top of the stack as before.
     pub fn duplicate(&mut self, index: usize) -> bool {
         if index >= self.layers.len() {
             return false;
         }
         let original = self.layers[index].clone();
+        if self.valid_group_of(index).is_some() {
+            self.layers.insert(index + 1, original);
+            self.active = index + 1;
+            return true;
+        }
         let idx = self.layers.len();
         self.layers.push(original);
         self.active = idx;
         true
+    }
+
+    /// The layer's group index, ignoring stale indices past `groups`.
+    pub fn valid_group_of(&self, layer_idx: usize) -> Option<usize> {
+        self.layers
+            .get(layer_idx)
+            .and_then(|l| l.group)
+            .filter(|&g| g < self.groups.len())
+    }
+
+    /// Drop every group that no layer belongs to (and clear stale group
+    /// indices), remapping the remaining layers' group indices.
+    pub fn prune_empty_groups(&mut self) {
+        let n = self.groups.len();
+        for layer in &mut self.layers {
+            if layer.group.is_some_and(|g| g >= n) {
+                layer.group = None;
+            }
+        }
+        for g in (0..n).rev() {
+            if !self.layers.iter().any(|l| l.group == Some(g)) {
+                self.remove_group(g);
+            }
+        }
+    }
+
+    /// Reorder the whole stack: `order[new_pos] = old_index`. Keeps the
+    /// same layer active.
+    fn apply_order(&mut self, order: &[usize]) {
+        debug_assert_eq!(order.len(), self.layers.len());
+        let old_active = self.active;
+        let mut slots: Vec<Option<Layer>> = self.layers.drain(..).map(Some).collect();
+        for &old in order {
+            if let Some(layer) = slots[old].take() {
+                self.layers.push(layer);
+            }
+        }
+        if let Some(pos) = order.iter().position(|&o| o == old_active) {
+            self.active = pos;
+        }
+    }
+
+    /// Group the given layers, first moving them next to each other so the
+    /// group renders as one block (they gather just below the topmost of
+    /// them, keeping their relative order). Layers taken from another group
+    /// leave it; a group left empty is removed.
+    pub fn group_layers(&mut self, indices: &[usize], name: String) -> Option<usize> {
+        if indices.is_empty() || indices.iter().any(|&i| i >= self.layers.len()) {
+            return None;
+        }
+        let mut picked: Vec<usize> = indices.to_vec();
+        picked.sort_unstable();
+        picked.dedup();
+        let anchor = *picked.last()?;
+        let mut order = Vec::with_capacity(self.layers.len());
+        for i in 0..self.layers.len() {
+            if i == anchor {
+                order.extend_from_slice(&picked);
+            } else if picked.binary_search(&i).is_err() {
+                order.push(i);
+            }
+        }
+        self.apply_order(&order);
+        let start = order.iter().position(|&o| o == picked[0])?;
+        let new_indices: Vec<usize> = (start..start + picked.len()).collect();
+        self.create_group(&new_indices, name)
+    }
+
+    /// Drop a dragged layer on a target (mouse drag-and-drop in the layer
+    /// panel). Returns `true` when the stack changed.
+    ///
+    /// - `OnLayer(to)`: move to `to`'s slot and take `to`'s group (none
+    ///   for a top-level row), so dropping on a grouped row puts the layer
+    ///   in that group and dropping on a top-level row takes it out.
+    /// - `IntoGroup(g)`: join group `g`, placed above its topmost member.
+    /// - `Bottom`: leave any group and go to the bottom of the stack.
+    pub fn move_layer_to(&mut self, from: usize, target: LayerDrop) -> bool {
+        if from >= self.layers.len() {
+            return false;
+        }
+        let changed = match target {
+            LayerDrop::OnLayer(to) => {
+                if to >= self.layers.len() || to == from {
+                    return false;
+                }
+                let new_group = self.valid_group_of(to);
+                self.reorder(from, to);
+                self.layers[to].group = new_group;
+                true
+            }
+            LayerDrop::IntoGroup(g) => {
+                if g >= self.groups.len() {
+                    return false;
+                }
+                let top = self
+                    .layers
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, l)| i != from && l.group == Some(g))
+                    .map(|(i, _)| i)
+                    .max();
+                let was = self.layers[from].group;
+                let dest = match top {
+                    Some(top) if from < top => top,
+                    Some(top) => top + 1,
+                    None => from,
+                };
+                let moved = dest != from && self.reorder(from, dest);
+                let at = if moved { dest } else { from };
+                self.layers[at].group = Some(g);
+                moved || was != Some(g)
+            }
+            LayerDrop::Bottom => {
+                let was = self.layers[from].group;
+                let moved = from != 0 && self.reorder(from, 0);
+                self.layers[0].group = None;
+                moved || was.is_some()
+            }
+        };
+        self.prune_empty_groups();
+        changed
     }
 
     pub fn merge_down(&mut self, index: usize) -> bool {
@@ -351,6 +493,12 @@ impl LayerStack {
                 return None;
             }
         }
+        // Layers taken from another group leave it first, so a group they
+        // empty is removed instead of lingering with no rows.
+        for &idx in indices {
+            self.layers[idx].group = None;
+        }
+        self.prune_empty_groups();
         let group_idx = self.groups.len();
         self.groups.push(LayerGroup::new(name));
         for &idx in indices {
@@ -760,12 +908,56 @@ pub enum LayerButton {
     Link,
 }
 
+/// Where a dragged layer is dropped (see `LayerStack::move_layer_to`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerDrop {
+    /// Another layer's row: take its slot and its group.
+    OnLayer(usize),
+    /// A group header row: join the group.
+    IntoGroup(usize),
+    /// The empty space below the last row: top level, bottom of stack.
+    Bottom,
+}
+
+/// One display row of the layer list, top to bottom. Built by
+/// `LayerPanel::display_rows`, the single source the renderer, the scroll
+/// clamp and the mouse hit-test all read, so they can't disagree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerRow {
+    /// Group header (`▼ Name (n)` / `▶` when collapsed).
+    GroupHeader(usize),
+    /// A layer's name row (drag handle, active marker, name).
+    Name(usize),
+    /// A layer's attribute row (visibility, lock, opacity, blend).
+    Attrs(usize),
+}
+
+/// What a mouse position in the layer list lands on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LayerHit {
+    Group(usize),
+    /// Layer index plus attr-row icon zone (`Some(0)` eye, `Some(1)` lock).
+    Layer(usize, Option<usize>),
+    /// Inside the list area but below the last row.
+    Below,
+}
+
+/// A layer drag in progress: the layer being dragged and the current
+/// drop target under the pointer (`None` until it leaves its own row).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LayerDrag {
+    from: usize,
+    target: Option<LayerDrop>,
+}
+
 pub struct LayerPanel {
     pub scroll: u16,
     pub theme: Theme,
     pub icons: std::collections::BTreeMap<String, String>,
-    drag_state: Option<(usize, usize)>,
-    drag_hover_row: Option<usize>,
+    drag: Option<LayerDrag>,
+    /// Extra layers picked with Ctrl+click (or Shift+click); the Group
+    /// button and Ctrl+G group these together with the active layer.
+    pub selected: std::collections::BTreeSet<usize>,
     pub renaming: Option<usize>,
     pub rename_buffer: String,
     /// Toolbar button hit-rects, recomputed each render and consulted by
@@ -784,8 +976,8 @@ impl LayerPanel {
             scroll: 0,
             theme: Theme::default(),
             icons: std::collections::BTreeMap::new(),
-            drag_state: None,
-            drag_hover_row: None,
+            drag: None,
+            selected: std::collections::BTreeSet::new(),
             renaming: None,
             rename_buffer: String::new(),
             button_rects: Vec::new(),
@@ -808,6 +1000,26 @@ impl LayerPanel {
                 self.link_pending = None;
             }
         }
+    }
+
+    /// Group the active layer plus any Ctrl+clicked layers, shared by the
+    /// Group button and Ctrl+G. With nothing extra selected this groups the
+    /// active layer alone (the original behaviour).
+    fn group_selection(&mut self, stack: &mut LayerStack) {
+        let group_name = format!("Group {}", stack.groups.len() + 1);
+        let mut indices: Vec<usize> = self
+            .selected
+            .iter()
+            .copied()
+            .filter(|&i| i < stack.layers.len())
+            .collect();
+        self.selected.clear();
+        if indices.is_empty() {
+            stack.create_group(&[stack.active], group_name);
+            return;
+        }
+        indices.push(stack.active);
+        stack.group_layers(&indices, group_name);
     }
 
     pub fn handle_key(&mut self, key: KeyEvent, stack: &mut LayerStack) -> bool {
@@ -910,9 +1122,7 @@ impl LayerPanel {
                 true
             }
             KeyCode::Char('g') if modifiers == KeyModifiers::CONTROL => {
-                let indices = [stack.active];
-                let group_name = format!("Group {}", stack.groups.len() + 1);
-                stack.create_group(&indices, group_name);
+                self.group_selection(stack);
                 true
             }
             KeyCode::Char('g') if modifiers == KeyModifiers::CONTROL | KeyModifiers::SHIFT => {
@@ -1121,31 +1331,9 @@ impl LayerPanel {
             return;
         }
 
-        // First pass: count display rows (2 per layer, 1 per group header).
-        let mut total_display_rows: usize = 0;
-        let mut active_display_row: usize = 0;
-        {
-            let mut emitted = vec![false; stack.groups.len()];
-            for rev_idx in 0..stack.layers.len() {
-                let real_idx = stack.layers.len() - 1 - rev_idx;
-                let layer = &stack.layers[real_idx];
-                if let Some(g) = layer.group {
-                    if g < emitted.len() && !emitted[g] {
-                        emitted[g] = true;
-                        total_display_rows += 1;
-                        if let Some(group) = stack.groups.get(g) {
-                            if group.collapsed {
-                                continue;
-                            }
-                        }
-                    }
-                }
-                if real_idx == stack.active {
-                    active_display_row = total_display_rows;
-                }
-                total_display_rows += 2;
-            }
-        }
+        let rows = Self::display_rows(stack);
+        let total_display_rows = rows.len();
+        let active_display_row = Self::active_display_row(&rows, stack);
 
         // Clamp scroll so active layer name row is visible.
         if active_display_row < self.scroll as usize {
@@ -1177,77 +1365,71 @@ impl LayerPanel {
             }
         }
 
-        // Second pass: render visible items.
-        let mut display_row: usize = 0;
-        let mut emitted_group_header = vec![false; stack.groups.len()];
+        let drag_target = self.drag.and_then(|d| d.target);
+        let row_rect = |row: usize| Rect {
+            x: inner_x,
+            y: inner_y + offset as u16 + row as u16,
+            width: inner.width,
+            height: 1,
+        };
 
-        for rev_idx in 0..stack.layers.len() {
-            let real_idx = stack.layers.len() - 1 - rev_idx;
-            let layer = &stack.layers[real_idx];
-
-            // Group header row.
-            if let Some(g) = layer.group {
-                if g < emitted_group_header.len() && !emitted_group_header[g] {
-                    emitted_group_header[g] = true;
-                    if display_row >= scroll {
-                        let row = display_row - scroll;
-                        if row < visible_rows {
-                            if let Some(group) = stack.groups.get(g) {
-                                let disclosure = if group.collapsed { "▶" } else { "▼" };
-                                let count =
-                                    stack.layers.iter().filter(|l| l.group == Some(g)).count();
-                                let group_label =
-                                    format!(" {} {} ({})", disclosure, group.name, count);
-                                let row_style = Style::default()
-                                    .bg(self.theme.layers.bg)
-                                    .fg(self.theme.general.secondary)
-                                    .add_modifier(Modifier::BOLD);
-                                let para = ratatui::widgets::Paragraph::new(Line::from(
-                                    Span::styled(group_label, row_style),
-                                ));
-                                frame.render_widget(
-                                    para,
-                                    Rect {
-                                        x: inner_x,
-                                        y: inner_y + offset as u16 + row as u16,
-                                        width: inner.width,
-                                        height: 1,
-                                    },
-                                );
-                            }
-                        }
-                    }
-                    display_row += 1;
-
-                    if let Some(group) = stack.groups.get(g) {
-                        if group.collapsed {
-                            continue;
-                        }
-                    }
+        for (display_row, &kind) in rows.iter().enumerate().skip(scroll).take(visible_rows) {
+            let rect = row_rect(display_row - scroll);
+            match kind {
+                LayerRow::GroupHeader(g) => {
+                    let Some(group) = stack.groups.get(g) else {
+                        continue;
+                    };
+                    let disclosure = if group.collapsed { "▶" } else { "▼" };
+                    let count = stack.layers.iter().filter(|l| l.group == Some(g)).count();
+                    let group_label = format!(" {} {} ({})", disclosure, group.name, count);
+                    // A collapsed group that holds the active layer takes
+                    // the active highlight, since the layer row is hidden.
+                    let holds_active = stack.valid_group_of(stack.active) == Some(g);
+                    let bg = if holds_active && group.collapsed {
+                        self.theme.layers.active_bg
+                    } else {
+                        self.theme.layers.bg
+                    };
+                    let fg = if drag_target == Some(LayerDrop::IntoGroup(g)) {
+                        self.theme.general.primary
+                    } else {
+                        self.theme.general.secondary
+                    };
+                    let row_style = Style::default().bg(bg).fg(fg).add_modifier(Modifier::BOLD);
+                    frame.render_widget(
+                        ratatui::widgets::Paragraph::new(Line::from(Span::styled(
+                            group_label,
+                            row_style,
+                        ))),
+                        rect,
+                    );
                 }
-            }
-
-            let is_active = real_idx == stack.active;
-            let row_bg = if is_active {
-                self.theme.layers.active_bg
-            } else {
-                self.theme.layers.bg
-            };
-            let indent = if layer.group.is_some() { "  " } else { "" };
-            let drag_handle = "⠿";
-            let name_max = (inner.width as usize)
-                .saturating_sub(indent.len() + 5)
-                .max(4);
-
-            // Row 1: drag handle + layer name.
-            if display_row >= scroll {
-                let row = display_row - scroll;
-                if row < visible_rows {
-                    let is_drag_target = self
-                        .drag_state
-                        .map(|(from, to)| from != to && real_idx == to)
-                        .unwrap_or(false);
-                    let active_marker = if is_active { "›" } else { " " };
+                LayerRow::Name(real_idx) => {
+                    let layer = &stack.layers[real_idx];
+                    let is_active = real_idx == stack.active;
+                    let row_bg = if is_active {
+                        self.theme.layers.active_bg
+                    } else {
+                        self.theme.layers.bg
+                    };
+                    let indent = if stack.valid_group_of(real_idx).is_some() {
+                        "  "
+                    } else {
+                        ""
+                    };
+                    let drag_handle = "⠿";
+                    let name_max = (inner.width as usize)
+                        .saturating_sub(indent.len() + 5)
+                        .max(4);
+                    let is_drag_target = drag_target == Some(LayerDrop::OnLayer(real_idx));
+                    let active_marker = if is_active {
+                        "›"
+                    } else if self.selected.contains(&real_idx) {
+                        "*"
+                    } else {
+                        " "
+                    };
                     let is_renaming = self.renaming == Some(real_idx);
                     let display_name = if is_renaming {
                         format!("{}\u{2588}", self.rename_buffer)
@@ -1271,157 +1453,171 @@ impl LayerPanel {
                             name_label,
                             Style::default().bg(row_bg).fg(fg),
                         ))),
-                        Rect {
-                            x: inner_x,
-                            y: inner_y + offset as u16 + row as u16,
-                            width: inner.width,
-                            height: 1,
-                        },
+                        rect,
+                    );
+                }
+                LayerRow::Attrs(real_idx) => {
+                    let layer = &stack.layers[real_idx];
+                    let row_bg = if real_idx == stack.active {
+                        self.theme.layers.active_bg
+                    } else {
+                        self.theme.layers.bg
+                    };
+                    let indent = if stack.valid_group_of(real_idx).is_some() {
+                        "  "
+                    } else {
+                        ""
+                    };
+                    let vis_key = if layer.visible {
+                        "layer_visibility_on"
+                    } else {
+                        "layer_visibility_off"
+                    };
+                    let vis_icon = self
+                        .icons
+                        .get(vis_key)
+                        .map(|s| s.as_str())
+                        .unwrap_or(if layer.visible { "V" } else { "_" });
+
+                    let lock_key = if layer.locked {
+                        "layer_lock"
+                    } else {
+                        "layer_unlock"
+                    };
+                    let lock_icon = self
+                        .icons
+                        .get(lock_key)
+                        .map(|s| s.as_str())
+                        .unwrap_or(if layer.locked { "L" } else { "U" });
+
+                    let opa_pct = (layer.opacity as f32 / 255.0 * 100.0).round() as u8;
+                    let link_suffix = if layer.link.is_some() {
+                        let link = self
+                            .icons
+                            .get("layer_link")
+                            .map(|s| s.as_str())
+                            .unwrap_or("\u{1f517}");
+                        format!(" {link}")
+                    } else {
+                        String::new()
+                    };
+
+                    let attr_style = Style::default()
+                        .bg(row_bg)
+                        .fg(self.theme.general.secondary)
+                        .add_modifier(Modifier::DIM);
+
+                    let attr_label = if inner.width >= 8 {
+                        format!(
+                            "{}{}  {}  {}%  {}{}",
+                            indent,
+                            vis_icon,
+                            lock_icon,
+                            opa_pct,
+                            self.icons
+                                .get(layer.blend_mode.icon_key())
+                                .map(|s| s.as_str())
+                                .unwrap_or(layer.blend_mode.display_name()),
+                            link_suffix,
+                        )
+                    } else {
+                        format!(
+                            "{}{}{} {}%{}",
+                            indent,
+                            if layer.visible { "V" } else { "_" },
+                            if layer.locked { "L" } else { "_" },
+                            opa_pct,
+                            link_suffix,
+                        )
+                    };
+
+                    frame.render_widget(
+                        ratatui::widgets::Paragraph::new(Line::from(Span::styled(
+                            attr_label, attr_style,
+                        ))),
+                        rect,
                     );
                 }
             }
-            display_row += 1;
+        }
 
-            // Row 2: compact icon-based attributes.
-            if display_row >= scroll {
-                let row = display_row - scroll;
-                if row >= visible_rows {
-                    // No room for row 2 - still need to increment display_row
-                    display_row += 1;
-                    continue;
-                }
-
-                let vis_key = if layer.visible {
-                    "layer_visibility_on"
-                } else {
-                    "layer_visibility_off"
-                };
-                let vis_icon = self
-                    .icons
-                    .get(vis_key)
-                    .map(|s| s.as_str())
-                    .unwrap_or(if layer.visible { "V" } else { "_" });
-
-                let lock_key = if layer.locked {
-                    "layer_lock"
-                } else {
-                    "layer_unlock"
-                };
-                let lock_icon = self
-                    .icons
-                    .get(lock_key)
-                    .map(|s| s.as_str())
-                    .unwrap_or(if layer.locked { "L" } else { "U" });
-
-                let opa_pct = (layer.opacity as f32 / 255.0 * 100.0).round() as u8;
-                let link_suffix = if layer.link.is_some() {
-                    let link = self
-                        .icons
-                        .get("layer_link")
-                        .map(|s| s.as_str())
-                        .unwrap_or("\u{1f517}");
-                    format!(" {link}")
-                } else {
-                    String::new()
-                };
-
-                let attr_style = Style::default()
-                    .bg(row_bg)
-                    .fg(self.theme.general.secondary)
-                    .add_modifier(Modifier::DIM);
-
-                let attr_label = if inner.width >= 8 {
-                    format!(
-                        "{}{}  {}  {}%  {}{}",
-                        indent,
-                        vis_icon,
-                        lock_icon,
-                        opa_pct,
-                        self.icons
-                            .get(layer.blend_mode.icon_key())
-                            .map(|s| s.as_str())
-                            .unwrap_or(layer.blend_mode.display_name()),
-                        link_suffix,
-                    )
-                } else {
-                    format!(
-                        "{}{}{} {}%{}",
-                        indent,
-                        if layer.visible { "V" } else { "_" },
-                        if layer.locked { "L" } else { "_" },
-                        opa_pct,
-                        link_suffix,
-                    )
-                };
-
+        // Drop hint in the empty space below the list while a drag targets
+        // it (top level, bottom of the stack).
+        if drag_target == Some(LayerDrop::Bottom) && total_display_rows >= scroll {
+            let row = total_display_rows - scroll;
+            if row < visible_rows {
                 frame.render_widget(
                     ratatui::widgets::Paragraph::new(Line::from(Span::styled(
-                        attr_label, attr_style,
+                        truncate_str(" ⠿ drop: top level, bottom", inner.width as usize),
+                        Style::default().fg(self.theme.general.primary),
                     ))),
-                    Rect {
-                        x: inner_x,
-                        y: inner_y + offset as u16 + row as u16,
-                        width: inner.width,
-                        height: 1,
-                    },
+                    row_rect(row),
                 );
             }
-            display_row += 1;
         }
     }
 
-    /// Map screen (col, row) within the content area to a layer index.
-    /// Returns the index plus which attr-row icon zone (if any) was hit:
-    /// `Some(0)` = visibility icon, `Some(1)` = lock icon, `None` = the
-    /// row body (select). Name rows never carry icons.
-    fn layer_at_pos(
-        &self,
-        col: u16,
-        row: u16,
-        area: Rect,
-        stack: &LayerStack,
-    ) -> Option<(usize, Option<usize>)> {
-        let inner = Block::default().borders(Borders::ALL).inner(area);
-        let offset = 1usize;
-        if row < inner.y + offset as u16 || col < inner.x {
-            return None;
-        }
-        let vis_row = (row - inner.y) as usize;
-        if vis_row < offset {
-            return None;
-        }
-        let effective = vis_row.saturating_sub(offset) + self.scroll as usize;
-
-        let mut display_row: usize = 0;
+    /// The layer list as display rows, top of the stack first: a header
+    /// before a group's first (topmost) member, then two rows per layer.
+    /// Every member of a collapsed group is hidden, not just the first.
+    pub fn display_rows(stack: &LayerStack) -> Vec<LayerRow> {
+        let mut rows = Vec::with_capacity(stack.layers.len() * 2);
         let mut emitted = vec![false; stack.groups.len()];
-
-        for rev_idx in 0..stack.layers.len() {
-            let real_idx = stack.layers.len() - 1 - rev_idx;
-            let layer = &stack.layers[real_idx];
-
-            if let Some(g) = layer.group {
-                if g < emitted.len() && !emitted[g] {
+        for real_idx in (0..stack.layers.len()).rev() {
+            if let Some(g) = stack.valid_group_of(real_idx) {
+                if !emitted[g] {
                     emitted[g] = true;
-                    if effective == display_row {
-                        return None;
-                    }
-                    display_row += 1;
-                    if let Some(group) = stack.groups.get(g) {
-                        if group.collapsed {
-                            continue;
-                        }
-                    }
+                    rows.push(LayerRow::GroupHeader(g));
+                }
+                if stack.groups[g].collapsed {
+                    continue;
                 }
             }
+            rows.push(LayerRow::Name(real_idx));
+            rows.push(LayerRow::Attrs(real_idx));
+        }
+        rows
+    }
 
-            if effective == display_row {
-                // Name row: no icons.
-                return Some((real_idx, None));
-            }
-            if effective == display_row + 1 {
-                // Attr row: icon zones follow the rendered label layout
-                // `{indent}{vis}  {lock}  …` (narrow: `{indent}{V}{L} …`).
-                let indent_w = if layer.group.is_some() { 2 } else { 0 };
+    /// Row the scroll clamp keeps visible: the active layer's name row, or
+    /// its group's header when the group is collapsed.
+    fn active_display_row(rows: &[LayerRow], stack: &LayerStack) -> usize {
+        rows.iter()
+            .position(|&r| r == LayerRow::Name(stack.active))
+            .or_else(|| {
+                let g = stack.valid_group_of(stack.active)?;
+                rows.iter().position(|&r| r == LayerRow::GroupHeader(g))
+            })
+            .unwrap_or(0)
+    }
+
+    /// Map screen (col, row) within the content area to what's drawn
+    /// there. Attr-row icon zones follow the rendered label layout
+    /// `{indent}{vis}  {lock}  …` (narrow: `{indent}{V}{L} …`).
+    fn hit_at(&self, col: u16, row: u16, area: Rect, stack: &LayerStack) -> Option<LayerHit> {
+        let inner = Block::default().borders(Borders::ALL).inner(area);
+        let offset = 1u16;
+        if col < inner.x
+            || col >= inner.x + inner.width
+            || row < inner.y + offset
+            || row >= inner.y + inner.height
+        {
+            return None;
+        }
+        let effective = (row - inner.y - offset) as usize + self.scroll as usize;
+        let rows = Self::display_rows(stack);
+        let Some(&kind) = rows.get(effective) else {
+            return Some(LayerHit::Below);
+        };
+        Some(match kind {
+            LayerRow::GroupHeader(g) => LayerHit::Group(g),
+            LayerRow::Name(idx) => LayerHit::Layer(idx, None),
+            LayerRow::Attrs(idx) => {
+                let indent_w = if stack.valid_group_of(idx).is_some() {
+                    2
+                } else {
+                    0
+                };
                 let rel = col.saturating_sub(inner.x) as usize;
                 let zone = if inner.width >= 8 {
                     if rel == indent_w {
@@ -1436,11 +1632,9 @@ impl LayerPanel {
                 } else {
                     None
                 };
-                return Some((real_idx, zone));
+                LayerHit::Layer(idx, zone)
             }
-            display_row += 2;
-        }
-        None
+        })
     }
 
     pub fn handle_mouse(
@@ -1451,8 +1645,27 @@ impl LayerPanel {
         area: Rect,
         stack: &mut LayerStack,
     ) -> bool {
+        self.handle_mouse_with_modifiers(col, row, kind, KeyModifiers::NONE, area, stack)
+    }
+
+    /// Mouse input for the layer list:
+    /// - press a group header (anywhere on the row): collapse / expand;
+    /// - press a layer row: select it and arm a drag (eye / lock icons on
+    ///   the attr row toggle instead); Ctrl+ or Shift+press adds or
+    ///   removes the layer from the multi-selection the Group button uses;
+    /// - drag onto a layer row, a group header or the empty space below
+    ///   the list, then release, to move the layer there (see
+    ///   `LayerStack::move_layer_to`); releasing outside the list cancels.
+    pub fn handle_mouse_with_modifiers(
+        &mut self,
+        col: u16,
+        row: u16,
+        kind: ratatui::crossterm::event::MouseEventKind,
+        modifiers: KeyModifiers,
+        area: Rect,
+        stack: &mut LayerStack,
+    ) -> bool {
         use ratatui::crossterm::event::{MouseButton, MouseEventKind};
-        let inner = Block::default().borders(Borders::ALL).inner(area);
         match kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 if let Some(&(action, _)) = self
@@ -1462,20 +1675,21 @@ impl LayerPanel {
                 {
                     match action {
                         LayerButton::New => {
+                            self.selected.clear();
                             let w = stack.layers[0].buffer.width();
                             let h = stack.layers[0].buffer.height();
                             stack.add(w, h);
                         }
                         LayerButton::Duplicate => {
+                            self.selected.clear();
                             stack.duplicate(stack.active);
                         }
                         LayerButton::Delete => {
+                            self.selected.clear();
                             stack.delete(stack.active);
                         }
                         LayerButton::Group => {
-                            let indices = [stack.active];
-                            let group_name = format!("Group {}", stack.groups.len() + 1);
-                            stack.create_group(&indices, group_name);
+                            self.group_selection(stack);
                         }
                         LayerButton::Link => {
                             self.toggle_link_pending(stack);
@@ -1483,56 +1697,63 @@ impl LayerPanel {
                     }
                     return true;
                 }
-                if let Some((idx, zone)) = self.layer_at_pos(col, row, area, stack) {
-                    // Attr-row icon clicks toggle instead of selecting:
-                    // eye flips visibility, lock flips locked. Anything
-                    // else (name row, row body) selects — gutter clicks
-                    // also arm a drag.
-                    match zone {
-                        Some(0) => {
-                            stack.toggle_visibility(idx);
-                            return true;
-                        }
-                        Some(1) => {
-                            stack.toggle_lock(idx);
-                            return true;
-                        }
-                        _ => {}
+                match self.hit_at(col, row, area, stack) {
+                    Some(LayerHit::Group(g)) => {
+                        self.drag = None;
+                        stack.toggle_group_collapsed(g)
                     }
-                    if stack.active != idx {
+                    Some(LayerHit::Layer(idx, zone)) => {
+                        match zone {
+                            Some(0) => {
+                                stack.toggle_visibility(idx);
+                                return true;
+                            }
+                            Some(1) => {
+                                stack.toggle_lock(idx);
+                                return true;
+                            }
+                            _ => {}
+                        }
+                        if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
+                            if idx != stack.active && !self.selected.remove(&idx) {
+                                self.selected.insert(idx);
+                            }
+                            return true;
+                        }
+                        self.selected.clear();
                         stack.set_active(idx);
+                        self.drag = Some(LayerDrag {
+                            from: idx,
+                            target: None,
+                        });
+                        true
                     }
-                    if col <= inner.x + 1 {
-                        self.drag_state = Some((idx, idx));
-                        self.drag_hover_row = None;
-                    }
-                    return true;
+                    Some(LayerHit::Below) | None => false,
                 }
-                false
             }
             MouseEventKind::Drag(MouseButton::Left) => {
-                if let Some((from, _to)) = self.drag_state {
-                    if let Some((idx, _)) = self.layer_at_pos(col, row, area, stack) {
-                        self.drag_hover_row = Some(idx);
-                        if idx != from {
-                            self.drag_state = Some((from, idx));
-                        }
+                let Some(mut drag) = self.drag else {
+                    return false;
+                };
+                drag.target = match self.hit_at(col, row, area, stack) {
+                    Some(LayerHit::Group(g)) => Some(LayerDrop::IntoGroup(g)),
+                    Some(LayerHit::Layer(idx, _)) if idx != drag.from => {
+                        Some(LayerDrop::OnLayer(idx))
                     }
-                    true
-                } else {
-                    false
-                }
+                    Some(LayerHit::Below) => Some(LayerDrop::Bottom),
+                    Some(LayerHit::Layer(..)) | None => None,
+                };
+                self.drag = Some(drag);
+                true
             }
             MouseEventKind::Up(MouseButton::Left) => {
-                if let Some((from, to)) = self.drag_state.take() {
-                    self.drag_hover_row = None;
-                    if from != to && to < stack.layers.len() {
-                        stack.reorder(from, to);
-                        return true;
-                    }
+                let Some(drag) = self.drag.take() else {
                     return false;
+                };
+                match drag.target {
+                    Some(target) => stack.move_layer_to(drag.from, target),
+                    None => false,
                 }
-                false
             }
             MouseEventKind::ScrollUp => {
                 if self.scroll > 0 {
@@ -2580,5 +2801,403 @@ mod tests {
             stack.layers[initial_count + 1].buffer.get(1, 1).unwrap().ch,
             'B'
         );
+    }
+
+    // --- Layer group mouse / panel tests ---
+    //
+    // Panel area (0,0,30,20): the panel's own border puts inner at x=1,
+    // y=1, width 28; the toolbar is row y=1 (5 buttons, 5 cols each, so
+    // New at x=1, Group at x=16) and list row N is drawn at y = 2 + N.
+
+    fn group_area() -> Rect {
+        Rect::new(0, 0, 30, 20)
+    }
+
+    fn list_y(display_row: usize) -> u16 {
+        2 + display_row as u16
+    }
+
+    fn render_panel(panel: &mut LayerPanel, stack: &LayerStack) -> String {
+        let area = group_area();
+        let mut term =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(area.width, area.height))
+                .unwrap();
+        term.draw(|f| panel.render_with_stack(f, area, stack))
+            .unwrap();
+        let buf = term.backend().buffer().clone();
+        let mut out = String::new();
+        for y in 0..area.height {
+            for x in 0..area.width {
+                out.push_str(buf[(x, y)].symbol());
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    fn press(panel: &mut LayerPanel, stack: &mut LayerStack, col: u16, row: u16) -> bool {
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
+        panel.handle_mouse(
+            col,
+            row,
+            MouseEventKind::Down(MouseButton::Left),
+            group_area(),
+            stack,
+        )
+    }
+
+    fn drag_drop(
+        panel: &mut LayerPanel,
+        stack: &mut LayerStack,
+        from: (u16, u16),
+        to: (u16, u16),
+    ) -> bool {
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
+        let area = group_area();
+        assert!(press(panel, stack, from.0, from.1), "press arms the drag");
+        assert!(panel.handle_mouse(
+            to.0,
+            to.1,
+            MouseEventKind::Drag(MouseButton::Left),
+            area,
+            stack
+        ));
+        panel.handle_mouse(
+            to.0,
+            to.1,
+            MouseEventKind::Up(MouseButton::Left),
+            area,
+            stack,
+        )
+    }
+
+    fn names(stack: &LayerStack) -> Vec<&str> {
+        stack.layers.iter().map(|l| l.name.as_str()).collect()
+    }
+
+    #[test]
+    fn test_group_button_groups_ctrl_clicked_layers() {
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
+        let mut stack = LayerStack::with_capacity(10, 10, 4);
+        stack.active = 3;
+        let mut panel = LayerPanel::new();
+        render_panel(&mut panel, &stack);
+        // No groups: rows are 3N 3A 2N 2A 1N 1A 0N 0A; layer 1's name row
+        // is display row 4.
+        assert!(panel.handle_mouse_with_modifiers(
+            8,
+            list_y(4),
+            MouseEventKind::Down(MouseButton::Left),
+            KeyModifiers::CONTROL,
+            group_area(),
+            &mut stack,
+        ));
+        assert_eq!(stack.active, 3, "Ctrl+click selects without activating");
+        assert!(panel.selected.contains(&1));
+        // Group button.
+        assert!(press(&mut panel, &mut stack, 16, 1));
+        assert_eq!(stack.groups.len(), 1);
+        let members = stack.layers_in_group(0);
+        let member_names: Vec<&str> = members
+            .iter()
+            .map(|&i| stack.layers[i].name.as_str())
+            .collect();
+        assert_eq!(member_names, ["Layer 2", "Layer 4"]);
+        assert_eq!(members[1], members[0] + 1, "grouped layers are gathered");
+        assert_eq!(stack.active_layer().name, "Layer 4");
+        assert!(panel.selected.is_empty());
+    }
+
+    #[test]
+    fn test_ctrl_g_without_selection_groups_active_only() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.active = 1;
+        let mut panel = LayerPanel::new();
+        let ctrl_g = KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL);
+        assert!(panel.handle_key(ctrl_g, &mut stack));
+        assert_eq!(stack.groups.len(), 1);
+        assert_eq!(stack.layers_in_group(0), vec![1]);
+        assert_eq!(names(&stack), ["Background", "Layer 2", "Layer 3"]);
+    }
+
+    #[test]
+    fn test_click_group_header_toggles_collapsed() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        let mut panel = LayerPanel::new();
+        // Rows: 2N 2A H0 1N 1A 0N 0A -> header is display row 2.
+        assert!(press(&mut panel, &mut stack, 2, list_y(2)));
+        assert!(stack.groups[0].collapsed, "click on the triangle collapses");
+        assert!(press(&mut panel, &mut stack, 12, list_y(2)));
+        assert!(!stack.groups[0].collapsed, "click on the row expands");
+    }
+
+    #[test]
+    fn test_collapsed_group_hides_every_member_row() {
+        let mut stack = LayerStack::with_capacity(10, 10, 4);
+        stack.create_group(&[0, 1, 2], "G".to_string()).unwrap();
+        stack.active = 3;
+        let mut panel = LayerPanel::new();
+        assert_eq!(
+            LayerPanel::display_rows(&stack),
+            [
+                LayerRow::Name(3),
+                LayerRow::Attrs(3),
+                LayerRow::GroupHeader(0),
+                LayerRow::Name(2),
+                LayerRow::Attrs(2),
+                LayerRow::Name(1),
+                LayerRow::Attrs(1),
+                LayerRow::Name(0),
+                LayerRow::Attrs(0),
+            ]
+        );
+        let open = render_panel(&mut panel, &stack);
+        assert!(open.contains("▼ G (3)"));
+        assert!(open.contains("Layer 2") && open.contains("Background"));
+
+        stack.toggle_group_collapsed(0);
+        assert_eq!(
+            LayerPanel::display_rows(&stack),
+            [
+                LayerRow::Name(3),
+                LayerRow::Attrs(3),
+                LayerRow::GroupHeader(0),
+            ]
+        );
+        let shut = render_panel(&mut panel, &stack);
+        assert!(shut.contains("▶ G (3)"));
+        assert!(shut.contains("Layer 4"));
+        for hidden in ["Layer 3", "Layer 2", "Background"] {
+            assert!(!shut.contains(hidden), "{hidden} must be hidden");
+        }
+        // Clicking where a hidden member used to be selects nothing.
+        let before = stack.active;
+        assert!(!press(&mut panel, &mut stack, 8, list_y(3)));
+        assert_eq!(stack.active, before);
+    }
+
+    #[test]
+    fn test_collapse_does_not_change_composite() {
+        let mut stack = LayerStack::with_capacity(4, 2, 3);
+        stack.layers[0].buffer.set(0, 0, make_cell('a'));
+        stack.layers[1].buffer.set(1, 0, make_cell('b'));
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        let before = stack.composite();
+        stack.toggle_group_collapsed(0);
+        let after = stack.composite();
+        assert_eq!(after.get(0, 0).unwrap().ch, 'a');
+        assert_eq!(after.get(1, 0).unwrap().ch, 'b');
+        assert_eq!(before.get(1, 0).unwrap().ch, after.get(1, 0).unwrap().ch);
+    }
+
+    #[test]
+    fn test_drag_layer_onto_group_header_joins_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0], "G".to_string()).unwrap();
+        let mut panel = LayerPanel::new();
+        // Rows: 2N 2A 1N 1A H0 0N 0A. Drag "Layer 3" (row 0) onto H0.
+        assert!(drag_drop(
+            &mut panel,
+            &mut stack,
+            (8, list_y(0)),
+            (8, list_y(4))
+        ));
+        assert_eq!(names(&stack), ["Background", "Layer 3", "Layer 2"]);
+        assert_eq!(stack.layers[1].group, Some(0));
+        assert_eq!(stack.layers[2].group, None);
+        assert_eq!(stack.active_layer().name, "Layer 3");
+    }
+
+    #[test]
+    fn test_drag_onto_collapsed_group_header_joins_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0], "G".to_string()).unwrap();
+        stack.toggle_group_collapsed(0);
+        let mut panel = LayerPanel::new();
+        // Rows: 2N 2A 1N 1A H0.
+        assert!(drag_drop(
+            &mut panel,
+            &mut stack,
+            (8, list_y(2)),
+            (8, list_y(4))
+        ));
+        assert_eq!(stack.layers_in_group(0).len(), 2);
+        assert_eq!(stack.layers[1].name, "Layer 2");
+        assert_eq!(stack.layers[1].group, Some(0));
+    }
+
+    #[test]
+    fn test_drag_layer_onto_grouped_row_joins_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        let mut panel = LayerPanel::new();
+        // Rows: 2N 2A H0 1N 1A 0N 0A. Drag top-level "Layer 3" onto
+        // "Background" (row 5).
+        assert!(drag_drop(
+            &mut panel,
+            &mut stack,
+            (8, list_y(0)),
+            (8, list_y(5))
+        ));
+        assert_eq!(names(&stack), ["Layer 3", "Background", "Layer 2"]);
+        assert!(stack.layers.iter().all(|l| l.group == Some(0)));
+    }
+
+    #[test]
+    fn test_drag_grouped_layer_out_to_top_level() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        let mut panel = LayerPanel::new();
+        // Rows: 2N 2A H0 1N 1A 0N 0A. Drag grouped "Layer 2" by its
+        // indented drag handle (col 3) onto top-level "Layer 3".
+        assert!(drag_drop(
+            &mut panel,
+            &mut stack,
+            (3, list_y(3)),
+            (8, list_y(0))
+        ));
+        assert_eq!(names(&stack), ["Background", "Layer 3", "Layer 2"]);
+        assert_eq!(stack.layers[2].group, None, "Layer 2 left the group");
+        assert_eq!(stack.layers[0].group, Some(0));
+        assert_eq!(stack.groups.len(), 1);
+    }
+
+    #[test]
+    fn test_drag_last_member_below_list_removes_empty_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 2);
+        stack.create_group(&[0], "G".to_string()).unwrap();
+        let mut panel = LayerPanel::new();
+        // Rows: 1N 1A H0 0N 0A; row 5 onward is empty list space.
+        assert!(drag_drop(
+            &mut panel,
+            &mut stack,
+            (8, list_y(3)),
+            (8, list_y(7))
+        ));
+        assert_eq!(names(&stack), ["Background", "Layer 2"]);
+        assert_eq!(stack.layers[0].group, None);
+        assert!(stack.groups.is_empty(), "an emptied group is removed");
+        assert_eq!(
+            LayerPanel::display_rows(&stack),
+            [
+                LayerRow::Name(1),
+                LayerRow::Attrs(1),
+                LayerRow::Name(0),
+                LayerRow::Attrs(0),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_drag_released_outside_list_cancels() {
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        let mut panel = LayerPanel::new();
+        assert!(press(&mut panel, &mut stack, 8, list_y(0)));
+        let area = group_area();
+        panel.handle_mouse(
+            8,
+            list_y(4),
+            MouseEventKind::Drag(MouseButton::Left),
+            area,
+            &mut stack,
+        );
+        // Off the panel (right of its border) before release.
+        panel.handle_mouse(
+            40,
+            list_y(4),
+            MouseEventKind::Drag(MouseButton::Left),
+            area,
+            &mut stack,
+        );
+        assert!(!panel.handle_mouse(
+            40,
+            list_y(4),
+            MouseEventKind::Up(MouseButton::Left),
+            area,
+            &mut stack
+        ));
+        assert_eq!(names(&stack), ["Background", "Layer 2", "Layer 3"]);
+    }
+
+    #[test]
+    fn test_new_layer_button_while_group_active_joins_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        stack.active = 1;
+        let mut panel = LayerPanel::new();
+        render_panel(&mut panel, &stack);
+        assert!(press(&mut panel, &mut stack, 1, 1), "New button");
+        assert_eq!(stack.len(), 4);
+        assert_eq!(stack.active, 2);
+        assert_eq!(stack.layers[2].group, Some(0));
+        assert_eq!(stack.layers[3].name, "Layer 3");
+        assert_eq!(stack.layers[3].group, None);
+        assert_eq!(stack.layers_in_group(0), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn test_new_layer_key_while_group_active_joins_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 2);
+        stack.create_group(&[0], "G".to_string()).unwrap();
+        stack.active = 0;
+        let mut panel = LayerPanel::new();
+        let n = KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE);
+        assert!(panel.handle_key(n, &mut stack));
+        assert_eq!(stack.active, 1);
+        assert_eq!(stack.layers[1].group, Some(0));
+        assert_eq!(stack.layers[2].name, "Layer 2");
+    }
+
+    #[test]
+    fn test_new_layer_ungrouped_still_goes_on_top() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0], "G".to_string()).unwrap();
+        stack.active = 1;
+        let idx = stack.add(10, 10);
+        assert_eq!(idx, 3);
+        assert_eq!(stack.layers[3].group, None);
+    }
+
+    #[test]
+    fn test_duplicate_grouped_layer_stays_in_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0], "G".to_string()).unwrap();
+        assert!(stack.duplicate(0));
+        assert_eq!(stack.active, 1);
+        assert_eq!(stack.layers_in_group(0), vec![0, 1]);
+    }
+
+    #[test]
+    fn test_delete_last_member_removes_group_and_remaps() {
+        let mut stack = LayerStack::with_capacity(10, 10, 3);
+        stack.create_group(&[0], "A".to_string()).unwrap();
+        stack.create_group(&[1, 2], "B".to_string()).unwrap();
+        assert!(stack.delete(0));
+        assert_eq!(stack.groups.len(), 1);
+        assert_eq!(stack.groups[0].name, "B");
+        assert!(stack.layers.iter().all(|l| l.group == Some(0)));
+    }
+
+    #[test]
+    fn test_regrouping_whole_group_drops_old_group() {
+        let mut stack = LayerStack::with_capacity(10, 10, 2);
+        stack.create_group(&[0], "Old".to_string()).unwrap();
+        let g = stack.create_group(&[0, 1], "New".to_string()).unwrap();
+        assert_eq!(g, 0);
+        assert_eq!(stack.groups.len(), 1);
+        assert_eq!(stack.groups[0].name, "New");
+    }
+
+    #[test]
+    fn test_collapsed_active_group_header_keeps_scroll_sane() {
+        let mut stack = LayerStack::with_capacity(10, 10, 12);
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        stack.toggle_group_collapsed(0);
+        stack.active = 0;
+        let mut panel = LayerPanel::new();
+        let text = render_panel(&mut panel, &stack);
+        assert!(text.contains("▶ G (2)"), "header of active group shown");
     }
 }

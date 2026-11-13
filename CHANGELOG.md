@@ -45,6 +45,7 @@
   the docs index are gone too.
 
 ### Fixed
+- Layer groups work with the mouse: click a group's header to collapse or expand it, drag layers into and out of groups, Ctrl+click several layers and press Grp to group them, and new layers land inside the active group. Collapsing now hides every member, and empty groups are removed.
 - Font editor preview-text prompt (Shift+W): typed letters such as m/M, Enter and Backspace no longer go to the open Layers drawer (merging layers, toggling masks or visibility). Every printable key is now text, Enter applies and Esc cancels.
 - New Font from System picker now responds to the mouse: the wheel scrolls the family list, clicking a family selects it, and clicking Size or Charset focuses that field (clicking the charset value cycles it). Clicks no longer fall through to the canvas behind the dialog.
 - Font editor overview: moving the glyph selection with the arrow keys now scrolls the grid so the selected glyph stays visible.

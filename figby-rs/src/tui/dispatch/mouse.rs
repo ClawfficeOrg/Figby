@@ -278,10 +278,11 @@ impl TuiApp {
         };
         if !(self.side_panel.open
             && self.side_panel.active_tab == TabId::Layers
-            && self.editor.layer_panel.handle_mouse(
+            && self.editor.layer_panel.handle_mouse_with_modifiers(
                 mouse.column,
                 mouse.row,
                 mouse.kind,
+                mouse.modifiers,
                 self.side_panel.content_area(rp),
                 &mut self.editor.layer_stack,
             ))
@@ -613,5 +614,80 @@ mod system_font_mouse_tests {
         let d = &app.dialogs.system_font;
         assert_eq!(d.selected, row);
         assert!(d.active && !d.confirmed, "click must not create the font");
+    }
+}
+
+#[cfg(test)]
+mod layer_group_mouse_tests {
+    use super::*;
+
+    fn mouse(kind: MouseEventKind, column: u16, row: u16) -> MouseEvent {
+        MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers: KeyModifiers::NONE,
+        }
+    }
+
+    /// Canvas app with the Layers drawer open and three layers, the
+    /// bottom two in one group.
+    fn grouped_app() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::AsciiPreview;
+        app.animation.timeline_visible = false;
+        app.side_panel.open = true;
+        app.side_panel.active_tab = TabId::Layers;
+        let stack = &mut app.editor.layer_stack;
+        let w = stack.layers[0].buffer.width();
+        let h = stack.layers[0].buffer.height();
+        while stack.len() < 3 {
+            stack.layers.push(crate::tui::layers::Layer::new(
+                w,
+                h,
+                format!("Layer {}", stack.len() + 1),
+            ));
+        }
+        stack.active = 2;
+        stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        app
+    }
+
+    /// Screen (col, row) of list display row `n` in the layer panel, using
+    /// the same layout the router hit-tests against.
+    fn list_pos(app: &TuiApp, n: u16) -> (u16, u16) {
+        let fl = app.mouse_frame_layout();
+        let rp = fl.right_panel.expect("drawer open");
+        let ca = app.side_panel.content_area(rp);
+        // Panel border (1) + toolbar row (1).
+        (ca.x + 3, ca.y + 2 + n)
+    }
+
+    #[test]
+    fn test_click_group_header_collapses_via_app_router() {
+        let mut app = grouped_app();
+        // Rows: 2N 2A H0 1N 1A 0N 0A.
+        let (c, r) = list_pos(&app, 2);
+        app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Left), c, r));
+        assert!(app.editor.layer_stack.groups[0].collapsed);
+        app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Left), c, r));
+        assert!(!app.editor.layer_stack.groups[0].collapsed);
+    }
+
+    #[test]
+    fn test_drag_layer_into_group_via_app_router() {
+        let mut app = grouped_app();
+        let (c, r_top) = list_pos(&app, 0);
+        let (_, r_header) = list_pos(&app, 2);
+        app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Left), c, r_top));
+        app.handle_mouse_event(mouse(MouseEventKind::Drag(MouseButton::Left), c, r_header));
+        app.handle_mouse_event(mouse(MouseEventKind::Up(MouseButton::Left), c, r_header));
+        let stack = &app.editor.layer_stack;
+        assert!(
+            stack.layers.iter().all(|l| l.group == Some(0)),
+            "dropping on the header adds the layer to the group"
+        );
+        assert_eq!(stack.layers[2].name, "Layer 3");
     }
 }
