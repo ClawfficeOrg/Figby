@@ -1,0 +1,540 @@
+//! Global keymap actions (file ops, view toggles, mode cycling, quit).
+
+use super::*;
+
+impl TuiApp {
+    pub(super) fn dispatch_global(&mut self, action: keymap::GlobalAction) -> Option<AppEvent> {
+        use keymap::GlobalAction as GA;
+        match action {
+            GA::FileNew => {
+                self.dialogs.new_image.enter_new_image();
+                None
+            }
+            GA::FileOpen => {
+                self.start_open();
+                None
+            }
+            GA::FileSave => {
+                self.start_save();
+                None
+            }
+            GA::FileSaveAs => {
+                self.start_save_as();
+                None
+            }
+            GA::Export => {
+                let mode = match self.ui.mode {
+                    AppMode::FontEditor => export::ExportMode::Txt,
+                    _ => export::ExportMode::Png,
+                };
+                self.dialogs.export_dialog.enter_export(mode);
+                if (mode == export::ExportMode::Gif
+                    || mode == export::ExportMode::Apng
+                    || mode == export::ExportMode::Ansi)
+                    && !self.animation.timeline_state.frames.is_empty()
+                {
+                    self.dialogs
+                        .export_dialog
+                        .set_timeline_from_timeline(&self.animation.timeline_state);
+                }
+                self.frame.dirty = true;
+                None
+            }
+            GA::Undo => {
+                self.perform_undo();
+                Some(AppEvent::Undo)
+            }
+            GA::Redo => {
+                self.perform_redo();
+                Some(AppEvent::Redo)
+            }
+            GA::ToggleUndoPanel => {
+                self.dialogs.undo_panel.toggle();
+                Some(AppEvent::UndoPanelToggled)
+            }
+            GA::ToggleRenderMode => {
+                self.ctx.render_mode = self.ctx.render_mode.toggle();
+                self.frame.dirty = true;
+                Some(AppEvent::RenderModeChanged)
+            }
+            GA::ToggleZenMode => {
+                self.ui.zen_mode = !self.ui.zen_mode;
+                self.frame.dirty = true;
+                None
+            }
+            GA::CycleDrawer => {
+                self.side_panel.toggle_open();
+                self.frame.dirty = true;
+                None
+            }
+            GA::ToggleKeybindings => {
+                self.ui.show_keybindings = !self.ui.show_keybindings;
+                self.frame.dirty = true;
+                None
+            }
+            GA::ToggleTimeline => {
+                self.animation.timeline_visible = !self.animation.timeline_visible;
+                self.frame.dirty = true;
+                None
+            }
+            GA::OpenTweenPanel => {
+                self.animation.timeline_state.open_tween();
+                self.frame.dirty = true;
+                None
+            }
+            GA::PlayAnimation => {
+                // Start playback from the current frame. Pause/resume is
+                // AnimationPlayer::handle_key's job (F8/Space reach it via
+                // the inline-player intercept before this arm runs).
+                self.start_inline_playback_from_timeline();
+                self.frame.dirty = true;
+                None
+            }
+            GA::CycleTabPrev => {
+                self.side_panel.cycle_tab(false);
+                self.frame.dirty = true;
+                None
+            }
+            GA::CycleTabNext => {
+                self.side_panel.cycle_tab(true);
+                self.frame.dirty = true;
+                None
+            }
+            GA::DocNext => {
+                let n = self.document_count();
+                if n > 1 {
+                    self.switch_document((self.active_doc + 1) % n);
+                }
+                None
+            }
+            GA::DocPrev => {
+                let n = self.document_count();
+                if n > 1 {
+                    self.switch_document((self.active_doc + n - 1) % n);
+                }
+                None
+            }
+            GA::DocClose => {
+                self.request_close_document(self.active_doc);
+                None
+            }
+            GA::NextMode => {
+                self.ui.mode = self.ui.mode.next_for(self.ui.session_type);
+                self.editor.undo.clear();
+                Some(AppEvent::ModeChanged)
+            }
+            GA::PrevMode => {
+                self.ui.mode = self.ui.mode.prev_for(self.ui.session_type);
+                self.editor.undo.clear();
+                Some(AppEvent::ModeChanged)
+            }
+            GA::Quit => {
+                self.trigger_quit();
+                None
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod keybind_collision_tests {
+    use super::*;
+    use crate::font::{FIGcharacter, FIGfont};
+    use crate::tui::font_editor::FontEditorView;
+    use ratatui::crossterm::event::KeyEvent;
+    use std::collections::HashMap;
+
+    fn test_font() -> FIGfont {
+        FIGfont {
+            charheight: 3,
+            maxlength: 5,
+            chars: HashMap::from([
+                (
+                    0,
+                    FIGcharacter::from(vec![
+                        "     ".to_string(),
+                        "     ".to_string(),
+                        "     ".to_string(),
+                    ]),
+                ),
+                (
+                    65,
+                    FIGcharacter::from(vec![
+                        " AA  ".to_string(),
+                        "A  A ".to_string(),
+                        "AAAA ".to_string(),
+                    ]),
+                ),
+                (
+                    66,
+                    FIGcharacter::from(vec![
+                        "BBB  ".to_string(),
+                        "B  B ".to_string(),
+                        "BBB  ".to_string(),
+                    ]),
+                ),
+            ]),
+            ..Default::default()
+        }
+    }
+
+    fn app_font_editor_overview() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.editor.font_editor.load_font(test_font());
+        assert_eq!(app.ui.mode, AppMode::FontEditor);
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::Overview,
+            "TuiApp::new() should default to FontEditor Overview"
+        );
+        app
+    }
+
+    fn app_not_font_editor() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::ImageEditor;
+        app
+    }
+
+    // --- T key: Transform editor vs ToggleTimeline ---
+
+    #[test]
+    fn test_t_opens_transform_editor_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::TransformEditor,
+            "T in FontEditor Overview must open Transform editor"
+        );
+    }
+
+    #[test]
+    fn test_t_does_not_toggle_timeline_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let was_visible = app.animation.timeline_visible;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        assert_eq!(
+            app.animation.timeline_visible, was_visible,
+            "T in FontEditor Overview must NOT toggle timeline"
+        );
+    }
+
+    #[test]
+    fn test_t_toggles_timeline_outside_font_editor() {
+        let mut app = app_not_font_editor();
+        let was_visible = app.animation.timeline_visible;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        assert_ne!(
+            app.animation.timeline_visible, was_visible,
+            "T outside FontEditor must toggle timeline"
+        );
+    }
+
+    // --- S key: Smushing editor vs Settings ---
+
+    #[test]
+    fn test_s_opens_smushing_editor_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        assert_eq!(
+            app.editor.font_editor.view,
+            FontEditorView::SmushRuleEditor,
+            "S in FontEditor Overview must open Smushing rule editor"
+        );
+    }
+
+    #[test]
+    fn test_s_does_not_open_settings_in_font_overview() {
+        let mut app = app_font_editor_overview();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        assert!(
+            !app.dialogs.settings.settings_open,
+            "S in FontEditor Overview must NOT open settings"
+        );
+    }
+
+    #[test]
+    fn test_s_opens_settings_outside_font_editor() {
+        let mut app = app_not_font_editor();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        assert!(
+            app.dialogs.settings.settings_open,
+            "S outside FontEditor must open settings"
+        );
+    }
+
+    // --- Toolbox catch-all exclusion ---
+
+    #[test]
+    fn test_t_not_consumed_by_toolbox_in_image_editor() {
+        let mut app = app_not_font_editor();
+        app.editor.toolbox.selected = crate::tui::toolbox::Tool::Brush;
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('T'), KeyModifiers::NONE));
+        // T should toggle timeline, not select a tool
+        assert_ne!(
+            app.editor.toolbox.selected,
+            crate::tui::toolbox::Tool::Text,
+            "T must not be consumed by toolbox catch-all"
+        );
+    }
+
+    #[test]
+    fn test_s_not_consumed_by_toolbox_in_image_editor() {
+        let mut app = app_not_font_editor();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('S'), KeyModifiers::NONE));
+        // S should open settings, not be consumed by toolbox catch-all
+        assert!(
+            app.dialogs.settings.settings_open,
+            "S must not be consumed by toolbox catch-all"
+        );
+    }
+
+    // --- 2026-11-04 review F9: unsaved-changes dialog must never lose work ---
+
+    #[test]
+    fn test_esc_in_save_as_does_not_save() {
+        // Regression: Esc closed the Save As dialog, complete_file_ops_dialog
+        // then ran perform_save on the cleared buffers — i.e. a silent save
+        // to ./untitled.flf with no overwrite guard.
+        let mut app = app_font_editor_overview();
+        app.editor.unsaved = true;
+        app.start_save_as();
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Idle
+        );
+        assert!(
+            !app.ctx.throbber.is_active() && app.dialogs.pending_save_revision.is_none(),
+            "cancelling Save As must not start a save"
+        );
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_cancelled_save_as_from_quit_prompt_disarms_quit() {
+        use crate::tui::app_state::PendingDocAction;
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE));
+        // No figmap path yet: Save goes through Save As.
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(!app.ui.should_quit);
+        assert!(!app.dialogs.quit_after_save);
+        assert_eq!(app.dialogs.pending_transition, None::<PendingDocAction>);
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_enter_in_quit_prompt_never_discards_image_work() {
+        // Regression: in image mode Save was "unavailable", so Enter/Y fell
+        // through to "treat as discard" and quit, dropping the drawing.
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        assert!(app.can_save_now(), "image documents save as .figmap");
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(!app.ui.should_quit, "Enter must not discard and quit");
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_save_and_quit_image_document_writes_figmap() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("art.figmap");
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.editor.figmap_path = Some(path.clone());
+        app.trigger_quit();
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE));
+        assert!(
+            path.exists(),
+            "save must land at the document's figmap path"
+        );
+        assert!(crate::figmap::load_figmap(&path).is_ok());
+        assert!(!app.editor.unsaved);
+        assert!(app.ui.should_quit, "successful save then quits");
+    }
+
+    #[test]
+    fn test_figmap_save_as_remembers_path_for_next_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("remember.figmap");
+        let mut app = app_not_font_editor();
+        app.perform_save(Some(path.clone()));
+        assert_eq!(app.editor.figmap_path.as_deref(), Some(path.as_path()));
+        // Ctrl+S now saves in place instead of reopening Save As.
+        std::fs::remove_file(&path).unwrap();
+        app.editor.unsaved = true;
+        app.start_save();
+        assert!(path.exists());
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Idle
+        );
+        assert_eq!(app.doc_title(app.active_doc), "remember");
+    }
+
+    #[test]
+    fn test_quit_prompt_buttons_track_label_text() {
+        // Hit boxes used to be hard-coded at columns 2/22/45, so with Save
+        // hidden (or "continue" instead of "quit") they sat on the wrong
+        // labels. Check every rect covers the label it acts for.
+        fn check(app: &mut TuiApp) {
+            let mut terminal =
+                ratatui::Terminal::new(ratatui::backend::TestBackend::new(120, 40)).unwrap();
+            terminal.draw(|f| app.render(f)).unwrap();
+            let buf = terminal.backend().buffer().clone();
+            for (rect, label) in app
+                .dialogs
+                .quit_confirm_buttons
+                .iter()
+                .zip(["[Y]", "[N]", "[C]"])
+            {
+                if rect.width == 0 {
+                    continue;
+                }
+                let text: String = (rect.x..rect.x + rect.width)
+                    .map(|x| buf[(x, rect.y)].symbol().to_string())
+                    .collect();
+                assert_eq!(text, label);
+            }
+        }
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        check(&mut app);
+        assert!(
+            app.dialogs.quit_confirm_buttons[0].width > 0,
+            "image docs offer Save"
+        );
+
+        let mut font_app = TuiApp::new();
+        font_app.welcome.screen.show = false;
+        font_app.editor.unsaved = true;
+        font_app.request_transition(crate::tui::app_state::PendingDocAction::NewFileSession);
+        check(&mut font_app); // no font loaded: Save hidden, "continue" labels
+        assert_eq!(font_app.dialogs.quit_confirm_buttons[0].width, 0);
+    }
+
+    #[test]
+    fn test_save_as_figmap_reachable_outside_font_mode() {
+        // Regression: image/animation sessions had no path to the .figmap
+        // branch of perform_save (start_save_as is font-gated).
+        let mut app = app_not_font_editor();
+        app.start_save_as_figmap();
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        assert_eq!(app.dialogs.file_ops.filename_buffer, "untitled.figmap");
+    }
+
+    #[test]
+    fn test_doc_tab_click_switches_document() {
+        use ratatui::crossterm::event::KeyModifiers;
+        use ratatui::crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+        use ratatui::layout::Rect;
+
+        let mut app = app_not_font_editor();
+        app.new_document(crate::tui::documents::DocumentKind::Font);
+        assert_eq!(app.active_doc, 1);
+        // Seed the hit rects the render pass would have stored.
+        app.ui.tab_rects = vec![Rect::new(0, 1, 12, 1), Rect::new(13, 1, 12, 1)];
+        let click = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 3,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(click);
+        assert_eq!(app.active_doc, 0, "click on first tab must switch");
+        // Clicking empty chrome (no rect) changes nothing.
+        let miss = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 100,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(miss);
+        assert_eq!(app.active_doc, 0);
+    }
+
+    #[test]
+    fn test_doc_tab_keys_cycle_and_close() {
+        let mut app = app_not_font_editor();
+        app.new_document(crate::tui::documents::DocumentKind::Font);
+        assert_eq!(app.document_count(), 2);
+        // Ctrl+PageDown wraps around the tab list.
+        let pgdn = KeyEvent::new(KeyCode::PageDown, KeyModifiers::CONTROL);
+        let _ = app.handle_key_event(pgdn);
+        assert_eq!(app.active_doc, 0);
+        let pgup = KeyEvent::new(KeyCode::PageUp, KeyModifiers::CONTROL);
+        let _ = app.handle_key_event(pgup);
+        assert_eq!(app.active_doc, 1);
+        // Ctrl+W closes the clean tab at once.
+        let ctrl_w = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL);
+        let _ = app.handle_key_event(ctrl_w);
+        assert_eq!(app.document_count(), 1);
+    }
+
+    #[test]
+    fn test_doc_close_unsaved_prompts_first() {
+        use crate::tui::app_state::PendingDocAction;
+
+        let mut app = app_not_font_editor();
+        app.new_document(crate::tui::documents::DocumentKind::Font);
+        app.editor.unsaved = true;
+        app.request_close_document(app.active_doc);
+        assert!(app.dialogs.quit_confirm_dialog);
+        assert_eq!(
+            app.dialogs.pending_transition,
+            Some(PendingDocAction::CloseDocument(1))
+        );
+        assert_eq!(app.document_count(), 2, "prompt must precede close");
+        // Discard proceeds.
+        app.execute_pending_transition();
+        assert_eq!(app.document_count(), 1);
+    }
+
+    #[test]
+    fn test_menu_new_tab_and_close_tab() {
+        use crate::tui::menu::MenuAction;
+
+        let mut app = app_not_font_editor();
+        app.handle_menu_action(MenuAction::FileNewTabImage);
+        assert_eq!(app.document_count(), 2);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        app.handle_menu_action(MenuAction::FileNewTabFont);
+        assert_eq!(app.document_count(), 3);
+        app.handle_menu_action(MenuAction::FileCloseTab);
+        assert_eq!(app.document_count(), 2);
+    }
+
+    #[test]
+    fn test_menu_new_animation_opens_image_tab_with_timeline() {
+        use crate::tui::menu::MenuAction;
+
+        let mut app = app_not_font_editor();
+        assert!(!app.animation.timeline_visible);
+        app.handle_menu_action(MenuAction::FileNewAnimation);
+        assert_eq!(app.document_count(), 2);
+        assert_eq!(app.ui.mode, AppMode::ImageEditor);
+        assert!(
+            app.animation.timeline_visible,
+            "new animation must show the timeline"
+        );
+    }
+}

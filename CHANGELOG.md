@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Subcommands for the extension programs: `figby play`, `figby bake`, `figby image`, `figby font` and
+  `figby tui` (review A2). Each maps onto the existing long options (`--play`, `--bake`, `--image`,
+  `--create-font`/`--create-font-path`, `--tui` and their modifiers), runs the same code and exits with
+  the same status. All existing options keep working unchanged; `figby --help` lists the subcommands.
+
+### Changed
+- **CLI:** when the *first* argument is exactly `play`, `bake`, `image`, `font` or `tui`, it is now a
+  subcommand instead of a one-word banner message. `figby play` used to print "play" in large letters;
+  it now asks for a file. This is the only change to existing invocations: a later word
+  (`figby hello play`), any invocation that starts with an option (`figby -f big play`), stdin input, and
+  any binary run under the name `figlet` are parsed exactly as before. To render one of these words,
+  use `figby -- play`, `figby -A play` or `echo play | figby`.
+- Internal: the TUI's `tui/dispatch.rs` (4,600 lines) is split into `tui/dispatch/` by concern, and key
+  and mouse handling are routers over one handler per component (review A1). The playback programs
+  moved out of `main()` into `src/cli/playback.rs`. No behaviour change.
+
 ## [6.3.0] - 2026-11-12
 
 ### Fixed

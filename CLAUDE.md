@@ -10,7 +10,7 @@ it is the only copy, so update it there. The short version:
 - `figby-rs/src/` — the `figby` crate: FIGlet engine (`render.rs`, `smush.rs`,
   `font.rs`, `control.rs`, `input.rs`), CLI (`main.rs`), formats (`figmap.rs`,
   `figseq.rs`, `template.rs`), and the TUI under `tui/` (`app_state.rs`,
-  `dispatch.rs`, `event_loop.rs`, `documents.rs`, widgets, `tools/`, `dialogs/`)
+  `dispatch/`, `event_loop.rs`, `documents.rs`, widgets, `tools/`, `dialogs/`)
 - `figby-rs/figseq/` — standalone `.figseq` crate
 - `c-figlet/` — reference C FIGlet 2.2.5; `scripts/cparity-diff.sh` diffs against it
 - `docs/` — see `docs/README.md`; milestones in `docs/todo.md`

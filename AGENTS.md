@@ -135,7 +135,10 @@ figby-rs/                 # Rust workspace: the figby crate (lib + binary) and f
 ├── benches/              # criterion benches (render_bench.rs)
 ├── tests/                # Integration tests; tests/cparity/scenarios.tsv drives C parity
 └── src/
-    ├── main.rs           # CLI (FIGlet flags with C getopt semantics, image/font/play/bake modes) + TUI launch
+    ├── main.rs           # CLI (FIGlet flags with C getopt semantics, image/font modes) + TUI launch
+    ├── cli/              # Binary-only modules (not in lib.rs)
+    │   ├── subcommands.rs# `figby play|bake|image|font|tui`, mapped onto the legacy long flags
+    │   └── playback.rs   # bake / play / daemon / tmux / detach programs (native only)
     ├── lib.rs            # Crate root (re-exports)
     ├── font.rs           # FIGfont/TLF parser (lenient like C), ZIP fonts, Latin-1 fallback
     ├── font_gen.rs       # TTF/OTF → FIGfont conversion
@@ -159,7 +162,13 @@ figby-rs/                 # Rust workspace: the figby crate (lib + binary) and f
         ├── mod.rs        # Re-exports, render pipeline, shared helpers
         ├── app_state.rs  # TuiApp, EditorState/AnimationState/LightingState, IconSet, new()
         ├── event_loop.rs # run(), handle_event(), tick, async completion
-        ├── dispatch.rs   # handle_key_event/handle_mouse_event, perform_* actions (largest file)
+        ├── dispatch/     # Event routing for TuiApp (one `impl TuiApp` per file)
+        │   ├── keys.rs   #   handle_key_event: router over key_* handlers, one per component
+        │   ├── mouse.rs  #   handle_mouse_event: router over mouse_* handlers
+        │   ├── canvas_mouse.rs # Text tool and painting/selection/transform tools on the canvas
+        │   ├── global.rs #   keymap GlobalAction dispatch
+        │   ├── file_io.rs, import_export.rs # save/open, font/GIF/image/rascii import, export
+        │   ├── playback.rs, menu_actions.rs, actions.rs, lifecycle.rs # player, menus, welcome/props, undo/transitions
         ├── documents.rs  # Multi-document tabs (park/unpark live state)
         ├── overlays.rs   # Floating dialogs, quit prompt, keybindings, undo panel
         ├── canvas.rs     # ASCII canvas buffer

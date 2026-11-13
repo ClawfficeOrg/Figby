@@ -174,6 +174,24 @@ figby [OPTIONS] [MESSAGE]
 | `--bake <file.figmap>` + `--output <file.figseq>` | Bake a project into a flat frame sequence (needs `--output`) |
 | `--output <file>` / `--to-file <file>` | Write rendered text or template output to a file (atomically) instead of stdout |
 
+### Subcommands
+
+The extension programs also have subcommands. Each one does exactly what the
+long options above do, and those options keep working:
+
+| Subcommand | Same as |
+|---|---|
+| `figby play <file> [--loop] [--hold-last S] [--width N] [--inline] [--timeline] [--daemon\|--tmux [--tmux-size P]\|--detach]` | `--play`, `--play-width`, `--play-inline`, `--play-timeline`, `--play-daemon`, `--play-tmux`, `--play-tmux-size`, `--play-detach` |
+| `figby bake <file.figmap> -o <file.figseq> [--loop] [--hold-last S]` | `--bake ... --output ...` |
+| `figby image <file>... [-b] [--color] [--width N] ...` | `--image <file>` (once per file) |
+| `figby font <name> \| --file <font.ttf> [--size P] [--charset C] [-o out.flf]` | `--create-font` / `--create-font-path`, `--font-size`, `--create-font-charset`, `--output` |
+| `figby tui [--render-mode fast\|dirty]` | `--tui`, `--tui-render-mode` |
+
+A subcommand is recognised only as the **first** argument, and never when the
+binary runs as `figlet`. To render one of these five words as a banner, write
+`figby -- play`, `figby -A play` or `echo play | figby`. `figby <subcommand>
+--help` lists each subcommand's options.
+
 ### Examples
 
 ```bash

@@ -60,6 +60,8 @@ gap · 🟡 smell, drift, test gap · 🔵 suggestion
 | F12 figmap header dims | ✅ fixed in 6.2.9: the header must equal the base layer. All 20 checked-in figmaps still load (there's a test) |
 | F13 image CLI exit 0 | ✅ fixed in 6.2.9: exits 1 on any failed input or a zero width/height. The URL claim is gone from `--help` |
 | A5 figseq u16 cast | ✅ fixed in 6.2.9: `validate()` refuses dimensions above 65,535 |
+| A1 `dispatch.rs` god object | ✅ done, unreleased: `tui/dispatch/` (9 files by concern plus `canvas_mouse.rs`). `handle_key_event` is a table of 25 `key_*` handlers returning `ControlFlow`, `handle_mouse_event` a chain of `mouse_*` handlers returning `bool`. Block bodies moved verbatim; inline tests moved with their code |
+| A2 subcommands | ✅ done, unreleased: `figby play`, `bake`, `image`, `font`, `tui` (`src/cli/subcommands.rs`) fill the same `CliArgs` fields as the legacy long flags, which all still work. Only change: those five words as the *first* argument (and not run as `figlet`) are subcommands, not banner text. Playback programs moved out of `main()` into `src/cli/playback.rs` |
 | Everything else | open |
 
 Upstream `run-tests.sh` with Figby now fails only 001 and 002, the same as C
@@ -74,8 +76,9 @@ U4 (New Image title), D2 (`serde_yaml` → `serde_yaml_ng`), R5 (submodule note)
 (a02875b), `.gitattributes` LF normalisation (Windows checkouts were failing 64 parity tests),
 Windows path fix in the control-file listing test, and removal of personal host/user names from
 tracked recordings and scripts. Local gates: all test binaries pass on Windows, fmt and clippy clean.
-Still open: step 8 (A1/A2 structural, needs an agreed plan), CI on GitHub (Actions still not run),
-and the wasm32 clippy gate (target not installed on this machine).
+Step 8 (A1/A2) is done in the working tree, not committed (see the table above and CHANGELOG
+"Unreleased"). Still open: CI on GitHub (Actions still not run) and the wasm32 clippy gate (target not
+installed on this machine).
 
 ## Where we left off (2026-11-05)
 
