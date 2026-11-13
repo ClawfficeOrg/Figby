@@ -1125,12 +1125,15 @@ font = "standard"
 
     #[test]
     fn test_resolve_env_var_in_context() {
-        let result = resolve_text_value("path=${HOME}/foo", true).unwrap();
+        // HOME is unset on Windows (USERPROFILE is the equivalent), so pick the
+        // variable that exists on the current platform.
+        let var = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+        let result = resolve_text_value(&format!("path=${{{var}}}/foo"), true).unwrap();
         assert!(result.starts_with("path="), "should preserve prefix");
         assert!(result.ends_with("/foo"), "should preserve suffix");
         assert!(
             result.len() > "path=/foo".len(),
-            "should contain expanded HOME"
+            "should contain expanded {var}"
         );
     }
 

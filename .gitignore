@@ -31,9 +31,6 @@ __pycache__/
 tests.log
 figlet
 
-# Ralph stop sentinel (never commit this)
-scripts/STOP.md
-
 # Font conversion pipeline (local artifacts, not repo content)
 assets/fonts/to-convert/
 assets/fonts/converted/

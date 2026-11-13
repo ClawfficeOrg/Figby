@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Removed
+- The autonomous Ralph loop: `scripts/ralph.sh`, `scripts/ralph-monitor.sh`, `skills/ralph.md`,
+  the F-20 sandbox policy and `docs/learnings.md`. Their references in AGENTS.md, README and
+  the docs index are gone too.
+
+### Changed
+- Placeholder `/home/user` paths in `scripts/make-tui-draw-cast.py` and the timelapse driver
+  helper now resolve relative to the script, so they work from any checkout.
+- The template test for `${HOME}` expansion uses `USERPROFILE` on Windows, so
+  `cargo test` passes with HOME unset.
+
 ### Added
 - Subcommands for the extension programs: `figby play`, `figby bake`, `figby image`, `figby font` and
   `figby tui` (review A2). Each maps onto the existing long options (`--play`, `--bake`, `--image`,

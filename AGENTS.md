@@ -45,33 +45,6 @@ diff <(figlet < tests/input.txt) <(figby-rs/target/debug/figby < tests/input.txt
 printf "unexpected token \`}'" | figby-rs/target/debug/figby
 ```
 
-### Ralph Loop
-
-```bash
-# Run autonomous task loop (multi-phase from main)
-./scripts/ralph.sh
-
-# Run single task
-./scripts/ralph.sh 1.1.1
-
-# Dry run to preview
-./scripts/ralph.sh --dry-run
-
-# Time-bounded run
-./scripts/ralph.sh --minutes=30
-
-# Run until specific task
-./scripts/ralph.sh --until=1.1.3
-
-# Log session to file
-./scripts/ralph.sh --log=/tmp/figby-ralph.log
-
-# Quiet mode (suppress agent stderr)
-./scripts/ralph.sh --quiet
-```
-
-Ralph supports multi-phase loops, per-task agent selection via `Agent:`/`Difficulty:` fields in task blocks, phase completion review with auto-fix cycles, and major release (X.0) gates with RC branch creation. Stop gracefully: `kill -TERM $(cat /tmp/ralph.pid)` or `touch scripts/STOP.md`.
-
 ## Key Conventions
 
 ### Task Workflow
@@ -106,15 +79,8 @@ After completing any implementation work, do ALL of the following (or ask the us
    - One-line description per change
    ```
 6. **Check off task** in `docs/todo-v*.md`.
-7. Add entries to `docs/learnings.md` if there's anything non-obvious to preserve.
 
 **Auto mode:** do steps 1–7 without asking. **Interactive mode:** summarize + verify first, then ask "Commit, bump version, and update changelog?" before proceeding.
-
-### Memory Updates
-
-After completing any implementation work:
-1. Add insights to `docs/learnings.md`
-3. Check off the task in `docs/todo-v*.md`
 
 ### Architectural Invariants
 
@@ -195,11 +161,8 @@ assets/                   # Templates, demo images/video (figby-rs/assets/ holds
 tests/                    # Upstream-style resNNN.txt fixtures, input.txt
 scripts/
 ├── cparity-diff.sh       # Builds C FIGlet, diffs ~460 cases against figby (CI gate)
-├── regenerate-expected.sh# Regenerates tests/resNNN.txt from C FIGlet
-├── ralph.sh              # Autonomous task loop (bash)
-└── ralph-monitor.sh      # Rate-limit monitor cron
+└── regenerate-expected.sh# Regenerates tests/resNNN.txt from C FIGlet
 docs/                     # See docs/README.md for the index
 ├── todo.md               # Master todo index (milestones)
-├── learnings.md                            # Agent learnings (ralph memory/log files were removed)
 └── full-review-2026-11-04.md               # Latest full review and fix status
 ```

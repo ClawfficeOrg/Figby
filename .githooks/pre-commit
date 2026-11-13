@@ -1,8 +1,8 @@
 #!/bin/sh
-# pre-commit — real verification gate (F-20 R6, see docs/f-20-ralph-sandbox-policy.md).
+# pre-commit — real verification gate.
 #
-# Runs the same gates ralph.sh invokes explicitly before every commit. This
-# hook protects human commits too (install: `git config core.hooksPath .githooks`).
+# Runs the gates before every commit. This hook protects all commits too
+# (install: `git config core.hooksPath .githooks`).
 #
 # Fast path: docs-only commits (docs/, README.md, CHANGELOG.md) run fmt only —
 # the full cargo test suite is reserved for commits that touch source.

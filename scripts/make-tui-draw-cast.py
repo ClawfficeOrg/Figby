@@ -13,11 +13,12 @@ Then: agg assets/e2e-art/recordings/tui-draw.cast
 Requires: tmux, a built ./figby-rs/target/debug/figby.
 """
 import json
+import os
 import subprocess
 import sys
 import time
 
-REPO = "/home/user/git_repos/Figby"
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SOCK = "figbyrev"
 SESSION = "tuidraw-cast"
 BIN = "./figby-rs/target/debug/figby"

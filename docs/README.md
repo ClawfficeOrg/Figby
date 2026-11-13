@@ -1,9 +1,7 @@
 # docs/ index
 
 What each file here is, so readers can tell user docs from agent working
-files. Paths under "Agent memory and logs" are hard-coded in
-`scripts/ralph.sh`, `skills/ralph.md` and `AGENTS.md`, so they stay where
-they are.
+files.
 
 ## Start here
 
@@ -18,8 +16,7 @@ they are.
 
 [lighting-design.md](lighting-design.md),
 [particles-design.md](particles-design.md),
-[figby-tui-timelapse-storyboard.md](figby-tui-timelapse-storyboard.md),
-[f-20-ralph-sandbox-policy.md](f-20-ralph-sandbox-policy.md) (draft for sign-off)
+[figby-tui-timelapse-storyboard.md](figby-tui-timelapse-storyboard.md)
 
 ## Milestone task lists
 
@@ -60,10 +57,3 @@ next full review.
   [5.0-manual-testing-notes.md](5.0-manual-testing-notes.md),
   [4.0-manual-testing-notes.md](4.0-manual-testing-notes.md)
 
-## Agent memory and logs
-
-Working files for the autonomous loop. Not user documentation.
-
-| File | What |
-|---|---|
-| [learnings.md](learnings.md) | Surprises and gotchas |
