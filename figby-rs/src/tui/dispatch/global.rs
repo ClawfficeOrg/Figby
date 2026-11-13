@@ -733,16 +733,23 @@ mod keybind_collision_tests {
         // hidden (or "continue" instead of "quit") they sat on the wrong
         // labels. Check every rect covers the label it acts for.
         fn check(app: &mut TuiApp) {
+            let verb = if app.dialogs.pending_transition
+                == Some(crate::tui::app_state::PendingDocAction::Quit)
+            {
+                "quit"
+            } else {
+                "continue"
+            };
             let mut terminal =
                 ratatui::Terminal::new(ratatui::backend::TestBackend::new(120, 40)).unwrap();
             terminal.draw(|f| app.render(f)).unwrap();
             let buf = terminal.backend().buffer().clone();
-            for (rect, label) in app
-                .dialogs
-                .quit_confirm_buttons
-                .iter()
-                .zip(["[Y]", "[N]", "[C]"])
-            {
+            let labels = [
+                format!("[Y] Save and {verb}"),
+                format!("[N] Discard and {verb}"),
+                "[C] Cancel".to_string(),
+            ];
+            for (rect, label) in app.dialogs.quit_confirm_buttons.iter().zip(labels) {
                 if rect.width == 0 {
                     continue;
                 }
@@ -767,6 +774,151 @@ mod keybind_collision_tests {
         font_app.request_transition(crate::tui::app_state::PendingDocAction::NewFileSession);
         check(&mut font_app); // no font loaded: Save hidden, "continue" labels
         assert_eq!(font_app.dialogs.quit_confirm_buttons[0].width, 0);
+    }
+
+    /// Open the quit prompt on an unsaved image doc and render it once so
+    /// the button rects are stored.
+    fn quit_prompt_app() -> (TuiApp, ratatui::Terminal<ratatui::backend::TestBackend>) {
+        let mut app = app_not_font_editor();
+        app.editor.unsaved = true;
+        app.trigger_quit();
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(120, 40)).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
+        (app, terminal)
+    }
+
+    fn quit_mouse(
+        kind: ratatui::crossterm::event::MouseEventKind,
+        column: u16,
+        row: u16,
+    ) -> ratatui::crossterm::event::MouseEvent {
+        ratatui::crossterm::event::MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers: KeyModifiers::NONE,
+        }
+    }
+
+    /// A cell in the middle of the label text, well past the `[X]` letter.
+    fn label_middle(r: ratatui::layout::Rect) -> (u16, u16) {
+        (r.x + r.width / 2 + 2, r.y)
+    }
+
+    #[test]
+    fn test_quit_prompt_click_full_label_activates_each_button() {
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
+        let down = MouseEventKind::Down(MouseButton::Left);
+
+        // Save: no figmap path yet, so it opens Save As.
+        let (mut app, _t) = quit_prompt_app();
+        let (x, y) = label_middle(app.dialogs.quit_confirm_buttons[0]);
+        assert!(
+            x >= app.dialogs.quit_confirm_buttons[0].x + 3,
+            "past the letter"
+        );
+        app.handle_mouse_event(quit_mouse(down, x, y));
+        assert!(!app.dialogs.quit_confirm_dialog);
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
+        assert!(app.dialogs.quit_after_save);
+
+        // Discard: proceeds with the quit.
+        let (mut app, _t) = quit_prompt_app();
+        let (x, y) = label_middle(app.dialogs.quit_confirm_buttons[1]);
+        app.handle_mouse_event(quit_mouse(down, x, y));
+        assert!(!app.dialogs.quit_confirm_dialog);
+        assert!(app.ui.should_quit);
+
+        // Cancel: closes the prompt and disarms the transition.
+        let (mut app, _t) = quit_prompt_app();
+        let r = app.dialogs.quit_confirm_buttons[2];
+        app.handle_mouse_event(quit_mouse(down, r.x + r.width - 1, r.y));
+        assert!(!app.dialogs.quit_confirm_dialog);
+        assert!(!app.ui.should_quit);
+        assert_eq!(app.dialogs.pending_transition, None);
+        assert!(app.editor.unsaved);
+    }
+
+    #[test]
+    fn test_quit_prompt_hover_highlights_full_label() {
+        use ratatui::crossterm::event::MouseEventKind;
+        let (mut app, mut terminal) = quit_prompt_app();
+        let r = app.dialogs.quit_confirm_buttons[1];
+        let (x, y) = label_middle(r);
+        app.handle_mouse_event(quit_mouse(MouseEventKind::Moved, x, y));
+        assert_eq!(app.dialogs.quit_confirm_hovered, Some(1));
+        assert!(app.dialogs.quit_confirm_dialog, "hover never acts");
+        assert!(!app.ui.should_quit);
+        terminal.draw(|f| app.render(f)).unwrap();
+        let buf = terminal.backend().buffer().clone();
+        let sel = app.ctx.theme.dialog.selected_bg;
+        for cx in r.x..r.x + r.width {
+            assert_eq!(buf[(cx, r.y)].bg, sel, "whole label highlighted");
+        }
+        let other = app.dialogs.quit_confirm_buttons[2];
+        assert_ne!(buf[(other.x, other.y)].bg, sel);
+
+        // Moving off every button clears the highlight.
+        app.handle_mouse_event(quit_mouse(MouseEventKind::Moved, 0, 0));
+        assert_eq!(app.dialogs.quit_confirm_hovered, None);
+    }
+
+    #[test]
+    fn test_quit_prompt_click_outside_buttons_does_nothing() {
+        use ratatui::crossterm::event::{MouseButton, MouseEventKind};
+        let down = MouseEventKind::Down(MouseButton::Left);
+        let (mut app, _t) = quit_prompt_app();
+        let [save, discard, _] = app.dialogs.quit_confirm_buttons;
+        // The gap between Save and Discard, the row above, and far away.
+        for (x, y) in [
+            (save.x + save.width + 1, save.y),
+            (discard.x + 2, discard.y - 1),
+            (0, 0),
+        ] {
+            app.handle_mouse_event(quit_mouse(down, x, y));
+            assert!(app.dialogs.quit_confirm_dialog, "click at ({x},{y}) acted");
+        }
+        assert!(!app.ui.should_quit);
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::Idle
+        );
+        assert_eq!(
+            app.dialogs.pending_transition,
+            Some(crate::tui::app_state::PendingDocAction::Quit)
+        );
+    }
+
+    #[test]
+    fn test_quit_prompt_keys_unchanged_by_hover() {
+        use ratatui::crossterm::event::MouseEventKind;
+        // Hovering Cancel must not change what the keys do.
+        let (mut app, _t) = quit_prompt_app();
+        let (x, y) = label_middle(app.dialogs.quit_confirm_buttons[2]);
+        app.handle_mouse_event(quit_mouse(MouseEventKind::Moved, x, y));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE));
+        assert!(app.ui.should_quit, "N still discards and quits");
+
+        let (mut app, _t) = quit_prompt_app();
+        let (x, y) = label_middle(app.dialogs.quit_confirm_buttons[1]);
+        app.handle_mouse_event(quit_mouse(MouseEventKind::Moved, x, y));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(!app.dialogs.quit_confirm_dialog && !app.ui.should_quit);
+        assert_eq!(app.dialogs.pending_transition, None);
+
+        let (mut app, _t) = quit_prompt_app();
+        let (x, y) = label_middle(app.dialogs.quit_confirm_buttons[1]);
+        app.handle_mouse_event(quit_mouse(MouseEventKind::Moved, x, y));
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert!(!app.ui.should_quit, "Enter still saves, never discards");
+        assert_eq!(
+            app.dialogs.file_ops.mode,
+            crate::tui::file_ops::FileOpsMode::SaveAs
+        );
     }
 
     #[test]

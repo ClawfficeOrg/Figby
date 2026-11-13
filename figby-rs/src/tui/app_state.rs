@@ -1376,7 +1376,11 @@ pub struct DialogState {
     pub system_font: dialogs::SystemFontPickerDialog,
     pub font_import_options: dialogs::FontImportOptionsDialog,
     pub quit_confirm_dialog: bool,
+    /// Full-label hit rects of the Save / Discard / Cancel buttons, stored
+    /// each render.
     pub quit_confirm_buttons: [Rect; 3],
+    /// Button under the mouse, drawn highlighted (welcome-screen style).
+    pub quit_confirm_hovered: Option<usize>,
     pub quit_after_save: bool,
     /// Document revision captured when the current async save started.
     /// `None` when no save is in flight. On `SaveComplete`, unsaved state
@@ -1604,6 +1608,7 @@ impl TuiApp {
                 font_import_options,
                 quit_confirm_dialog: false,
                 quit_confirm_buttons: [Rect::default(); 3],
+                quit_confirm_hovered: None,
                 quit_after_save: false,
                 pending_save_revision: None,
                 pending_transition: None,

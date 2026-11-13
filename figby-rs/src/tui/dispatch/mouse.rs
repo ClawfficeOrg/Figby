@@ -62,10 +62,18 @@ impl TuiApp {
         if !self.dialogs.quit_confirm_dialog {
             return false;
         }
-        if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
-            let btns = self.dialogs.quit_confirm_buttons;
+        let pos = (mouse.column, mouse.row).into();
+        let btns = self.dialogs.quit_confirm_buttons;
+        if mouse.kind == MouseEventKind::Moved {
+            // Hover highlight over the full label, as on the welcome screen.
+            let hovered = btns.iter().position(|r| r.contains(pos));
+            if hovered != self.dialogs.quit_confirm_hovered {
+                self.dialogs.quit_confirm_hovered = hovered;
+                self.frame.dirty = true;
+            }
+        } else if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
             let can_save = self.can_save_now();
-            if can_save && btns[0].contains((mouse.column, mouse.row).into()) {
+            if can_save && btns[0].contains(pos) {
                 self.dialogs.quit_confirm_dialog = false;
                 let is_quit = self.dialogs.pending_transition == Some(PendingDocAction::Quit);
                 if is_quit {
@@ -73,12 +81,12 @@ impl TuiApp {
                 }
                 self.frame.dirty = true;
                 self.start_save();
-            } else if btns[1].contains((mouse.column, mouse.row).into()) {
+            } else if btns[1].contains(pos) {
                 // Discard & proceed — only ever from the [N] button.
                 self.dialogs.quit_confirm_dialog = false;
                 self.frame.dirty = true;
                 self.execute_pending_transition();
-            } else if btns[2].contains((mouse.column, mouse.row).into()) {
+            } else if btns[2].contains(pos) {
                 self.dialogs.quit_confirm_dialog = false;
                 self.dialogs.pending_transition = None;
                 self.frame.dirty = true;

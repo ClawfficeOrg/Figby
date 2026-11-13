@@ -206,14 +206,22 @@ impl TuiApp {
                 "continue"
             };
             let can_save = self.can_save_now();
-            let hint = if can_save {
-                format!(
-                    "  [Y] Save and {proceed_label}   [N] Discard and {proceed_label}   [C] Cancel"
-                )
-            } else {
-                format!("  [N] Discard and {proceed_label}   [C] Cancel")
-            };
-            let hint_len = hint.len() as u16;
+            // Each button is its full label; the whole label is the hit
+            // box and the hover highlight, like the welcome screen rows.
+            let labels: [Option<String>; 3] = [
+                can_save.then(|| format!("[Y] Save and {proceed_label}")),
+                Some(format!("[N] Discard and {proceed_label}")),
+                Some("[C] Cancel".to_string()),
+            ];
+            const LEAD: &str = "  ";
+            const GAP: &str = "   ";
+            let hint_len = (LEAD.len()
+                + labels
+                    .iter()
+                    .flatten()
+                    .map(|l| l.len() + GAP.len())
+                    .sum::<usize>()
+                - GAP.len()) as u16;
             let w = (hint_len + 4).min(area.width);
             let h: u16 = 7.min(area.height);
             let dialog = Rect {
@@ -233,6 +241,39 @@ impl TuiApp {
                 );
             let inner = block.inner(dialog);
             frame.render_widget(block, dialog);
+            // Lay the buttons out left to right, storing each full-label
+            // rect for mouse hit-testing so they track the label text (Save
+            // hidden, "quit" vs "continue"). A missing button gets an empty
+            // rect. Rects are clipped to the dialog's inner area.
+            let hovered = self.dialogs.quit_confirm_hovered;
+            let highlight = Style::default()
+                .fg(self.ctx.theme.dialog.highlight)
+                .bg(self.ctx.theme.dialog.selected_bg)
+                .add_modifier(Modifier::BOLD);
+            let mut spans = vec![Span::raw(LEAD)];
+            let mut rects = [Rect::default(); 3];
+            let mut col = LEAD.len() as u16;
+            for (i, label) in labels.iter().enumerate() {
+                let Some(label) = label else { continue };
+                if spans.len() > 1 {
+                    spans.push(Span::raw(GAP));
+                    col += GAP.len() as u16;
+                }
+                let style = if hovered == Some(i) {
+                    highlight
+                } else {
+                    Style::default()
+                };
+                spans.push(Span::styled(label.clone(), style));
+                rects[i] = Rect {
+                    x: inner.x + col,
+                    y: inner.y + 3,
+                    width: label.len() as u16,
+                    height: 1,
+                }
+                .intersection(inner);
+                col += label.len() as u16;
+            }
             let lines = vec![
                 Line::from(""),
                 Line::from(Span::styled(
@@ -240,24 +281,13 @@ impl TuiApp {
                     Style::default().add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
-                Line::from(hint.clone()),
+                Line::from(spans),
             ];
             frame.render_widget(Paragraph::new(lines), inner);
-            // Store button rects for mouse hit-testing, measured from the
-            // hint itself so they track the label text (Save hidden,
-            // "quit" vs "continue"). A missing button gets an empty rect.
-            let button = |label: &str| -> Rect {
-                match hint.find(label) {
-                    Some(col) => Rect {
-                        x: inner.x + col as u16,
-                        y: inner.y + 3,
-                        width: label.len() as u16,
-                        height: 1,
-                    },
-                    None => Rect::default(),
-                }
-            };
-            self.dialogs.quit_confirm_buttons = [button("[Y]"), button("[N]"), button("[C]")];
+            self.dialogs.quit_confirm_buttons = rects;
+        } else {
+            // Forget the hover so a reopened prompt starts unhighlighted.
+            self.dialogs.quit_confirm_hovered = None;
         }
     }
 }
