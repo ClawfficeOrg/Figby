@@ -673,6 +673,8 @@ impl TuiApp {
     /// Canvas cursor movement, zoom, grid
     fn key_canvas_view(&mut self, key: KeyEvent) -> KeyRoute {
         let ck = key.code;
+        // 0x0: the canvas scrolls against the viewport size recorded at the
+        // last render (`CanvasWidget::set_viewport`).
         if matches!(
             ck,
             KeyCode::Up
@@ -1320,5 +1322,61 @@ mod timeline_key_wiring_tests {
         app.animation.timeline_visible = false;
         let _ = app.handle_key_event(KeyEvent::new(KeyCode::Right, none));
         assert_eq!(app.animation.timeline_state.current_frame, 0);
+    }
+}
+
+#[cfg(test)]
+mod canvas_scroll_tests {
+    use super::*;
+    use ratatui::crossterm::event::KeyEvent;
+
+    /// Draw one frame, as the event loop does between key events.
+    fn draw(app: &mut TuiApp) {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(80, 24)).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
+    }
+
+    fn big_canvas_app() -> TuiApp {
+        let mut app = TuiApp::new();
+        app.welcome.screen.show = false;
+        app.ui.mode = AppMode::AsciiPreview;
+        app.animation.timeline_visible = false;
+        app.editor.canvas = canvas::CanvasWidget::new(300, 200);
+        app
+    }
+
+    fn cursor_on_screen(app: &TuiApp) -> bool {
+        let c = &app.editor.canvas;
+        let (sx, sy) = c.scroll_offset();
+        let (cx, cy) = c.cursor();
+        let (vw, vh) = (80, 24);
+        cx >= sx && cx < sx + vw && cy >= sy && cy < sy + vh
+    }
+
+    #[test]
+    fn arrow_keys_scroll_the_rendered_canvas_to_follow_the_cursor() {
+        let mut app = big_canvas_app();
+        draw(&mut app);
+        for _ in 0..120 {
+            let _ = app.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+            assert!(cursor_on_screen(&app));
+            draw(&mut app);
+        }
+        assert_eq!(app.editor.canvas.cursor().0, 120);
+        assert!(app.editor.canvas.scroll_offset().0 > 0, "view must scroll");
+        for _ in 0..80 {
+            let _ = app.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+            draw(&mut app);
+        }
+        assert_eq!(app.editor.canvas.cursor().1, 80);
+        assert!(app.editor.canvas.scroll_offset().1 > 0, "view must scroll");
+        for _ in 0..200 {
+            let _ = app.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+            let _ = app.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+            draw(&mut app);
+        }
+        assert_eq!(app.editor.canvas.cursor(), (0, 0));
+        assert_eq!(app.editor.canvas.scroll_offset(), (0, 0));
     }
 }

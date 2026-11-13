@@ -162,6 +162,9 @@ pub struct CanvasWidget {
     pub buffer: CanvasBuffer,
     cursor: (u16, u16),
     scroll: (u16, u16),
+    /// Size in terminal cells of the area the canvas was last drawn into
+    /// (0 until the first render).
+    viewport: (u16, u16),
     zoom: u8,
     show_grid: bool,
     pub selection_perimeter: Option<Vec<(usize, usize)>>,
@@ -180,6 +183,7 @@ impl CanvasWidget {
             buffer: CanvasBuffer::new(w, h),
             cursor: (0, 0),
             scroll: (0, 0),
+            viewport: (0, 0),
             zoom: 1,
             show_grid: false,
             selection_perimeter: None,
@@ -251,13 +255,37 @@ impl CanvasWidget {
         self.scroll
     }
 
+    /// Record the on-screen size (in terminal cells) of the area the canvas
+    /// is drawn into, then scroll so the cursor is inside it. Called by the
+    /// renderer every frame, so a resize or zoom change is picked up before
+    /// the canvas is drawn.
+    pub fn set_viewport(&mut self, width: u16, height: u16) {
+        self.viewport = (width, height);
+        self.ensure_cursor_visible(width, height);
+    }
+
+    /// Scroll by the minimum amount, per axis, that puts the cursor inside
+    /// the visible area, and keep the scroll within the buffer so no blank
+    /// margin opens up after a resize or zoom-out. A zero size means the
+    /// caller does not know the area; the last size given to
+    /// [`Self::set_viewport`] is used instead.
     pub fn ensure_cursor_visible(&mut self, inner_width: u16, inner_height: u16) {
+        let (inner_width, inner_height) = if inner_width == 0 || inner_height == 0 {
+            self.viewport
+        } else {
+            (inner_width, inner_height)
+        };
         let zoom = self.zoom.max(1) as u16;
         if inner_width == 0 || inner_height == 0 {
             return;
         }
-        let vis_w = inner_width / zoom;
-        let vis_h = inner_height / zoom;
+        let buf_w = self.buffer.width() as u16;
+        let buf_h = self.buffer.height() as u16;
+        let vis_w = (inner_width / zoom).min(buf_w);
+        let vis_h = (inner_height / zoom).min(buf_h);
+
+        self.scroll.0 = self.scroll.0.min(buf_w.saturating_sub(vis_w));
+        self.scroll.1 = self.scroll.1.min(buf_h.saturating_sub(vis_h));
 
         if self.cursor.0 < self.scroll.0 {
             self.scroll.0 = self.cursor.0;
@@ -616,6 +644,108 @@ mod tests {
         assert_eq!(restored.get(0, 0).unwrap().ch, 'A');
         assert_eq!(restored.get(1, 1).unwrap().ch, '#');
         assert_eq!(restored.get(1, 1).unwrap().height, Some(128));
+    }
+
+    fn cursor_on_screen(c: &CanvasWidget, vw: u16, vh: u16) -> bool {
+        let zoom = c.zoom_level().max(1) as u16;
+        let (sx, sy) = c.scroll_offset();
+        let (cx, cy) = c.cursor();
+        cx >= sx && cx < sx + vw / zoom && cy >= sy && cy < sy + vh / zoom
+    }
+
+    #[test]
+    fn arrow_right_past_last_visible_column_scrolls_horizontally() {
+        let mut c = CanvasWidget::new(100, 50);
+        c.set_viewport(20, 10);
+        for i in 1..=60u16 {
+            assert!(c.handle_key(KeyCode::Right, 0, 0));
+            assert_eq!(c.cursor().0, i);
+            assert!(cursor_on_screen(&c, 20, 10), "cursor off screen at x={i}");
+        }
+        // Minimum scroll: cursor sits on the last visible column.
+        assert_eq!(c.scroll_offset(), (41, 0));
+    }
+
+    #[test]
+    fn arrow_down_past_last_visible_row_scrolls_vertically() {
+        let mut c = CanvasWidget::new(100, 50);
+        c.set_viewport(20, 10);
+        for i in 1..=30u16 {
+            c.handle_key(KeyCode::Down, 0, 0);
+            assert_eq!(c.cursor().1, i);
+            assert!(cursor_on_screen(&c, 20, 10), "cursor off screen at y={i}");
+        }
+        assert_eq!(c.scroll_offset(), (0, 21));
+    }
+
+    #[test]
+    fn arrow_back_scrolls_back() {
+        let mut c = CanvasWidget::new(100, 50);
+        c.set_viewport(20, 10);
+        for _ in 0..40 {
+            c.handle_key(KeyCode::Right, 0, 0);
+            c.handle_key(KeyCode::Down, 0, 0);
+        }
+        assert_eq!(c.scroll_offset(), (21, 31));
+        // Moving back inside the view does not scroll.
+        for _ in 0..19 {
+            c.handle_key(KeyCode::Left, 0, 0);
+        }
+        for _ in 0..9 {
+            c.handle_key(KeyCode::Up, 0, 0);
+        }
+        assert_eq!(c.cursor(), (21, 31));
+        assert_eq!(c.scroll_offset(), (21, 31));
+        // Past the first visible column/row the view follows back.
+        for _ in 0..40 {
+            c.handle_key(KeyCode::Left, 0, 0);
+            c.handle_key(KeyCode::Up, 0, 0);
+            assert!(cursor_on_screen(&c, 20, 10));
+        }
+        assert_eq!(c.cursor(), (0, 0));
+        assert_eq!(c.scroll_offset(), (0, 0));
+    }
+
+    #[test]
+    fn canvas_smaller_than_pane_never_scrolls() {
+        let mut c = CanvasWidget::new(10, 5);
+        c.set_viewport(80, 24);
+        for _ in 0..20 {
+            c.handle_key(KeyCode::Right, 0, 0);
+            c.handle_key(KeyCode::Down, 0, 0);
+            assert_eq!(c.scroll_offset(), (0, 0));
+        }
+        assert_eq!(c.cursor(), (9, 4));
+    }
+
+    #[test]
+    fn zoom_keeps_cursor_visible() {
+        let mut c = CanvasWidget::new(100, 50);
+        c.set_viewport(40, 20);
+        for _ in 0..30 {
+            c.handle_key(KeyCode::Right, 0, 0);
+        }
+        assert_eq!(c.scroll_offset(), (0, 0));
+        c.handle_key(KeyCode::Char('+'), 0, 0);
+        assert!(cursor_on_screen(&c, 40, 20));
+        assert_eq!(c.scroll_offset(), (11, 0));
+    }
+
+    #[test]
+    fn resize_larger_clamps_scroll_and_keeps_cursor() {
+        let mut c = CanvasWidget::new(100, 50);
+        c.set_viewport(20, 10);
+        for _ in 0..99 {
+            c.handle_key(KeyCode::Right, 0, 0);
+        }
+        assert_eq!(c.scroll_offset(), (80, 0));
+        // Wider pane: scroll pulls back so no blank margin opens on the right.
+        c.set_viewport(60, 10);
+        assert_eq!(c.scroll_offset(), (40, 0));
+        assert!(cursor_on_screen(&c, 60, 10));
+        // Narrower pane: still follows the cursor.
+        c.set_viewport(10, 10);
+        assert!(cursor_on_screen(&c, 10, 10));
     }
 
     #[test]

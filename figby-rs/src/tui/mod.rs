@@ -624,6 +624,11 @@ impl TuiApp {
             frame.render_widget(block, canvas_area);
 
             let canvas_inner_rect = self.editor.compute_canvas_rect(inner);
+            // Keep the cursor on screen: picks up arrow-key moves, zoom
+            // and terminal resizes before the canvas is drawn.
+            self.editor
+                .canvas
+                .set_viewport(canvas_inner_rect.width, canvas_inner_rect.height);
             if canvas_inner_rect.width > 1 && canvas_inner_rect.height > 1 {
                 let w = self.editor.canvas.buffer.width();
                 let h = self.editor.canvas.buffer.height();
