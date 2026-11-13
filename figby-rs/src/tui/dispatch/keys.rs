@@ -21,6 +21,7 @@ impl TuiApp {
             Self::key_timeline_popups,
             Self::key_palette_editor,
             Self::key_menu_bar,
+            Self::key_font_editor_text_entry,
             Self::key_early_global,
             Self::key_settings,
             // Space paints. It is never a playback shortcut: timeline playback
@@ -359,6 +360,28 @@ impl TuiApp {
                 .handle_key_event(key, &mut self.ui.menu_bar_state)
         {
             return ControlFlow::Break(None);
+        }
+        ControlFlow::Continue(())
+    }
+
+    /// Font editor Overview prompts (preview text, glyph code, `/` search)
+    /// get keys before the Layers drawer, toolbox and globals. The drawer
+    /// handler runs ahead of `key_editor_modes` and is open by default on
+    /// wide terminals, so without this `m`/`M` merged or masked layers and
+    /// Enter toggled layer visibility mid-prompt. Ctrl/Alt combos pass on
+    /// (the font editor declines them), so Ctrl+S, Ctrl+Q etc. still work.
+    fn key_font_editor_text_entry(&mut self, key: KeyEvent) -> KeyRoute {
+        let fe = &self.editor.font_editor;
+        if self.ui.mode == AppMode::FontEditor
+            && fe.view == font_editor::FontEditorView::Overview
+            && (fe.preview_input_active || fe.code_input_active || fe.search_active)
+            && !key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+        {
+            if let Some(ev) = self.handle_font_editor_key(key) {
+                return ControlFlow::Break(Some(ev));
+            }
         }
         ControlFlow::Continue(())
     }

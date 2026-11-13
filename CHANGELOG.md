@@ -45,6 +45,8 @@
   the docs index are gone too.
 
 ### Fixed
+- Font editor preview-text prompt (Shift+W): typed letters such as m/M, Enter and Backspace no longer go to the open Layers drawer (merging layers, toggling masks or visibility). Every printable key is now text, Enter applies and Esc cancels.
+- New Font from System picker now responds to the mouse: the wheel scrolls the family list, clicking a family selects it, and clicking Size or Charset focuses that field (clicking the charset value cycles it). Clicks no longer fall through to the canvas behind the dialog.
 - Font editor overview: moving the glyph selection with the arrow keys now scrolls the grid so the selected glyph stays visible.
 - Font editor overview panicked ("end byte index is not a char boundary") when a glyph row held a multi-byte character such as a block/dither glyph (`░`). Rows are now cut by character.
 - Moving the cursor with the arrow keys now scrolls the editor canvas so the cursor stays on screen, horizontally and vertically, including after zoom or a terminal resize.

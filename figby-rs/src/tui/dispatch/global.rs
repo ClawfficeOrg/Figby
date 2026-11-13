@@ -369,6 +369,133 @@ mod keybind_collision_tests {
         assert_eq!(app.editor.revision, revision);
     }
 
+    /// Send a char the way a real terminal does: uppercase and shifted
+    /// symbols carry SHIFT.
+    fn type_char(app: &mut TuiApp, c: char) {
+        let mods = if c.is_ascii_uppercase() || "?{}|:\"<>!@#$%^&*()_+~".contains(c) {
+            KeyModifiers::SHIFT
+        } else {
+            KeyModifiers::NONE
+        };
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char(c), mods));
+    }
+
+    /// Overview with the drawer open on Layers, as the event loop opens it
+    /// on a wide terminal (`default_side_panel_open`).
+    fn app_overview_layers_drawer() -> TuiApp {
+        let mut app = app_font_editor_overview();
+        app.side_panel.open = true;
+        app.side_panel.active_tab = crate::tui::side_panel::TabId::Layers;
+        app
+    }
+
+    fn open_preview_and_clear(app: &mut TuiApp) {
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT));
+        assert!(app.editor.font_editor.preview_input_active);
+        for _ in 0..crate::tui::font_editor::PREVIEW_STRING.len() {
+            press(app, KeyCode::Backspace);
+        }
+        assert!(app.editor.font_editor.preview_input_buffer.is_empty());
+    }
+
+    fn assert_no_side_effects(app: &TuiApp, layers: usize, tool: crate::tui::toolbox::Tool) {
+        assert_eq!(app.editor.layer_stack.layers.len(), layers, "layer op ran");
+        assert!(
+            app.editor.layer_stack.layers.iter().all(|l| l.visible),
+            "Enter toggled layer visibility"
+        );
+        assert!(app
+            .editor
+            .layer_stack
+            .layers
+            .iter()
+            .all(|l| l.mask.is_none()));
+        assert_eq!(app.editor.toolbox.selected, tool);
+        assert_eq!(app.ui.mode, AppMode::FontEditor);
+        assert_eq!(app.editor.font_editor.view, FontEditorView::Overview);
+        assert!(!app.ui.should_quit && !app.dialogs.quit_confirm_dialog);
+        assert!(!app.dialogs.settings.settings_open);
+        assert!(!app.animation.timeline_state.keyframe_editor.open);
+        assert!(app.animation.timeline_state.tween.is_none());
+        assert!(app.side_panel.open, "drawer toggled");
+    }
+
+    #[test]
+    fn test_preview_prompt_types_compewtertutor_with_layers_drawer_open() {
+        // User report: typing "CompewterTutor" was cut off at the m (the
+        // Layers drawer merged layers) and Enter then toggled layer
+        // visibility instead of applying the text.
+        let mut app = app_overview_layers_drawer();
+        let layers = app.editor.layer_stack.layers.len();
+        let tool = app.editor.toolbox.selected;
+        open_preview_and_clear(&mut app);
+        for c in "CompewterTutorM".chars() {
+            type_char(&mut app, c);
+        }
+        assert_eq!(
+            app.editor.font_editor.preview_input_buffer,
+            "CompewterTutorM"
+        );
+        press(&mut app, KeyCode::Backspace);
+        press(&mut app, KeyCode::Enter);
+        assert!(!app.editor.font_editor.preview_input_active);
+        assert_eq!(app.editor.font_editor.preview_text, "CompewterTutor");
+        assert_no_side_effects(&app, layers, tool);
+    }
+
+    #[test]
+    fn test_preview_prompt_types_every_shortcut_char_with_layers_drawer_open() {
+        let text = "MTCSHADWQPGIOBVLENRKYU?[]0123456789 mtcshadwqpgiobvlenrkyux,.;'\\+-=/";
+        for drawer in [false, true] {
+            let mut app = if drawer {
+                app_overview_layers_drawer()
+            } else {
+                app_font_editor_overview()
+            };
+            let layers = app.editor.layer_stack.layers.len();
+            let tool = app.editor.toolbox.selected;
+            let brush = app.editor.brush.size;
+            open_preview_and_clear(&mut app);
+            let mut typed = String::new();
+            for c in text.chars() {
+                type_char(&mut app, c);
+                typed.push(c);
+                assert_eq!(
+                    app.editor.font_editor.preview_input_buffer, typed,
+                    "char {c:?} (drawer {drawer}) was not typed"
+                );
+            }
+            assert_eq!(app.editor.brush.size, brush, "[ or ] resized brush");
+            press(&mut app, KeyCode::Enter);
+            assert_eq!(app.editor.font_editor.preview_text, text);
+            if drawer {
+                assert_no_side_effects(&app, layers, tool);
+            }
+        }
+    }
+
+    #[test]
+    fn test_preview_prompt_esc_and_ctrl_combos_with_layers_drawer_open() {
+        let mut app = app_overview_layers_drawer();
+        open_preview_and_clear(&mut app);
+        type_char(&mut app, 'm');
+        // Ctrl combos stay global while the prompt is open.
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.dialogs.export_dialog.active, "Ctrl+E still exports");
+        press(&mut app, KeyCode::Esc); // closes the export dialog only
+        assert!(!app.dialogs.export_dialog.active);
+        assert!(app.editor.font_editor.preview_input_active);
+        assert_eq!(app.editor.font_editor.preview_input_buffer, "m");
+        press(&mut app, KeyCode::Esc);
+        assert!(!app.editor.font_editor.preview_input_active);
+        assert_eq!(
+            app.editor.font_editor.preview_text,
+            crate::tui::font_editor::PREVIEW_STRING
+        );
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL));
+        assert!(app.ui.should_quit || app.dialogs.quit_confirm_dialog);
+    }
+
     #[test]
     fn test_preview_prompt_esc_cancels_in_app() {
         let mut app = app_font_editor_overview();
