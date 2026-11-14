@@ -133,6 +133,9 @@ impl TuiApp {
                 if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
                     return self.perform_open_figmap(&path);
                 }
+                if path.extension().and_then(|e| e.to_str()) == Some("figseq") {
+                    return self.perform_open_figseq(&path);
+                }
                 self.perform_open();
                 Some(AppEvent::OpenRequested)
             }
@@ -340,6 +343,71 @@ impl TuiApp {
         });
     }
 
+    /// Open a baked `.figseq` in a new image tab and start inline playback of
+    /// its frames. A figseq is flat screens, not layers, so the tab is a
+    /// playback-only view; the editor canvas is left empty.
+    pub(super) fn perform_open_figseq(&mut self, path: &std::path::Path) -> Option<AppEvent> {
+        match crate::figseq::load_figseq(path) {
+            Ok(seq) => {
+                let frames = seq.cells_for_playback();
+                let delays = seq.frame_delays();
+                let fps = seq.fps_fallback();
+                if frames.is_empty() {
+                    return None;
+                }
+                let (w, h) = (seq.width as usize, seq.height as usize);
+                self.new_document(crate::tui::documents::DocumentKind::Image);
+
+                // Size the canvas to the sequence and fill the timeline with
+                // one frame per baked screen, the same way a GIF import does.
+                self.editor.canvas = canvas::CanvasWidget::new(w as u16, h as u16);
+                self.editor.layer_stack.resize_all(w, h);
+                self.animation.timeline_state.frames.clear();
+                self.animation.timeline_state.current_frame = 0;
+                self.animation
+                    .timeline_state
+                    .sync_layer_names(&self.editor.layer_stack);
+                for (i, (cells, delay)) in frames.iter().zip(delays.iter()).enumerate() {
+                    let mut buf = canvas::CanvasBuffer::new(w, h);
+                    for (y, row) in cells.iter().enumerate() {
+                        for (x, cell) in row.iter().enumerate() {
+                            buf.set(x, y, *cell);
+                        }
+                    }
+                    let thumbnail = super::super::capture_thumbnail(&buf, 8, 3);
+                    self.animation
+                        .timeline_state
+                        .add_frame(timeline::TimelineFrame {
+                            thumbnail,
+                            has_keyframe: false,
+                            label: format!("F{}", i + 1),
+                            delay: *delay,
+                            document_state: vec![buf],
+                            layer_keyframes: vec![None],
+                        });
+                }
+                if let Some(first) = self.animation.timeline_state.frames.first() {
+                    let first_buf = first.document_state[0].clone();
+                    *self.editor.layer_stack.active_layer_mut().buffer_mut() = first_buf;
+                }
+                self.editor.recomposite_canvas();
+                self.animation.timeline_state.fps = fps.max(1);
+                self.animation.loop_enabled = seq.loop_enabled;
+                self.ui.mode = AppMode::ImageEditor;
+
+                self.play_inline(frames, delays, fps, 0);
+                self.frame.dirty = true;
+                self.frame.force_full_redraw = true;
+                None
+            }
+            Err(e) => {
+                self.dialogs.file_ops.error_message = format!("Failed to load figseq: {e}");
+                self.dialogs.file_ops.mode = file_ops::FileOpsMode::Open;
+                None
+            }
+        }
+    }
+
     pub(super) fn perform_open_figmap(&mut self, path: &std::path::Path) -> Option<AppEvent> {
         // Figmaps open in a new image tab: no unsaved-changes prompt,
         // nothing is replaced.
@@ -449,6 +517,31 @@ mod open_in_new_tab_tests {
         app.welcome.screen.show = false;
         app.editor.mark_dirty();
         app
+    }
+
+    #[test]
+    fn test_open_figseq_starts_inline_playback_in_new_tab() {
+        let mut app = dirty_app();
+        let dir = std::env::temp_dir().join("figby-open-figseq-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("anim.figseq");
+        let blank = vec![vec![crate::CanvasCell::default(); 4]; 2];
+        let frames = vec![blank.clone(), blank];
+        let seq = crate::figseq::FigSeqFile::new(4, 2, frames, Some(&[5, 5]), false, 0);
+        crate::figseq::save_figseq(&seq, &path).unwrap();
+
+        app.perform_open_figseq(&path);
+        assert_eq!(app.document_count(), 2);
+        let player = app
+            .animation
+            .inline_player
+            .as_ref()
+            .expect("playback started");
+        assert_eq!(player.total_frames(), 2);
+        assert_eq!(app.animation.timeline_state.frames.len(), 2);
+        assert_eq!(app.animation.timeline_state.frames[1].delay, 5);
+        assert!(app.dialogs.file_ops.error_message.is_empty());
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

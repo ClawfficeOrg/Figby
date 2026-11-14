@@ -3,6 +3,7 @@
 ## [6.3.0] - 2026-11-12
 
 ### Added
+- Open a `.figseq` from the TUI Open dialog: it opens in a new image tab and plays its frames inline (Esc/q stops).
 - Font editor: press `W` in the overview to edit the preview strip text (session-only, up to 80 characters, empty resets to `AaBbCc123!?`). It never marks the font as modified.
 - Subcommands for the extension programs: `figby play`, `figby bake`, `figby image`, `figby font` and
   `figby tui` (review A2). Each maps onto the existing long options (`--play`, `--bake`, `--image`,

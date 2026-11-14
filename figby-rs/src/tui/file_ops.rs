@@ -476,6 +476,7 @@ impl FileOpsDialog {
                     || lower.ends_with(".tlf")
                     || lower.ends_with(".zip")
                     || lower.ends_with(".figmap")
+                    || lower.ends_with(".figseq")
             }
             // SaveAs (defect 8): zips stay hidden — saving into an
             // archive is broken downstream, and browsing one from a
@@ -492,7 +493,13 @@ impl FileOpsDialog {
     /// treat as "done", as opposed to a directory/zip to navigate into.
     fn mode_matches_extension(&self, lower: &str) -> bool {
         match self.mode {
-            FileOpsMode::Open | FileOpsMode::SaveAs => {
+            FileOpsMode::Open => {
+                lower.ends_with(".flf")
+                    || lower.ends_with(".tlf")
+                    || lower.ends_with(".figmap")
+                    || lower.ends_with(".figseq")
+            }
+            FileOpsMode::SaveAs => {
                 lower.ends_with(".flf") || lower.ends_with(".tlf") || lower.ends_with(".figmap")
             }
             FileOpsMode::ImportFont => lower.ends_with(".ttf") || lower.ends_with(".otf"),
