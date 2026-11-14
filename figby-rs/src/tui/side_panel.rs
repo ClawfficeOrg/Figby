@@ -374,7 +374,7 @@ impl SidePanel {
                 Self::render_placeholder(frame, content_area, "Libraries", &self.theme);
             }
             TabId::Effects => {
-                Self::render_placeholder(frame, content_area, "Effects", &self.theme);
+                Self::render_effects(frame, content_area, &self.theme);
             }
         }
     }
@@ -1629,6 +1629,29 @@ impl SidePanel {
         lines.push(Line::from(Span::raw(" Enter→commit block")));
         lines.push(Line::from(Span::raw(" Esc→exit editing")));
 
+        frame.render_widget(Paragraph::new(lines), area);
+    }
+
+    /// Effects tab: points at the FX Graph overlay and lists its presets.
+    fn render_effects(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
+        let dim = Style::default().fg(theme.general.secondary);
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled(
+                    " FX Graph ",
+                    Style::default()
+                        .fg(theme.general.primary)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("F9", Style::default().fg(theme.general.primary)),
+            ]),
+            Line::styled(" Read-only node graphs", dim),
+            Line::styled(" of the built-in effects:", dim),
+            Line::from(""),
+        ];
+        for preset in super::fx_script::presets::all() {
+            lines.push(Line::from(format!("  {}", preset.name)));
+        }
         frame.render_widget(Paragraph::new(lines), area);
     }
 

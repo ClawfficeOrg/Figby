@@ -18,6 +18,7 @@ impl TuiApp {
         let handlers: &[fn(&mut Self, KeyEvent) -> KeyRoute] = &[
             Self::key_keybindings_overlay,
             Self::key_quit_prompt,
+            Self::key_fx_graph,
             Self::key_inline_player,
             Self::key_modal_dialogs,
             Self::key_timeline_popups,
@@ -88,6 +89,18 @@ impl TuiApp {
             return ControlFlow::Break(None);
         }
         ControlFlow::Continue(())
+    }
+
+    /// FX Graph overlay: modal while open. Esc/q/F9 close it, arrows pick a
+    /// preset, `s` toggles the script pane; every other key is swallowed.
+    fn key_fx_graph(&mut self, key: KeyEvent) -> KeyRoute {
+        if !self.dialogs.fx_graph.open {
+            return ControlFlow::Continue(());
+        }
+        if self.dialogs.fx_graph.handle_key(key.code) {
+            self.frame.dirty = true;
+        }
+        ControlFlow::Break(None)
     }
 
     /// Unsaved-changes dialog: intercept all keys before anything else.

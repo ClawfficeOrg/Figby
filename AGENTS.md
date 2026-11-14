@@ -146,6 +146,7 @@ figby-rs/                 # Rust workspace: the figby crate (lib + binary) and f
         ├── file_ops.rs   # Open/Save dialogs, recent files
         ├── layout.rs, theme.rs, keymap.rs, events.rs, menu.rs
         ├── welcome.rs, fx.rs        # Welcome screen and its tachyonfx fade
+        ├── fx_script/    # FxGraph IR, DSL compile, presets, F9 FX Graph overlay (rataflow)
         ├── lighting.rs, light_panel.rs
         ├── timeline.rs, player.rs, particles.rs
         ├── side_panel.rs, props_panel.rs, status.rs (canvas settings), undo.rs, undo_panel.rs

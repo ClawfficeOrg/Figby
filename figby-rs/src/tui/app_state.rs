@@ -11,9 +11,10 @@ use std::time::{Duration, Instant};
 
 use super::{
     brush, canvas, capture_thumbnail, dialogs, documents, export, file_ops, font_editor, fx,
-    image_editor, layers, layout, light_panel, lighting, palette, palette_editor, particles,
-    player, status, theme, timeline, toolbox, tools, undo, undo_panel, welcome, LightPanel,
-    MenuBar, MenuBarState, PropsPanel, PropsPanelMode, RenderMode, SidePanel, ThrobberState, Tool,
+    fx_script, image_editor, layers, layout, light_panel, lighting, palette, palette_editor,
+    particles, player, status, theme, timeline, toolbox, tools, undo, undo_panel, welcome,
+    LightPanel, MenuBar, MenuBarState, PropsPanel, PropsPanelMode, RenderMode, SidePanel,
+    ThrobberState, Tool,
 };
 use crate::config;
 
@@ -1373,6 +1374,8 @@ pub struct DialogState {
     pub new_image: dialogs::NewImageDialog,
     pub system_font: dialogs::SystemFontPickerDialog,
     pub font_import_options: dialogs::FontImportOptionsDialog,
+    /// Read-only FX Graph overlay (F9).
+    pub fx_graph: fx_script::FxGraphView,
     pub quit_confirm_dialog: bool,
     /// Full-label hit rects of the Save / Discard / Cancel buttons, stored
     /// each render.
@@ -1604,6 +1607,7 @@ impl TuiApp {
                 new_image,
                 system_font,
                 font_import_options,
+                fx_graph: fx_script::FxGraphView::new(),
                 quit_confirm_dialog: false,
                 quit_confirm_buttons: [Rect::default(); 3],
                 quit_confirm_hovered: None,

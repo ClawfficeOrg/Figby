@@ -9,6 +9,12 @@
   `figby tui` (review A2). Each maps onto the existing long options (`--play`, `--bake`, `--image`,
   `--create-font`/`--create-font-path`, `--tui` and their modifiers), runs the same code and exits with
   the same status. All existing options keep working unchanged; `figby --help` lists the subcommands.
+- TUI: F9 opens a read-only **FX Graph** view of the built-in tachyonfx effects (intro, app fade-in,
+  welcome fade, sweep, dissolve, coalesce, pulse). Each preset is drawn as a node graph with the
+  tachyonfx DSL script it compiles to beside it, plus a compile check. Up/Down picks a preset, `s`
+  toggles the script pane, Esc/q/F9 closes. The Effects side-panel tab now points at it. Editing graphs
+  comes later (docs/fx-scripting-plan.md). New dependency: `rataflow` (=0.1.0, MIT) behind the default
+  `fx-graph` cargo feature; building with `--no-default-features` shows an outline instead.
 
 ### Changed
 - Font editor: the toolbox and palette column is shown only while a glyph is open in the character editor, so the glyph overview, header, smush and transform views use the full width. The side drawer starts closed in the font editor and no longer offers the Layers tab there (image mode is unchanged).

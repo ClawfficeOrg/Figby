@@ -1,6 +1,8 @@
 # FX Scripting Plan (text scripts and a node-graph editor)
 
-Status: **proposal**, written 2026-11-13. Nothing here is implemented yet.
+Status: **proposal**, written 2026-11-13. Phase 4 (read-only node graph) is
+implemented, done first because the node-graph mode was asked for first;
+phases 0-3 and 5-6 are not started. See the phase 4 note in section 5.
 Scope: two new ways to drive the tachyonfx effects in Figby's TUI:
 
 1. **Script mode**: a text script that composes and runs effects against the
@@ -292,6 +294,15 @@ target. Show inline error highlighting from `DslParseError::context()`.
 **Phase 4: node graph (read-only).** Build the `FxGraph` IR and graph-to-DSL
 emitter, then render the IR with rataflow in a full-screen "FX Graph"
 overlay. Add a "view as script" pane.
+
+> Status 2026-11-13: **done** (first, ahead of phases 0-3). `src/tui/fx_script/`
+> holds the IR (`graph.rs`), DSL compile with target bindings (`compile.rs`),
+> preset graphs (`presets.rs`) and the F9 overlay (`graph_view.rs`).
+> rataflow `=0.1.0` (MIT, ratatui `^0.30`, one ratatui in the tree) sits
+> behind the default `fx-graph` feature. Effect nodes carry their
+> parameters inline; separate Value nodes wait for phase 5. The overlay only
+> shows presets: loading or saving graph files is phase 5, and running an
+> effect from the graph is phase 1.
 
 **Phase 5: node graph editing.** Add, delete and connect nodes, and edit
 parameters in the Props panel. Validate connections. Add undo and redo

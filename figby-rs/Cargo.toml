@@ -31,6 +31,9 @@ font-kit = "0.14.3"
 pathfinder_geometry = "0.5"
 tachyonfx = { version = "0.25", features = ["std-duration"] }
 rand = "0.9"
+# Node-graph view for the FX graph (docs/fx-scripting-plan.md section 4).
+# Pinned exactly: 0.1, single maintainer. Optional behind the fx-graph feature.
+rataflow = { version = "=0.1.0", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ratatui = { version = "0.30.1", default-features = false }
@@ -47,6 +50,11 @@ criterion = "0.5"
 lto = true
 codegen-units = 1
 opt-level = 3
+
+[features]
+default = ["fx-graph"]
+# Read-only node-graph view of FX graphs in the TUI Effects tab (native only).
+fx-graph = ["dep:rataflow"]
 
 [lib]
 name = "figby_lib"

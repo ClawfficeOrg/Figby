@@ -23,6 +23,7 @@ pub mod export;
 pub mod file_ops;
 pub mod font_editor;
 pub mod fx;
+pub mod fx_script;
 pub mod image_editor;
 pub mod keymap;
 pub mod layers;

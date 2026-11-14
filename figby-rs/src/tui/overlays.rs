@@ -197,6 +197,13 @@ impl TuiApp {
                 .render(frame, frame.area(), &self.ctx.theme);
         }
 
+        // FX Graph overlay (F9): full frame, below only the unsaved-changes
+        // prompt.
+        if self.dialogs.fx_graph.open {
+            let area = frame.area();
+            self.dialogs.fx_graph.render(frame, area, &self.ctx.theme);
+        }
+
         // Unsaved-changes dialog
         if self.dialogs.quit_confirm_dialog {
             let area = frame.area();

@@ -72,6 +72,11 @@ impl TuiApp {
                 self.frame.dirty = true;
                 None
             }
+            GA::ToggleFxGraph => {
+                self.dialogs.fx_graph.toggle();
+                self.frame.dirty = true;
+                None
+            }
             GA::ToggleTimeline => {
                 self.animation.timeline_visible = !self.animation.timeline_visible;
                 self.frame.dirty = true;

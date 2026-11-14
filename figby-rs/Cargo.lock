@@ -914,6 +914,7 @@ dependencies = [
  "proptest",
  "rand 0.9.5",
  "rascii_art",
+ "rataflow",
  "ratatui",
  "ratzilla",
  "serde",
@@ -2051,6 +2052,16 @@ dependencies = [
  "clap",
  "image",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "rataflow"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37bbb54f8b326976a8ebc3efb0f6937325fb68a267d121eb6ef6803429f2f113"
+dependencies = [
+ "ratatui",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
