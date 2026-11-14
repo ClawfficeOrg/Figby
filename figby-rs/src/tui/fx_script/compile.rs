@@ -6,8 +6,9 @@
 //! filesystem), per the wasm note in docs/fx-scripting-plan.md section 6.
 
 use ratatui::layout::Rect;
-use tachyonfx::dsl::EffectDsl;
 use tachyonfx::Effect;
+
+use super::runtime::figby_dsl;
 
 /// Regions bound as DSL variables before compiling. A region Figby does not
 /// have right now (no selection, say) is bound as an empty `Rect`, so a
@@ -76,9 +77,10 @@ impl std::fmt::Display for FxCompileError {
 
 impl std::error::Error for FxCompileError {}
 
-/// Compile one DSL expression with `targets` bound.
+/// Compile one DSL expression with `targets` bound. Figby's custom effects
+/// (`glitch`) are registered.
 pub fn compile(src: &str, targets: &FxTargets) -> Result<Effect, FxCompileError> {
-    let dsl = EffectDsl::new();
+    let dsl = figby_dsl();
     let mut compiler = dsl.compiler();
     for (name, rect) in targets.bindings() {
         compiler = compiler.bind(name, rect);

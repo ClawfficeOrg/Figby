@@ -77,6 +77,10 @@ impl TuiApp {
                 self.frame.dirty = true;
                 None
             }
+            GA::RunEffect => {
+                self.open_fx_prompt();
+                None
+            }
             GA::ToggleTimeline => {
                 self.animation.timeline_visible = !self.animation.timeline_visible;
                 self.frame.dirty = true;

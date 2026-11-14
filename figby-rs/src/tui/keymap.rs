@@ -19,6 +19,7 @@ pub enum GlobalAction {
     OpenTweenPanel,
     PlayAnimation,
     ToggleFxGraph,
+    RunEffect,
     CycleTabPrev,
     CycleTabNext,
     DocNext,
@@ -133,6 +134,11 @@ pub static GLOBAL_DISPATCH: &[KeyDispatch] = &[
         modifiers: KeyModifiers::NONE,
         key_code: KeyCode::F(9),
         action: GlobalAction::ToggleFxGraph,
+    },
+    KeyDispatch {
+        modifiers: KeyModifiers::NONE,
+        key_code: KeyCode::F(7),
+        action: GlobalAction::RunEffect,
     },
     // Side-panel tab cycling (Alt+arrows)
     KeyDispatch {
@@ -359,6 +365,11 @@ pub const KEYMAP: &[KeyBinding] = &[
         keys: "F9",
         scope: Scope::Global,
         description: "Toggle FX Graph view (read-only effect graphs)",
+    },
+    KeyBinding {
+        keys: "F7",
+        scope: Scope::Global,
+        description: "Run effect… (one-line DSL or preset over a target)",
     },
     KeyBinding {
         keys: "Ctrl+K",

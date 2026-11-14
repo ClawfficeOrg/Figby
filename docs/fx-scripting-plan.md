@@ -281,6 +281,21 @@ and runs it in a `manual` slot. Show compile errors in the status bar with
 line and column. Add a few built-in presets (`fade-in`, `sweep`, `dissolve`,
 `coalesce`, `glitch`) and the custom `glitch` registration.
 
+> Status 2026-11-14: **done**, with the minimum of phase 0. `fx_script/runtime.rs`
+> holds one `EffectManager<FxSlot>` (slot `Manual`), ticked last in
+> `TuiApp::render` and added to the `Dirty` redraw condition (plus one settle
+> frame after an effect ends). `WelcomeFx`/`AppFadeIn` still run in their own
+> fields; porting them is left for phase 0 proper. F7 / View > Run Effect…
+> opens `fx_script/prompt.rs`; `dispatch/fx_run.rs` binds the targets from
+> the last frame's layout (selection and `layer_N` mapped through canvas
+> scroll and zoom; `layer_N` is the bounding box of the layer's non-blank
+> cells), compiles and runs. Errors show as `fx line:column: message` in the
+> status bar. `glitch(ms)` is registered in `figby_dsl()` and is also an
+> `FxEffect::Glitch` leaf, so the `fade-in` and `glitch` presets live in
+> `presets.rs` with the others and show in F9. The glitch pattern depends
+> only on cell position and elapsed effect time (deterministic for a fixed
+> `dt`). Not done: the "rasterize an effect to cell frames" addition below.
+
 **Phase 2: script files, sequencing and triggers.** Load `.figfx.toml`
 (multiple named effects, triggers, slots). Open it from the Effects
 side-panel tab, which lists effects with play and stop buttons. Add

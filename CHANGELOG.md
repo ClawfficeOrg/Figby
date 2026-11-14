@@ -9,12 +9,21 @@
   `figby tui` (review A2). Each maps onto the existing long options (`--play`, `--bake`, `--image`,
   `--create-font`/`--create-font-path`, `--tui` and their modifiers), runs the same code and exits with
   the same status. All existing options keep working unchanged; `figby --help` lists the subcommands.
-- TUI: F9 opens a read-only **FX Graph** view of the built-in tachyonfx effects (intro, app fade-in,
-  welcome fade, sweep, dissolve, coalesce, pulse). Each preset is drawn as a node graph with the
+- TUI: F9 opens a read-only **FX Graph** view of the built-in tachyonfx effects (intro, app fade-in, fade-in,
+  welcome fade, sweep, dissolve, coalesce, glitch, pulse). Each preset is drawn as a node graph with the
   tachyonfx DSL script it compiles to beside it, plus a compile check. Up/Down picks a preset, `s`
   toggles the script pane, Esc/q/F9 closes. The Effects side-panel tab now points at it. Editing graphs
   comes later (docs/fx-scripting-plan.md). New dependency: `rataflow` (=0.1.0, MIT) behind the default
   `fx-graph` cargo feature; building with `--no-default-features` shows an outline instead.
+- TUI: F7 (or View > Run Effect…) opens a one-line **Run effect** prompt. Type a tachyonfx DSL
+  expression, such as `fx::dissolve((400, QuadOut)).with_area(selection)`, or a preset name
+  (`fade-in`, `sweep`, `dissolve`, `coalesce`, `glitch`; Up/Down picks one, Tab expands it to its DSL).
+  Enter runs it over the screen. Targets bound for `.with_area(..)`: `canvas`, `screen`, `selection`,
+  `layer_1`..`layer_N` (each layer's drawn cells), `toolbox`, `side_panel`, `status`. A compile error
+  stays in the prompt with the cursor on the error column and shows as `fx line:column: message` in the
+  status bar. `fx::glitch(ms)` is a Figby effect registered with the DSL (tachyonfx has none). Effects
+  run in a slot-keyed tachyonfx `EffectManager`, so running a new one replaces the last; they change
+  only what is drawn, never the document.
 
 ### Changed
 - Font editor: the toolbox and palette column is shown only while a glyph is open in the character editor, so the glyph overview, header, smush and transform views use the full width. The side drawer starts closed in the font editor and no longer offers the Layers tab there (image mode is unchanged).

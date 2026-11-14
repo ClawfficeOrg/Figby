@@ -1376,6 +1376,8 @@ pub struct DialogState {
     pub font_import_options: dialogs::FontImportOptionsDialog,
     /// Read-only FX Graph overlay (F9).
     pub fx_graph: fx_script::FxGraphView,
+    /// "Run effect…" one-line DSL prompt (F7).
+    pub fx_prompt: fx_script::FxPrompt,
     pub quit_confirm_dialog: bool,
     /// Full-label hit rects of the Save / Discard / Cancel buttons, stored
     /// each render.
@@ -1414,6 +1416,9 @@ pub struct FrameState {
     pub last_frame_time: Instant,
     pub delta_time: Duration,
     pub fx_last_tick: Instant,
+    /// Slot-keyed tachyonfx effect manager (scripted effects), ticked after
+    /// everything else draws.
+    pub effects: fx_script::FxRuntime,
 }
 
 /// UI-navigation/mode/chrome flags.
@@ -1608,6 +1613,7 @@ impl TuiApp {
                 system_font,
                 font_import_options,
                 fx_graph: fx_script::FxGraphView::new(),
+                fx_prompt: fx_script::FxPrompt::new(),
                 quit_confirm_dialog: false,
                 quit_confirm_buttons: [Rect::default(); 3],
                 quit_confirm_hovered: None,
@@ -1677,6 +1683,7 @@ impl TuiApp {
                 last_frame_time: Instant::now(),
                 delta_time: Duration::ZERO,
                 fx_last_tick: Instant::now(),
+                effects: fx_script::FxRuntime::new(),
             },
             ui: UiState {
                 mode: AppMode::FontEditor,

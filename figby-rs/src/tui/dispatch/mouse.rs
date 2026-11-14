@@ -15,6 +15,7 @@ impl TuiApp {
             // The FX Graph overlay covers the frame and is read-only, so it
             // swallows the mouse rather than let clicks paint underneath.
             || self.dialogs.fx_graph.open
+            || self.dialogs.fx_prompt.open
             || self.mouse_menu_bar(mouse)
             || self.mouse_doc_tabs(mouse)
             || self.mouse_welcome(mouse)

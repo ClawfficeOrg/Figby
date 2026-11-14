@@ -18,6 +18,7 @@ use super::{capture_thumbnail, rotate_drag_steps};
 mod actions;
 mod canvas_mouse;
 mod file_io;
+mod fx_run;
 mod global;
 mod import_export;
 mod keys;

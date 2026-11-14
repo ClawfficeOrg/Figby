@@ -204,6 +204,12 @@ impl TuiApp {
             self.dialogs.fx_graph.render(frame, area, &self.ctx.theme);
         }
 
+        // "Run effect…" prompt (F7).
+        if self.dialogs.fx_prompt.open {
+            let area = frame.area();
+            self.dialogs.fx_prompt.render(frame, area, &self.ctx.theme);
+        }
+
         // Unsaved-changes dialog
         if self.dialogs.quit_confirm_dialog {
             let area = frame.area();

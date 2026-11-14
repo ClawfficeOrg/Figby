@@ -9,6 +9,9 @@ use unicode_width::UnicodeWidthStr;
 use super::super::theme::Theme;
 use super::super::AppMode;
 
+/// Longest status message shown, in chars.
+const MESSAGE_MAX: usize = 72;
+
 struct StatusItem<'a> {
     spans: Vec<Span<'a>>,
     width: u16,
@@ -39,6 +42,9 @@ pub struct StatusBarWidget<'a> {
     canvas_size: Option<(u16, u16)>,
     brush_size: Option<u8>,
     brush_shape: Option<&'a str>,
+    /// Transient message (an fx compile error, say) and whether it is an
+    /// error.
+    message: Option<(&'a str, bool)>,
 }
 
 impl<'a> StatusBarWidget<'a> {
@@ -86,7 +92,23 @@ impl<'a> StatusBarWidget<'a> {
             canvas_size: None,
             brush_size: None,
             brush_shape: None,
+            message: None,
         }
+    }
+
+    /// [`Self::with_message`] when `message` is `Some`.
+    pub fn with_message_opt(self, message: Option<(&'a str, bool)>) -> Self {
+        match message {
+            Some((text, is_error)) => self.with_message(text, is_error),
+            None => self,
+        }
+    }
+
+    /// Show `text` after the cursor position; errors use the theme's error
+    /// colour. Kept when the bar is narrow, but cut to fit.
+    pub fn with_message(mut self, text: &'a str, is_error: bool) -> Self {
+        self.message = Some((text, is_error));
+        self
     }
 
     pub fn with_canvas_size(mut self, width: u16, height: u16) -> Self {
@@ -162,6 +184,22 @@ impl<'a> StatusBarWidget<'a> {
             ))],
             true,
         ));
+
+        if let Some((text, is_error)) = self.message {
+            let color = if is_error {
+                self.theme.general.error
+            } else {
+                self.theme.general.primary
+            };
+            let cut: String = text.chars().take(MESSAGE_MAX).collect();
+            items.push(Self::make_item(
+                vec![Span::styled(
+                    format!(" {cut} "),
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
+                )],
+                true,
+            ));
+        }
 
         let zoom_icon = self.icon("status_zoom", "Z");
         items.push(Self::make_item(

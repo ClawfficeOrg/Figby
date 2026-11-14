@@ -287,6 +287,11 @@ pub enum FxEffect {
     Sleep {
         ms: u32,
     },
+    /// Figby's own `glitch(ms)`, registered with the DSL in
+    /// `fx_script::runtime` (tachyonfx 0.25 has no glitch constructor).
+    Glitch {
+        ms: u32,
+    },
 }
 
 impl FxEffect {
@@ -304,6 +309,7 @@ impl FxEffect {
             FxEffect::SweepIn { .. } => "sweep_in",
             FxEffect::SweepOut { .. } => "sweep_out",
             FxEffect::Sleep { .. } => "sleep",
+            FxEffect::Glitch { .. } => "glitch",
         }
     }
 
@@ -340,7 +346,7 @@ impl FxEffect {
                 color.dsl(),
                 timer.dsl(),
             ],
-            FxEffect::Sleep { ms } => vec![ms.to_string()],
+            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => vec![ms.to_string()],
         }
     }
 
@@ -374,7 +380,7 @@ impl FxEffect {
                 timer,
                 ..
             } => format!("{} {} {}", motion.dsl_name(), color.name(), timer.summary()),
-            FxEffect::Sleep { ms } => format!("{ms}ms"),
+            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => format!("{ms}ms"),
         }
     }
 
@@ -391,7 +397,7 @@ impl FxEffect {
             | FxEffect::Coalesce { timer }
             | FxEffect::SweepIn { timer, .. }
             | FxEffect::SweepOut { timer, .. } => u64::from(timer.ms),
-            FxEffect::Sleep { ms } => u64::from(ms),
+            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => u64::from(ms),
         }
     }
 }

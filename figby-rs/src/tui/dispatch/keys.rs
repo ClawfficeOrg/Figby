@@ -19,6 +19,7 @@ impl TuiApp {
             Self::key_keybindings_overlay,
             Self::key_quit_prompt,
             Self::key_fx_graph,
+            Self::key_fx_prompt,
             Self::key_inline_player,
             Self::key_modal_dialogs,
             Self::key_timeline_popups,

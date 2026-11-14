@@ -72,6 +72,18 @@ pub use toolbox::Tool;
 
 impl TuiApp {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
+        let area = frame.area();
+        self.frame.effects.layout = fx_script::runtime::FxScreenLayout {
+            screen: area,
+            ..Default::default()
+        };
+        self.render_frame(frame);
+        // Scripted effects run last, over everything drawn this frame.
+        let dt = self.frame.delta_time;
+        self.frame.effects.tick(dt, frame.buffer_mut(), area);
+    }
+
+    fn render_frame(&mut self, frame: &mut Frame<'_>) {
         self.sync_side_panel_mode();
         self.sync_font_char_owner();
         self.check_async_completion();
@@ -125,6 +137,13 @@ impl TuiApp {
         // same layout through `frame_layout`. The toolbox column is hidden
         // in the font editor outside the glyph character editor.
         let fl = self.frame_layout(frame.area());
+        {
+            let l = &mut self.frame.effects.layout;
+            l.canvas = fl.canvas;
+            l.toolbox = fl.toolbox_full.unwrap_or_default();
+            l.side_panel = fl.right_panel.unwrap_or_default();
+            l.status = fl.status;
+        }
 
         // --- Zen mode: canvas only, hint overlay ---
         if self.ui.zen_mode {
@@ -433,7 +452,14 @@ impl TuiApp {
                 self.editor.canvas.buffer.height() as u16,
             )
             .with_brush(self.editor.brush.size, self.editor.brush.shape.name())
-            .with_lighting(lighting_active, light_type, light_intensity),
+            .with_lighting(lighting_active, light_type, light_intensity)
+            .with_message_opt(
+                self.frame
+                    .effects
+                    .status
+                    .as_ref()
+                    .map(|s| (s.text.as_str(), s.is_error)),
+            ),
             fl.status,
         );
 
@@ -615,6 +641,7 @@ impl TuiApp {
             frame.render_widget(block, canvas_area);
 
             let canvas_inner_rect = self.editor.compute_canvas_rect(inner);
+            self.frame.effects.layout.canvas = canvas_inner_rect;
             // Keep the cursor on screen: picks up arrow-key moves, zoom
             // and terminal resizes before the canvas is drawn.
             self.editor

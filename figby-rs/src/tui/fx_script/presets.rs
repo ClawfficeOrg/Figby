@@ -9,6 +9,11 @@ use super::graph::{
     FxTimer,
 };
 
+/// Presets offered by "Run effect…" (F7), in list order. Each names a
+/// graph in [`all`], so the runner and the F9 graph view share one
+/// definition per effect.
+pub const RUNNABLE: &[&str] = &["fade-in", "sweep", "dissolve", "coalesce", "glitch"];
+
 /// A named built-in graph.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FxPreset {
@@ -36,6 +41,15 @@ pub fn all() -> Vec<FxPreset> {
             graph: welcome_fade(),
         },
         FxPreset {
+            name: "fade-in",
+            description: "canvas fades in from black",
+            graph: single_on_canvas(FxEffect::FadeFrom {
+                bg: FxColor::Black,
+                fg: FxColor::Black,
+                timer: FxTimer::new(600, FxInterp::QuadOut),
+            }),
+        },
+        FxPreset {
             name: "sweep",
             description: "left-to-right wipe over the canvas",
             graph: single_on_canvas(FxEffect::SweepIn {
@@ -61,11 +75,21 @@ pub fn all() -> Vec<FxPreset> {
             }),
         },
         FxPreset {
+            name: "glitch",
+            description: "canvas cells flicker and corrupt (Figby glitch)",
+            graph: single_on_canvas(FxEffect::Glitch { ms: 600 }),
+        },
+        FxPreset {
             name: "pulse",
             description: "text pulses cyan three times",
             graph: pulse(),
         },
     ]
+}
+
+/// The preset called `name`, if any.
+pub fn find(name: &str) -> Option<FxPreset> {
+    all().into_iter().find(|p| p.name == name)
 }
 
 fn single_on_canvas(effect: FxEffect) -> FxGraph {
@@ -187,6 +211,23 @@ mod tests {
                 .unwrap_or_else(|e| panic!("{}: {e}", p.name));
             compile(&dsl, &targets).unwrap_or_else(|e| panic!("{}: {e}\n{dsl}", p.name));
         }
+    }
+
+    #[test]
+    fn every_runnable_name_is_a_preset() {
+        for name in RUNNABLE {
+            assert!(find(name).is_some(), "{name}");
+        }
+    }
+
+    #[test]
+    fn glitch_preset_emits_the_registered_effect() {
+        let dsl = find("glitch").unwrap().graph.to_dsl().unwrap();
+        assert_eq!(
+            dsl,
+            "fx::glitch(600)
+.with_area(canvas)"
+        );
     }
 
     #[test]

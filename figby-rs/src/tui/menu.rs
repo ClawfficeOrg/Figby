@@ -38,6 +38,7 @@ pub enum MenuAction {
     ViewToggleSidePanel,
     ViewLoadBuiltinPalette(&'static str),
     ViewPaletteEditor,
+    ViewRunEffect,
     LayerNew,
     LayerDuplicate,
     LayerDelete,
@@ -503,6 +504,11 @@ fn build_menus() -> Vec<TopMenu> {
                     "Palette Editor",
                     s("Ctrl+Shift+P"),
                     MenuAction::ViewPaletteEditor,
+                ),
+                (
+                    "Run Effect…",
+                    g(GlobalAction::RunEffect),
+                    MenuAction::ViewRunEffect,
                 ),
                 (
                     "Palette: Grayscale",

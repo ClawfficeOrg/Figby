@@ -86,6 +86,7 @@ impl TuiApp {
                     self.frame.dirty
                         || self.welcome.fade_in.is_some()
                         || self.welcome.fx.is_some()
+                        || self.frame.effects.needs_redraw()
                         || welcome_anim_due
                         || inline_playing_due
                         || (self.ctx.throbber.is_active()
