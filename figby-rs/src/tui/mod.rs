@@ -73,6 +73,7 @@ pub use toolbox::Tool;
 impl TuiApp {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
         let area = frame.area();
+        self.frame.screen = Some(area);
         self.frame.effects.layout = fx_script::runtime::FxScreenLayout {
             screen: area,
             ..Default::default()

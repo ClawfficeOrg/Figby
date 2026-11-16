@@ -1416,6 +1416,9 @@ pub struct FrameState {
     pub last_frame_time: Instant,
     pub delta_time: Duration,
     pub fx_last_tick: Instant,
+    /// Area of the last drawn frame. Mouse hit-tests use it so they match
+    /// what is on screen, not whatever the terminal reports at click time.
+    pub screen: Option<ratatui::layout::Rect>,
     /// Slot-keyed tachyonfx effect manager (scripted effects), ticked after
     /// everything else draws.
     pub effects: fx_script::FxRuntime,
@@ -1683,6 +1686,7 @@ impl TuiApp {
                 last_frame_time: Instant::now(),
                 delta_time: Duration::ZERO,
                 fx_last_tick: Instant::now(),
+                screen: None,
                 effects: fx_script::FxRuntime::new(),
             },
             ui: UiState {

@@ -255,8 +255,13 @@ impl TuiApp {
     /// Screen layout the mouse handlers hit-test against (same computation
     /// the renderer uses).
     fn mouse_frame_layout(&self) -> layout::FrameLayout {
-        let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
-        self.frame_layout(Rect::new(0, 0, cols, rows))
+        // Prefer the area last drawn; the terminal size can differ from it
+        // (and is unavailable under test).
+        let area = self.frame.screen.unwrap_or_else(|| {
+            let (cols, rows) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
+            Rect::new(0, 0, cols, rows)
+        });
+        self.frame_layout(area)
     }
 
     /// Side panel tab label click.
@@ -684,6 +689,10 @@ mod layer_group_mouse_tests {
         }
         stack.active = 2;
         stack.create_group(&[0, 1], "G".to_string()).unwrap();
+        // Render once so hit-tests use a real frame area.
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(80, 24)).unwrap();
+        terminal.draw(|f| app.render(f)).unwrap();
         app
     }
 

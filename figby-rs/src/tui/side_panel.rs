@@ -180,18 +180,26 @@ impl SidePanel {
         self.active_tab = self.active_tab.step(self.tabs(), forward);
     }
 
+    /// Header tab hit boxes. Uses the same geometry as `render` (the inner
+    /// area, tab width `inner.width - 2` split evenly) so a click lands on
+    /// the tab that is drawn under it.
     pub fn tab_rects(&self, area: Rect) -> Vec<Rect> {
         let tab_count = self.tabs().len() as u16;
-        if tab_count == 0 || area.width < 2 {
+        let inner = Block::default().borders(Borders::ALL).inner(area);
+        if tab_count == 0 || inner.width < 4 || inner.height < 3 {
             return Vec::new();
         }
-        let tab_w = (area.width - 2).max(tab_count) / tab_count;
+        let tab_w = inner.width.saturating_sub(2) / tab_count;
+        let right = inner.x + inner.width;
         (0..tab_count)
-            .map(|i| Rect {
-                x: area.x + 1 + i * tab_w,
-                y: area.y + 1,
-                width: tab_w,
-                height: 1,
+            .map(|i| {
+                let x = inner.x + i * tab_w;
+                Rect {
+                    x,
+                    y: inner.y,
+                    width: tab_w.min(right.saturating_sub(x)),
+                    height: 1,
+                }
             })
             .collect()
     }
@@ -1648,6 +1656,29 @@ impl SidePanel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_tab_hitboxes_match_drawn_tabs() {
+        // Tab hit boxes must cover exactly the columns render draws each
+        // tab into: a click just right of tab i's drawn span must not
+        // select tab i.
+        let panel = SidePanel::new(BTreeMap::new(), Theme::default());
+        let area = Rect::new(0, 0, 40, 20);
+        let inner = Block::default().borders(Borders::ALL).inner(area);
+        let tabs = panel.tabs();
+        let tab_w = inner.width.saturating_sub(2) / tabs.len() as u16;
+        for (i, tab) in tabs.iter().enumerate() {
+            let x0 = inner.x + i as u16 * tab_w;
+            let last_col = x0 + tab_w - 1;
+            assert_eq!(panel.tab_at_pos(x0, inner.y, area), Some(*tab));
+            assert_eq!(panel.tab_at_pos(last_col, inner.y, area), Some(*tab));
+            // The first column past this tab belongs to the next tab (or
+            // to nothing, past the last one).
+            let next = tabs.get(i + 1).copied();
+            assert_ne!(panel.tab_at_pos(last_col + 1, inner.y, area), Some(*tab));
+            assert_eq!(panel.tab_at_pos(last_col + 1, inner.y, area), next);
+        }
+    }
 
     #[test]
     fn test_content_area_matches_render_layout() {
