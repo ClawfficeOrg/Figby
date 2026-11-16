@@ -19,6 +19,7 @@ mod actions;
 mod canvas_mouse;
 mod file_io;
 mod fx_run;
+mod fx_scripts;
 mod global;
 mod import_export;
 mod keys;

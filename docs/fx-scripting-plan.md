@@ -1,8 +1,9 @@
 # FX Scripting Plan (text scripts and a node-graph editor)
 
 Status: **proposal**, written 2026-11-13. Phase 4 (read-only node graph) is
-implemented, done first because the node-graph mode was asked for first;
-phases 0-3 and 5-6 are not started. See the phase 4 note in section 5.
+implemented, done first because the node-graph mode was asked for first.
+Phases 1 and 2 are done, and phase 0 is partly done. Phases 3, 5 and 6 are
+not started. See the status notes in section 5.
 Scope: two new ways to drive the tachyonfx effects in Figby's TUI:
 
 1. **Script mode**: a text script that composes and runs effects against the
@@ -301,6 +302,33 @@ line and column. Add a few built-in presets (`fade-in`, `sweep`, `dissolve`,
 side-panel tab, which lists effects with play and stop buttons. Add
 `on_open`, `on_save`, `on_key` and `loop` triggers. Support hot reload when
 the file changes. Use `sequence`/`parallel`/`delay` directly from the DSL.
+
+> Status 2026-11-16: **done**. `fx_script/script.rs` parses `.figfx.toml`
+> from `&str` (`[[effect]]` with `name`, `source`, optional `trigger`
+> defaulting to `manual`, optional `slot` defaulting to the name; unknown
+> fields, duplicate names, bad triggers and DSL errors are rejected at load
+> with the line and column in the file). `on_key` takes `on_key:F8`,
+> `on_key:ctrl+e` and similar; the key is consumed, and the binding is checked
+> after modal dialogs and text entry, so typing never fires it. Each slot name
+> maps to `FxSlot::Script(i)`, so effects that share a slot replace each
+> other. `fx_script/host.rs` keeps the trigger queue and the enabled loops.
+> Triggers only queue: `TuiApp::render` starts queued effects after the frame's
+> layout is known, so targets are current (`dispatch/fx_scripts.rs`). `on_open`
+> fires after a font, figmap, figseq or image opens; `on_save` fires after a
+> font or figmap save. A `loop` effect restarts when its slot goes idle (the
+> runtime tracks slot liveness with a token held by the running effect). A loop
+> that fails to compile is stopped. Scripts load from the Open dialog, which
+> now lists `.figfx.toml`, and from `<config dir>/effects.figfx.toml` at
+> startup. Hot reload (`fx_script/script_file.rs`) polls the file's mtime and
+> length every 500 ms. A broken edit keeps the old script running and shows the
+> error. A file that fails to load is still watched, so fixing it loads it.
+> Removed slots are cancelled on reload, and stopped loops stay stopped.
+> `sequence`/`parallel`/`delay` compile straight through the DSL (tested). The
+> Effects tab (`fx_script/panel.rs`) lists the effects with mouse `[▶]`/`[■]`
+> buttons above the FX Graph presets. No new dependencies. Not done: keyboard
+> play and stop in the Effects tab; per-document sidecar scripts (open
+> question 6: only one script is loaded at a time); pausing loops when the
+> window loses focus (section 6); `on_save` for autosave.
 
 **Phase 3: in-TUI script editor.** Add a text area (reuse the existing TUI
 text components) with live preview: recompile on pause and replay over the

@@ -37,6 +37,7 @@ impl TuiApp {
         if self.mouse_side_panel_tabs(mouse, &fl)
             || self.mouse_layer_panel(mouse, &fl)
             || self.mouse_props_panel(mouse)
+            || self.mouse_effects_panel(mouse, &fl)
             || self.mouse_timeline(mouse, &fl)
         {
             return;
@@ -305,6 +306,31 @@ impl TuiApp {
             self.editor.mark_dirty();
         }
         self.frame.dirty = true;
+        true
+    }
+
+    /// Effects tab: play and stop buttons of the loaded script's effects.
+    pub(super) fn mouse_effects_panel(
+        &mut self,
+        mouse: MouseEvent,
+        fl: &layout::FrameLayout,
+    ) -> bool {
+        use crate::tui::fx_script::panel::{hit, FxPanelHit};
+        let Some(rp) = fl.right_panel else {
+            return false;
+        };
+        if !self.side_panel.open
+            || self.side_panel.active_tab != TabId::Effects
+            || mouse.kind != MouseEventKind::Down(MouseButton::Left)
+        {
+            return false;
+        }
+        let area = self.side_panel.content_area(rp);
+        match hit(&self.frame.effects, area, mouse.column, mouse.row) {
+            Some(FxPanelHit::Play(i)) => self.play_fx_script_effect(i),
+            Some(FxPanelHit::Stop(i)) => self.stop_fx_script_effect(i),
+            None => return false,
+        }
         true
     }
 

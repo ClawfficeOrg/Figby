@@ -129,6 +129,10 @@ impl TuiApp {
                     self.dialogs.file_ops.mode = file_ops::FileOpsMode::Open;
                     return None;
                 }
+                // Effect scripts load into the effects runtime; no tab.
+                if self.open_fx_script_from_dialog(&path) {
+                    return None;
+                }
                 // Handle .figmap files: load and apply document state
                 if path.extension().and_then(|e| e.to_str()) == Some("figmap") {
                     return self.perform_open_figmap(&path);
@@ -260,6 +264,7 @@ impl TuiApp {
                     self.ctx.last_save_time = std::time::Instant::now();
                     self.dialogs.file_ops.error_message.clear();
                     self.frame.dirty = true;
+                    self.fire_fx_trigger(crate::tui::fx_script::FxTrigger::OnSave);
                     // Synchronous save: run the quit/close/new that was
                     // waiting behind the unsaved-changes dialog now.
                     if self.dialogs.quit_after_save || self.dialogs.pending_transition.is_some() {
@@ -398,6 +403,7 @@ impl TuiApp {
                 self.play_inline(frames, delays, fps, 0);
                 self.frame.dirty = true;
                 self.frame.force_full_redraw = true;
+                self.fire_fx_trigger(crate::tui::fx_script::FxTrigger::OnOpen);
                 None
             }
             Err(e) => {
@@ -457,6 +463,7 @@ impl TuiApp {
                 self.editor.figmap_path = Some(path.to_path_buf());
                 self.frame.dirty = true;
                 self.frame.force_full_redraw = true;
+                self.fire_fx_trigger(crate::tui::fx_script::FxTrigger::OnOpen);
                 None
             }
             Err(e) => {

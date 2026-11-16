@@ -195,6 +195,7 @@ impl TuiApp {
                 self.ui.mode = AppMode::ImageEditor;
                 self.editor.mark_dirty();
                 self.frame.dirty = true;
+                self.fire_fx_trigger(crate::tui::fx_script::FxTrigger::OnOpen);
             }
             Err(e) => {
                 self.dialogs.file_ops.error_message = format!("Image open failed: {e}");

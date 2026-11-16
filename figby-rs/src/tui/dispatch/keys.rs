@@ -26,6 +26,9 @@ impl TuiApp {
             Self::key_palette_editor,
             Self::key_menu_bar,
             Self::key_font_editor_text_entry,
+            // Script `on_key` bindings: after every modal and text-entry
+            // handler, ahead of the editor's own shortcuts.
+            Self::key_fx_script,
             Self::key_early_global,
             Self::key_settings,
             // Space paints. It is never a playback shortcut: timeline playback

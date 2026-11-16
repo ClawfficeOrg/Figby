@@ -9,9 +9,13 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tachyonfx::dsl::EffectDsl;
 use tachyonfx::{fx, Effect, EffectManager, EffectTimer, Interpolation};
+
+use super::host::FxScriptHost;
 
 /// Longest step fed to an effect in one frame. A stall (the terminal
 /// blocked, the machine slept) slows the effect down instead of skipping it.
@@ -24,6 +28,9 @@ pub enum FxSlot {
     /// Effects started by hand ("Run effect…", F7).
     #[default]
     Manual,
+    /// A slot of the loaded `.figfx.toml` script, by index into
+    /// `FxScript::slots`.
+    Script(u16),
 }
 
 /// A one-line message for the status bar.
@@ -55,8 +62,13 @@ pub struct FxRuntime {
     /// The last effect ended during the previous tick; one more frame is
     /// needed to draw the plain UI over its final state.
     settle: bool,
+    /// One token per started slot; the running effect holds a clone, so a
+    /// strong count above one means the slot still runs.
+    live: BTreeMap<FxSlot, Arc<()>>,
     pub status: Option<FxStatus>,
     pub layout: FxScreenLayout,
+    /// The loaded `.figfx.toml` script, if any (phase 2).
+    pub script: Option<FxScriptHost>,
 }
 
 impl FxRuntime {
@@ -66,13 +78,35 @@ impl FxRuntime {
 
     /// Start `effect` in `slot`, replacing what ran there.
     pub fn run(&mut self, slot: FxSlot, effect: Effect) {
-        self.manager.add_unique_effect(slot, effect);
-        self.fresh = true;
+        // Only an idle manager gets a zero first step: while effects run
+        // the frame clock is live, and a restarted loop must not stall the
+        // others for a frame.
+        self.fresh = self.fresh || !self.is_running();
+        let token = Arc::new(());
+        let tracked = fx::parallel(&[
+            effect,
+            fx::effect_fn(
+                Arc::clone(&token),
+                EffectTimer::from_ms(0, Interpolation::Linear),
+                |_, _, _| {},
+            ),
+        ]);
+        self.live.insert(slot, token);
+        self.manager.add_unique_effect(slot, tracked);
     }
 
     /// Stop whatever runs in `slot`.
     pub fn cancel(&mut self, slot: FxSlot) {
+        self.live.remove(&slot);
         self.manager.cancel_unique_effect(slot);
+    }
+
+    /// Whether an effect started in `slot` is still running. A replaced or
+    /// cancelled effect stops counting once the manager drops it.
+    pub fn slot_running(&self, slot: FxSlot) -> bool {
+        self.live
+            .get(&slot)
+            .is_some_and(|t| Arc::strong_count(t) > 1)
     }
 
     pub fn is_running(&self) -> bool {
@@ -80,8 +114,10 @@ impl FxRuntime {
     }
 
     /// True while an effect runs, and for one frame after the last ends.
+    /// Also true while the loaded script has effects queued or loops
+    /// enabled: those start at the next frame.
     pub fn needs_redraw(&self) -> bool {
-        self.is_running() || self.settle
+        self.is_running() || self.settle || self.script.as_ref().is_some_and(|s| s.has_work())
     }
 
     /// Step every effect by `dt` over `buf`. Call once per frame, after
@@ -97,6 +133,7 @@ impl FxRuntime {
             dt.min(MAX_STEP)
         };
         self.manager.process_effects(dt, buf, area);
+        self.live.retain(|_, t| Arc::strong_count(t) > 1);
         if !self.is_running() {
             self.settle = true;
             if self.status.as_ref().is_some_and(|s| !s.is_error) {
@@ -276,6 +313,40 @@ mod tests {
         rt.tick(DT, &mut buf, area);
         rt.tick(DT, &mut buf, area);
         assert_eq!(rt.status, None);
+    }
+
+    #[test]
+    fn slot_running_tracks_each_slot() {
+        let area = Rect::new(0, 0, 4, 1);
+        let mut buf = sample(area);
+        let mut rt = FxRuntime::new();
+        let (a, b) = (FxSlot::Script(0), FxSlot::Script(1));
+        assert!(!rt.slot_running(a));
+        rt.run(a, fx::sleep(50));
+        rt.run(b, fx::sleep(10_000));
+        assert!(rt.slot_running(a) && rt.slot_running(b));
+        for _ in 0..4 {
+            rt.tick(DT, &mut buf, area);
+        }
+        assert!(!rt.slot_running(a), "50 ms effect ended");
+        assert!(rt.slot_running(b));
+        rt.cancel(b);
+        assert!(!rt.slot_running(b), "cancel is immediate for the query");
+        rt.tick(DT, &mut buf, area);
+        assert!(!rt.is_running());
+    }
+
+    #[test]
+    fn replacing_a_slot_keeps_it_running() {
+        let area = Rect::new(0, 0, 4, 1);
+        let mut buf = sample(area);
+        let mut rt = FxRuntime::new();
+        let s = FxSlot::Script(0);
+        rt.run(s, fx::sleep(10_000));
+        rt.tick(DT, &mut buf, area);
+        rt.run(s, fx::sleep(10_000));
+        rt.tick(DT, &mut buf, area);
+        assert!(rt.slot_running(s));
     }
 
     #[test]

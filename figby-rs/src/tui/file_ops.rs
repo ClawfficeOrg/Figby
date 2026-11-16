@@ -477,6 +477,7 @@ impl FileOpsDialog {
                     || lower.ends_with(".zip")
                     || lower.ends_with(".figmap")
                     || lower.ends_with(".figseq")
+                    || lower.ends_with(crate::tui::fx_script::script::SCRIPT_EXTENSION)
             }
             // SaveAs (defect 8): zips stay hidden — saving into an
             // archive is broken downstream, and browsing one from a
@@ -498,6 +499,7 @@ impl FileOpsDialog {
                     || lower.ends_with(".tlf")
                     || lower.ends_with(".figmap")
                     || lower.ends_with(".figseq")
+                    || lower.ends_with(crate::tui::fx_script::script::SCRIPT_EXTENSION)
             }
             FileOpsMode::SaveAs => {
                 lower.ends_with(".flf") || lower.ends_with(".tlf") || lower.ends_with(".figmap")

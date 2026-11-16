@@ -78,6 +78,9 @@ impl TuiApp {
             ..Default::default()
         };
         self.render_frame(frame);
+        // Script triggers queued since the last frame start now, bound to
+        // this frame's layout.
+        self.pump_fx_script();
         // Scripted effects run last, over everything drawn this frame.
         let dt = self.frame.delta_time;
         self.frame.effects.tick(dt, frame.buffer_mut(), area);
@@ -340,6 +343,7 @@ impl TuiApp {
                 &self.editor.rotate_state,
                 &self.editor.selection_state,
                 &self.editor.line_state,
+                Some(&self.frame.effects),
             );
         }
 

@@ -48,11 +48,15 @@ impl TuiApp {
 
         let (term_width, _) = ratatui::crossterm::terminal::size().unwrap_or((80, 24));
         self.apply_default_side_panel(term_width);
+        // Per-user effect script (docs/fx-scripting-plan.md, phase 2).
+        self.load_user_fx_script();
 
         while !self.ui.should_quit {
             self.handle_event()?;
 
             let now = Instant::now();
+            // Hot reload of the loaded `.figfx.toml` (throttled inside).
+            self.poll_fx_script(now);
             // Scheduler-driven export preview (GPT review F-26): the export
             // dialog's frame preview advances on elapsed time here, from the
             // event loop, never from inside the render pass — previously it
@@ -284,6 +288,7 @@ impl TuiApp {
                             self.editor.font_editor.current_path = Some(path);
                             self.ctx.last_save_time = Instant::now();
                             self.dialogs.file_ops.error_message.clear();
+                            self.fire_fx_trigger(fx_script::FxTrigger::OnSave);
                             if saved_unchanged && self.dialogs.quit_after_save {
                                 self.dialogs.quit_after_save = false;
                                 self.ui.should_quit = true;
@@ -335,6 +340,7 @@ impl TuiApp {
                             self.dialogs.recent_files.push(path);
                             self.dialogs.recent_files.save_to_disk();
                             self.dialogs.file_ops.error_message.clear();
+                            self.fire_fx_trigger(fx_script::FxTrigger::OnOpen);
                         }
                         Err(e) => {
                             self.dialogs.file_ops.error_message = e;
