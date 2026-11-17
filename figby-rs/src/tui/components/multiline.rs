@@ -1,12 +1,16 @@
 //! A reusable multi-line text area for ratatui.
 //!
 //! Self-contained on purpose: it depends only on ratatui (and its crossterm
-//! events), with no Figby types, so another app can lift the file as is.
+//! events) and `unicode-width` (which ratatui uses too), with no Figby
+//! types, so another app can lift the file as is.
 //!
 //! - **Model.** Lines of text with a cursor and an optional selection
 //!   anchor. Every position is `(row, col)` in *chars*, never bytes, so
-//!   non-ASCII text edits and highlights correctly. One char is drawn in one
-//!   terminal cell (wide CJK glyphs are not measured).
+//!   non-ASCII text edits and highlights correctly.
+//! - **Display width.** Layout counts terminal cells: a wide CJK or emoji
+//!   char takes two ([`cell_width`]). Horizontal scroll, the cursor cell,
+//!   mouse hits and highlights all use display columns, and a wide char is
+//!   never split at the viewport edge (the visible half is drawn blank).
 //! - **Editing.** Insert, Enter (optional auto-indent), Backspace and Delete
 //!   across line breaks, Tab as spaces, paste, selection replace.
 //! - **Undo.** Snapshot undo and redo; runs of typed chars coalesce into
@@ -33,6 +37,7 @@ use ratatui::crossterm::event::{
 use ratatui::layout::{Position, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::Frame;
+use unicode_width::UnicodeWidthChar;
 
 /// A text position: `(row, col)`, 0-based, col in chars.
 pub type TextPos = (usize, usize);
@@ -122,7 +127,7 @@ pub struct TextArea {
     cursor: TextPos,
     /// Selection start; the selection runs from here to the cursor.
     anchor: Option<TextPos>,
-    /// First row and first char shown.
+    /// First row and first display column shown.
     scroll: TextPos,
     undo: Vec<Snapshot>,
     redo: Vec<Snapshot>,
@@ -152,6 +157,32 @@ fn char_len(s: &str) -> usize {
 /// Byte offset of char `ci` in `s` (the end if past it).
 fn byte_at(s: &str, ci: usize) -> usize {
     s.char_indices().nth(ci).map_or(s.len(), |(b, _)| b)
+}
+
+/// Terminal cells `c` takes: 2 for wide CJK and emoji, else 1. Zero-width
+/// and control chars count as 1 so every char keeps a cell of its own.
+pub fn cell_width(c: char) -> usize {
+    c.width().unwrap_or(1).max(1)
+}
+
+/// Display column where char `ci` of `s` starts (the sum of the widths of
+/// the chars before it).
+pub fn display_col(s: &str, ci: usize) -> usize {
+    s.chars().take(ci).map(cell_width).sum()
+}
+
+/// The char of `s` drawn at display column `x` (a wide char owns both its
+/// cells); the line length when `x` is past the end.
+pub fn char_at_display(s: &str, x: usize) -> usize {
+    let mut acc = 0;
+    for (i, c) in s.chars().enumerate() {
+        let w = cell_width(c);
+        if x < acc + w {
+            return i;
+        }
+        acc += w;
+    }
+    char_len(s)
 }
 
 impl TextArea {
@@ -603,7 +634,9 @@ impl TextArea {
             .clamp(r.y, (r.y + r.height).saturating_sub(1))
             .saturating_sub(r.y);
         let dx = x.clamp(r.x, r.x + r.width).saturating_sub(r.x);
-        self.clamp((self.scroll.0 + dy as usize, self.scroll.1 + dx as usize))
+        let row = (self.scroll.0 + dy as usize).min(self.lines.len() - 1);
+        let col = char_at_display(&self.lines[row], self.scroll.1 + dx as usize);
+        (row, col)
     }
 
     /// Left click places the cursor (Shift+click extends), drag selects,
@@ -646,7 +679,7 @@ impl TextArea {
 
     // ---- view --------------------------------------------------------
 
-    /// First row and first char shown (as of the last render).
+    /// First row and first display column shown (as of the last render).
     pub fn scroll(&self) -> TextPos {
         self.scroll
     }
@@ -664,7 +697,7 @@ impl TextArea {
         let r = self.text_rect;
         let (row, col) = self.cursor;
         let dy = row.checked_sub(self.scroll.0)?;
-        let dx = col.checked_sub(self.scroll.1)?;
+        let dx = display_col(&self.lines[row], col).checked_sub(self.scroll.1)?;
         (dy < r.height as usize && dx < r.width as usize).then(|| Position {
             x: r.x + dx as u16,
             y: r.y + dy as u16,
@@ -692,21 +725,26 @@ impl TextArea {
         if rows == 0 || cols == 0 {
             return;
         }
-        // Follow the cursor.
+        // Follow the cursor, in display columns. The cursor cell is as wide
+        // as the char under it (one cell at the line end).
         let (crow, ccol) = self.cursor;
         if crow < self.scroll.0 {
             self.scroll.0 = crow;
         } else if crow >= self.scroll.0 + rows {
             self.scroll.0 = crow + 1 - rows;
         }
-        if ccol < self.scroll.1 {
-            self.scroll.1 = ccol;
-        } else if ccol >= self.scroll.1 + cols {
-            self.scroll.1 = ccol + 1 - cols;
+        let cline = &self.lines[crow];
+        let cx = display_col(cline, ccol);
+        let cw = cline.chars().nth(ccol).map_or(1, cell_width);
+        if cx < self.scroll.1 {
+            self.scroll.1 = cx;
+        } else if cx + cw > self.scroll.1 + cols {
+            self.scroll.1 = (cx + cw).saturating_sub(cols);
         }
         self.scroll.0 = self.scroll.0.min(self.lines.len() - 1);
 
         let sel = self.selection();
+        let (sx, x0) = (self.scroll.1, self.text_rect.x);
         for dy in 0..rows {
             let y = area.y + dy as u16;
             let row = self.scroll.0 + dy;
@@ -724,30 +762,71 @@ impl TextArea {
                 };
                 buf.set_stringn(area.x, y, &label, gutter as usize, st);
             }
-            let chars: Vec<char> = line.map(|l| l.chars().collect()).unwrap_or_default();
             for dx in 0..cols {
-                let col = self.scroll.1 + dx;
-                let x = self.text_rect.x + dx as u16;
-                let mut st = style.text;
-                if line.is_some() {
-                    if self
-                        .highlights
-                        .iter()
-                        .any(|h| h.row == row && col >= h.start && col < h.end.max(h.start + 1))
-                    {
-                        st = st.patch(style.highlight);
+                buf[(x0 + dx as u16, y)].set_char(' ').set_style(style.text);
+            }
+            let Some(line) = line else {
+                continue;
+            };
+            let chars: Vec<char> = line.chars().collect();
+            // Walk the chars, then one-cell blanks past the end (for the
+            // cursor, the selected line break and highlights past the end),
+            // until the viewport is full.
+            let mut disp = 0;
+            for i in 0.. {
+                if disp >= sx + cols {
+                    break;
+                }
+                let (c, w) = chars.get(i).map_or((' ', 1), |&c| (c, cell_width(c)));
+                let st = self.cell_style(style, sel, row, i, chars.len());
+                if disp >= sx && disp + w <= sx + cols {
+                    let x = x0 + (disp - sx) as u16;
+                    buf[(x, y)].set_char(c).set_style(st);
+                    for k in 1..w as u16 {
+                        // Covered by the wide char, as ratatui's own
+                        // set_stringn leaves them.
+                        buf[(x + k, y)].reset();
+                        buf[(x + k, y)].set_style(st);
                     }
-                    if col <= chars.len() && Self::selected(sel, row, col) {
-                        st = st.patch(style.selection);
-                    }
-                    if (row, col) == self.cursor {
-                        st = st.patch(style.cursor);
+                } else if disp + w > sx {
+                    // A wide char cut by the viewport edge: never draw half
+                    // of it, blank the visible cells instead.
+                    for cell in disp.max(sx)..(disp + w).min(sx + cols) {
+                        buf[(x0 + (cell - sx) as u16, y)]
+                            .set_char(' ')
+                            .set_style(st);
                     }
                 }
-                let c = chars.get(col).copied().unwrap_or(' ');
-                buf[(x, y)].set_char(c).set_style(st);
+                disp += w;
             }
         }
+    }
+
+    /// The style of char `col` on `row`: text, then highlight, selection
+    /// and cursor patched over it.
+    fn cell_style(
+        &self,
+        style: &TextAreaStyle,
+        sel: Option<(TextPos, TextPos)>,
+        row: usize,
+        col: usize,
+        len: usize,
+    ) -> Style {
+        let mut st = style.text;
+        if self
+            .highlights
+            .iter()
+            .any(|h| h.row == row && col >= h.start && col < h.end.max(h.start + 1))
+        {
+            st = st.patch(style.highlight);
+        }
+        if col <= len && Self::selected(sel, row, col) {
+            st = st.patch(style.selection);
+        }
+        if (row, col) == self.cursor {
+            st = st.patch(style.cursor);
+        }
+        st
     }
 
     /// [`Self::render`] into the frame, and put the terminal cursor on the
@@ -1084,5 +1163,102 @@ mod tests {
         t.handle_mouse(ev(MouseEventKind::ScrollDown, 8, 1));
         assert_eq!(t.cursor().0, 2);
         assert_eq!(t.selection(), None);
+    }
+
+    // ---- display width ----
+
+    #[test]
+    fn display_width_helpers() {
+        assert_eq!(cell_width('a'), 1);
+        assert_eq!(cell_width('中'), 2);
+        assert_eq!(cell_width('🦀'), 2);
+        assert_eq!(cell_width('\u{301}'), 1, "zero-width still gets a cell");
+        assert_eq!(display_col("a中b", 2), 3);
+        assert_eq!(display_col("a中b", 9), 4);
+        let hits: Vec<usize> = (0..6).map(|x| char_at_display("a中b", x)).collect();
+        assert_eq!(hits, [0, 1, 1, 2, 3, 3]);
+    }
+
+    #[test]
+    fn wide_chars_take_two_cells_and_the_cursor_follows() {
+        let mut t = TextArea::from_text("a中b");
+        t.set_cursor((0, 2));
+        let mut term = draw(&mut t, 6, 1, &TextAreaStyle::default());
+        let buf = term.backend().buffer().clone();
+        assert_eq!(buf[(0, 0)].symbol(), "a");
+        assert_eq!(buf[(1, 0)].symbol(), "中");
+        assert_eq!(buf[(3, 0)].symbol(), "b");
+        assert!(
+            buf[(3, 0)].modifier.contains(Modifier::REVERSED),
+            "cursor on b"
+        );
+        term.backend_mut()
+            .assert_cursor_position(Position { x: 3, y: 0 });
+        // Editing stays char-indexed: Backspace removes the whole glyph.
+        t.handle_key(k(KeyCode::Backspace));
+        assert_eq!(t.text(), "ab");
+    }
+
+    #[test]
+    fn a_selected_wide_char_colours_both_cells() {
+        let mut t = TextArea::from_text("a中b");
+        t.select((0, 1), (0, 2));
+        let style = TextAreaStyle {
+            selection: Style::default().bg(Color::Blue),
+            cursor: Style::default(),
+            ..Default::default()
+        };
+        // The frame buffer styles both cells. (A terminal, and TestBackend,
+        // skip the covered cell: the glyph's own cell paints both.)
+        let mut buf = Buffer::empty(Rect::new(0, 0, 6, 1));
+        t.render(Rect::new(0, 0, 6, 1), &mut buf, &style);
+        let bgs: Vec<Color> = (0..4).map(|x| buf[(x, 0)].bg).collect();
+        assert_eq!(bgs, [Color::Reset, Color::Blue, Color::Blue, Color::Reset]);
+        let term = draw(&mut t, 6, 1, &style);
+        assert_eq!(term.backend().buffer()[(1, 0)].bg, Color::Blue);
+    }
+
+    #[test]
+    fn wide_chars_are_never_split_at_the_viewport_edge() {
+        // Right edge: 中 would need cells 2 and 3 of a 3-wide view.
+        let mut t = TextArea::from_text("ab中");
+        t.set_cursor((0, 0));
+        let term = draw(&mut t, 3, 1, &TextAreaStyle::default());
+        assert_eq!(row_text(&term, 0), "ab ");
+        // Left edge: scrolled to put the cursor (after five wide chars) in
+        // a 4-wide view, char 3 is cut in half and drawn blank.
+        let mut t = TextArea::from_text("中中中中中");
+        let mut term = draw(&mut t, 4, 1, &TextAreaStyle::default());
+        assert_eq!(t.scroll(), (0, 7));
+        let buf = term.backend().buffer().clone();
+        assert_eq!(buf[(0, 0)].symbol(), " ");
+        assert_eq!(buf[(1, 0)].symbol(), "中");
+        term.backend_mut()
+            .assert_cursor_position(Position { x: 3, y: 0 });
+        // Scrolled so 中 straddles the left edge: blank, then 'd'.
+        let mut t = TextArea::from_text("abc中def");
+        t.set_cursor((0, 4));
+        let term = draw(&mut t, 2, 1, &TextAreaStyle::default());
+        assert_eq!(t.scroll(), (0, 4));
+        assert_eq!(row_text(&term, 0), " d");
+    }
+
+    #[test]
+    fn mouse_hits_count_display_columns() {
+        let mut t = TextArea::from_text("a中b");
+        let mut buf = Buffer::empty(Rect::new(0, 0, 6, 1));
+        t.render(Rect::new(0, 0, 6, 1), &mut buf, &TextAreaStyle::default());
+        let click = |x| MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: x,
+            row: 0,
+            modifiers: KeyModifiers::NONE,
+        };
+        t.handle_mouse(click(2));
+        assert_eq!(t.cursor(), (0, 1), "right half of 中 is 中");
+        t.handle_mouse(click(3));
+        assert_eq!(t.cursor(), (0, 2));
+        t.handle_mouse(click(5));
+        assert_eq!(t.cursor(), (0, 3), "past the end clamps");
     }
 }
