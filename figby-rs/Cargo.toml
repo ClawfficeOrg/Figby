@@ -31,6 +31,9 @@ font-kit = "0.14.3"
 pathfinder_geometry = "0.5"
 tachyonfx = { version = "0.25", features = ["std-duration"] }
 rand = "0.9"
+# System text clipboard for TUI text editors (FX script editor). Text only:
+# the default image-data feature would pull in a second `image` version.
+arboard = { version = "3.7", default-features = false }
 # Node-graph view for the FX graph (docs/fx-scripting-plan.md section 4).
 # Pinned exactly: 0.1, single maintainer. Optional behind the fx-graph feature.
 rataflow = { version = "=0.1.0", default-features = false, optional = true }

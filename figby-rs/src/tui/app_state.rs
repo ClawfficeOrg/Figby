@@ -12,8 +12,8 @@ use std::time::{Duration, Instant};
 use super::{
     brush, canvas, capture_thumbnail, dialogs, documents, export, file_ops, font_editor, fx,
     fx_script, image_editor, layers, layout, light_panel, lighting, palette, palette_editor,
-    particles, player, status, theme, timeline, toolbox, tools, undo, undo_panel, welcome,
-    LightPanel, MenuBar, MenuBarState, PropsPanel, PropsPanelMode, RenderMode, SidePanel,
+    particles, player, status, text_clipboard, theme, timeline, toolbox, tools, undo, undo_panel,
+    welcome, LightPanel, MenuBar, MenuBarState, PropsPanel, PropsPanelMode, RenderMode, SidePanel,
     ThrobberState, Tool,
 };
 use crate::config;
@@ -1454,6 +1454,9 @@ pub struct AppContext {
     pub throbber: ThrobberState,
     pub async_rx: Option<mpsc::Receiver<AsyncResult>>,
     pub palette_rgb_to_swatch: HashMap<(u8, u8, u8), usize>,
+    /// System text clipboard for the TUI text editors; falls back to the
+    /// in-app `EditorState::clipboard` when unavailable.
+    pub text_clipboard: Box<dyn text_clipboard::TextClipboard>,
 }
 
 pub struct TuiApp {
@@ -1714,6 +1717,7 @@ impl TuiApp {
                 throbber: ThrobberState::new(),
                 async_rx: None,
                 palette_rgb_to_swatch: HashMap::new(),
+                text_clipboard: text_clipboard::default_clipboard(),
             },
         }
     }

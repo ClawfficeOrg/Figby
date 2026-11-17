@@ -73,12 +73,20 @@ impl TuiApp {
                 self.run_fx_editor_text(&src);
             }
             FxEditorOutcome::Copy(text) => {
+                // System clipboard when it works; the in-app clipboard
+                // always, so the canvas can paste it and a failed system
+                // clipboard still has a fallback.
+                self.ctx.text_clipboard.set_text(&text);
                 self.editor.clipboard = Some(clipboard_from_text(&text));
                 self.frame.dirty = true;
             }
             FxEditorOutcome::Paste => {
-                if let Some(clip) = self.editor.clipboard.as_ref() {
-                    let text = text_from_clipboard(clip);
+                let text = self
+                    .ctx
+                    .text_clipboard
+                    .get_text()
+                    .or_else(|| self.editor.clipboard.as_ref().map(text_from_clipboard));
+                if let Some(text) = text {
                     self.dialogs.fx_editor.insert_str(&text, now);
                     self.frame.dirty = true;
                 }
@@ -147,6 +155,7 @@ fn text_from_clipboard(clip: &tools::selection::Clipboard) -> String {
 mod tests {
     use super::*;
     use crate::tui::fx_script::editor::{FxEditorResult, DEBOUNCE};
+    use crate::tui::text_clipboard::MemoryClipboard;
     use ratatui::backend::TestBackend;
     use ratatui::buffer::Buffer;
     use ratatui::style::Color;
@@ -331,7 +340,12 @@ mod tests {
         assert_eq!(app.dialogs.fx_editor.text(), "ab\ncd");
         ctrl(&mut app, 'y');
         assert_eq!(app.dialogs.fx_editor.text(), "ab\ncdab\ncd");
-        // A canvas clipboard (transparent cells) pastes as text.
+        // With the system clipboard unavailable, a canvas clipboard
+        // (transparent cells) pastes as text.
+        app.ctx.text_clipboard = Box::new(MemoryClipboard {
+            text: None,
+            fail: true,
+        });
         app.editor.clipboard = Some(vec![vec![
             Some(canvas::CanvasCell {
                 ch: '#',
@@ -347,6 +361,30 @@ mod tests {
         app.dialogs.fx_editor.set_text("");
         ctrl(&mut app, 'v');
         assert_eq!(app.dialogs.fx_editor.text(), "# *");
+        // Copy still fills the in-app clipboard when the system one fails.
+        ctrl(&mut app, 'a');
+        ctrl(&mut app, 'c');
+        let clip = app.editor.clipboard.clone().unwrap();
+        assert_eq!(text_from_clipboard(&clip), "# *");
+    }
+
+    #[test]
+    fn the_system_clipboard_is_used_when_available() {
+        let mut app = app();
+        draw(&mut app, 100, 30);
+        key(&mut app, KeyCode::F(6));
+        app.dialogs.fx_editor.set_text("fx::dissolve(1)");
+        ctrl(&mut app, 'a');
+        ctrl(&mut app, 'c');
+        assert_eq!(
+            app.ctx.text_clipboard.get_text().as_deref(),
+            Some("fx::dissolve(1)")
+        );
+        // Text copied elsewhere on the system wins over the in-app one.
+        app.ctx.text_clipboard.set_text("中 from outside");
+        app.dialogs.fx_editor.set_text("");
+        ctrl(&mut app, 'v');
+        assert_eq!(app.dialogs.fx_editor.text(), "中 from outside");
     }
 
     #[test]

@@ -40,6 +40,7 @@ pub mod props_panel;
 pub mod render_mode;
 pub mod side_panel;
 pub mod status;
+pub mod text_clipboard;
 pub mod theme;
 pub mod throbber;
 pub mod timeline;
