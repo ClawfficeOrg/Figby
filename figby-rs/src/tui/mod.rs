@@ -85,6 +85,11 @@ impl TuiApp {
         // Scripted effects run last, over everything drawn this frame.
         let dt = self.frame.delta_time;
         self.frame.effects.tick(dt, frame.buffer_mut(), area);
+        // The FX script editor (F6) draws after the effects, so a preview
+        // over `screen` never paints the editor itself.
+        if self.dialogs.fx_editor.open {
+            self.dialogs.fx_editor.render(frame, area, &self.ctx.theme);
+        }
     }
 
     fn render_frame(&mut self, frame: &mut Frame<'_>) {

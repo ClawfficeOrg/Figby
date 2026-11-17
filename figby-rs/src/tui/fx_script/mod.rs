@@ -7,6 +7,8 @@
 //! - [`runtime`]: the slot-keyed `EffectManager` and Figby's custom DSL
 //!   effects (`glitch`).
 //! - [`prompt`]: the one-line "Run effect…" prompt (F7).
+//! - [`editor`]: the multi-line FX script editor (F6) with debounced live
+//!   preview and inline error highlighting.
 //! - [`graph_view`]: the read-only FX Graph overlay (rataflow canvas behind
 //!   the `fx-graph` feature, outline fallback without it).
 //! - [`script`]: `.figfx.toml` script files (named effects, triggers,
@@ -20,6 +22,7 @@
 //! Native-only, because it sits under `tui`.
 
 pub mod compile;
+pub mod editor;
 pub mod graph;
 pub mod graph_view;
 pub mod host;
@@ -30,6 +33,7 @@ pub mod runtime;
 pub mod script;
 pub mod script_file;
 
+pub use editor::{FxEditor, FxEditorOutcome};
 pub use graph_view::FxGraphView;
 pub use host::FxScriptHost;
 pub use prompt::{FxPrompt, FxPromptOutcome};

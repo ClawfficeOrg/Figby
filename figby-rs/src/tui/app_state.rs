@@ -1378,6 +1378,8 @@ pub struct DialogState {
     pub fx_graph: fx_script::FxGraphView,
     /// "Run effect…" one-line DSL prompt (F7).
     pub fx_prompt: fx_script::FxPrompt,
+    /// Multi-line FX script editor with live preview (F6).
+    pub fx_editor: fx_script::FxEditor,
     pub quit_confirm_dialog: bool,
     /// Full-label hit rects of the Save / Discard / Cancel buttons, stored
     /// each render.
@@ -1617,6 +1619,7 @@ impl TuiApp {
                 font_import_options,
                 fx_graph: fx_script::FxGraphView::new(),
                 fx_prompt: fx_script::FxPrompt::new(),
+                fx_editor: fx_script::FxEditor::new(),
                 quit_confirm_dialog: false,
                 quit_confirm_buttons: [Rect::default(); 3],
                 quit_confirm_hovered: None,

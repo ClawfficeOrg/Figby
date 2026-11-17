@@ -38,7 +38,8 @@ impl TuiApp {
             | M::ViewToggleSidePanel
             | M::ViewLoadBuiltinPalette(_)
             | M::ViewPaletteEditor
-            | M::ViewRunEffect => self.handle_view_menu_action(action),
+            | M::ViewRunEffect
+            | M::ViewFxEditor => self.handle_view_menu_action(action),
             M::ToolsSelect(tool) => self.handle_tools_menu_action(tool),
             M::LayerNew
             | M::LayerDuplicate
@@ -198,6 +199,7 @@ impl TuiApp {
                 self.frame.dirty = true;
             }
             M::ViewRunEffect => self.open_fx_prompt(),
+            M::ViewFxEditor => self.open_fx_editor(),
             _ => unreachable!("{MISROUTED}: {action:?}"),
         }
     }

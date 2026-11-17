@@ -2,7 +2,7 @@
 
 Status: **proposal**, written 2026-11-13. Phase 4 (read-only node graph) is
 implemented, done first because the node-graph mode was asked for first.
-Phases 1 and 2 are done, and phase 0 is partly done. Phases 3, 5 and 6 are
+Phases 1, 2 and 3 are done, and phase 0 is partly done. Phases 5 and 6 are
 not started. See the status notes in section 5.
 Scope: two new ways to drive the tachyonfx effects in Figby's TUI:
 
@@ -333,6 +333,34 @@ the file changes. Use `sequence`/`parallel`/`delay` directly from the DSL.
 **Phase 3: in-TUI script editor.** Add a text area (reuse the existing TUI
 text components) with live preview: recompile on pause and replay over the
 target. Show inline error highlighting from `DslParseError::context()`.
+
+> Status 2026-11-17: **done**. F6 / View > FX Script Editor… opens
+> `fx_script/editor.rs`, a multi-line editor docked at the bottom of the
+> screen above the status bar, so the canvas stays visible. Figby had no
+> multi-line text widget to reuse, so the editor follows the F7 prompt's
+> char-indexed editing and key conventions, extended to lines (Enter keeps
+> the indent, Tab is four spaces, bracketed paste inserts, Ctrl+R replays
+> now, Esc closes and keeps the text). Every edit restarts a 300 ms
+> debounce; `poll_fx_editor(now)` in the event loop compiles once per pause.
+> The clock is injected (`now: Instant`), so tests drive it with fixed
+> instants. Compiling goes through `compile.rs` with `TuiApp::fx_targets()`,
+> the same bindings as F7, and a good compile replays in the `Manual` slot. A
+> failed compile stops the running preview, highlights the span in the text
+> (reversed, error colour, also past the line end for "expected more"
+> errors), marks the line number, and shows `fx line:column: message` under
+> the text and in the status bar. `FxCompileError` now carries the end
+> position and `DslParseError::context()`. The span and the error text are
+> computed char by char from the start and end positions rather than with
+> `DslParseError::error_text()`, which (reading its 0.25.1 source) slices
+> bytes with char columns and so can panic on non-ASCII text or a span that
+> ends at the line end. While open,
+> the editor takes every key, mouse and paste event, so typing never
+> reaches the canvas tools, and it draws after the effects tick, so a
+> preview over `screen` never paints the editor. No new dependencies. Not
+> done: syntax colouring; undo inside the editor; selection, copy and cut;
+> saving the editor text into a `.figfx.toml` or loading an effect from the
+> Effects tab into it; a preview that loops instead of playing once per
+> pause.
 
 **Phase 4: node graph (read-only).** Build the `FxGraph` IR and graph-to-DSL
 emitter, then render the IR with rataflow in a full-screen "FX Graph"

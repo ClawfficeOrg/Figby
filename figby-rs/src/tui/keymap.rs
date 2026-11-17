@@ -20,6 +20,7 @@ pub enum GlobalAction {
     PlayAnimation,
     ToggleFxGraph,
     RunEffect,
+    OpenFxEditor,
     CycleTabPrev,
     CycleTabNext,
     DocNext,
@@ -139,6 +140,11 @@ pub static GLOBAL_DISPATCH: &[KeyDispatch] = &[
         modifiers: KeyModifiers::NONE,
         key_code: KeyCode::F(7),
         action: GlobalAction::RunEffect,
+    },
+    KeyDispatch {
+        modifiers: KeyModifiers::NONE,
+        key_code: KeyCode::F(6),
+        action: GlobalAction::OpenFxEditor,
     },
     // Side-panel tab cycling (Alt+arrows)
     KeyDispatch {
@@ -370,6 +376,11 @@ pub const KEYMAP: &[KeyBinding] = &[
         keys: "F7",
         scope: Scope::Global,
         description: "Run effect… (one-line DSL or preset over a target)",
+    },
+    KeyBinding {
+        keys: "F6",
+        scope: Scope::Global,
+        description: "FX script editor (multi-line DSL, live preview)",
     },
     KeyBinding {
         keys: "Ctrl+K",

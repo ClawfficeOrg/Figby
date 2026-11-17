@@ -301,7 +301,13 @@ impl TuiApp {
     }
 
     pub(crate) fn handle_paste_event(&mut self, text: String) {
-        if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
+        if self.dialogs.fx_editor.open {
+            // FX script editor: paste DSL (from TachyonFX FTL, say).
+            self.dialogs
+                .fx_editor
+                .insert_str(&text, std::time::Instant::now());
+            self.frame.dirty = true;
+        } else if self.dialogs.file_ops.mode != file_ops::FileOpsMode::Idle {
             self.dialogs.file_ops.handle_paste(&text);
         } else if self.dialogs.export_dialog.active {
             // tmux send-keys -l lands here as bracketed paste: replace the

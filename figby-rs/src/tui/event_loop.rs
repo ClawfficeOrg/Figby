@@ -57,6 +57,8 @@ impl TuiApp {
             let now = Instant::now();
             // Hot reload of the loaded `.figfx.toml` (throttled inside).
             self.poll_fx_script(now);
+            // FX script editor live preview: recompile after the debounce.
+            self.poll_fx_editor(now);
             // Scheduler-driven export preview (GPT review F-26): the export
             // dialog's frame preview advances on elapsed time here, from the
             // event loop, never from inside the render pass — previously it

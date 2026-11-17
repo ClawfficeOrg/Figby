@@ -39,6 +39,7 @@ pub enum MenuAction {
     ViewLoadBuiltinPalette(&'static str),
     ViewPaletteEditor,
     ViewRunEffect,
+    ViewFxEditor,
     LayerNew,
     LayerDuplicate,
     LayerDelete,
@@ -509,6 +510,11 @@ fn build_menus() -> Vec<TopMenu> {
                     "Run Effect…",
                     g(GlobalAction::RunEffect),
                     MenuAction::ViewRunEffect,
+                ),
+                (
+                    "FX Script Editor…",
+                    g(GlobalAction::OpenFxEditor),
+                    MenuAction::ViewFxEditor,
                 ),
                 (
                     "Palette: Grayscale",

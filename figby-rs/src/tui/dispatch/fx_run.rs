@@ -118,9 +118,8 @@ impl TuiApp {
                 self.dialogs.fx_prompt.close();
             }
             Err(e) => {
-                let first = e.message.lines().next().unwrap_or_default();
                 self.frame.effects.status = Some(FxStatus {
-                    text: format!("fx {}:{}: {first}", e.line, e.column),
+                    text: e.status_text(),
                     is_error: true,
                 });
                 if preset.is_none() && e.line == 1 {

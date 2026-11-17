@@ -66,7 +66,65 @@ pub struct FxCompileError {
     pub line: usize,
     /// 1-based column of the error start.
     pub column: usize,
+    /// 1-based line of the error end.
+    pub end_line: usize,
+    /// 1-based column just past the error end (exclusive), as tachyonfx
+    /// counts it: in chars, so it indexes the line by char, not byte.
+    pub end_column: usize,
     pub message: String,
+    /// `DslParseError::context()`: the lines around the error with the span
+    /// underlined.
+    pub context: String,
+}
+
+impl FxCompileError {
+    /// The status-bar form, `fx line:column: message` (first message line
+    /// only). Shared by the F7 prompt and the script editor.
+    pub fn status_text(&self) -> String {
+        let first = self.message.lines().next().unwrap_or_default();
+        format!("fx {}:{}: {first}", self.line, self.column)
+    }
+
+    /// The error span as `(line_idx, start_char, end_char)` ranges over
+    /// `src`, 0-based, end exclusive, one per line the error covers. Every
+    /// range is at least one char wide (it may sit just past the line end,
+    /// where the error is "expected more here"). Char-based on purpose:
+    /// `DslParseError::error_text()` slices bytes with char columns, which
+    /// panics on non-ASCII text and on a span that ends at the line end.
+    pub fn span_ranges(&self, src: &str) -> Vec<(usize, usize, usize)> {
+        let lines: Vec<&str> = src.split('\n').collect();
+        let first = self.line.max(1);
+        let last = self.end_line.max(first);
+        (first..=last)
+            .filter_map(|n| {
+                let len = lines.get(n - 1)?.chars().count();
+                let start = if n == first {
+                    self.column.saturating_sub(1)
+                } else {
+                    0
+                };
+                let end = if n == last {
+                    self.end_column.saturating_sub(1)
+                } else {
+                    len
+                };
+                let start = start.min(len);
+                Some((n - 1, start, end.max(start + 1)))
+            })
+            .collect()
+    }
+
+    /// The source text the error covers (lines joined with `\n`), clipped
+    /// to the text that exists. A char-safe stand-in for
+    /// `DslParseError::error_text()`.
+    pub fn error_text(&self, src: &str) -> String {
+        let lines: Vec<&str> = src.split('\n').collect();
+        self.span_ranges(src)
+            .into_iter()
+            .map(|(i, a, b)| lines[i].chars().skip(a).take(b - a).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }
 
 impl std::fmt::Display for FxCompileError {
@@ -88,7 +146,10 @@ pub fn compile(src: &str, targets: &FxTargets) -> Result<Effect, FxCompileError>
     compiler.compile(src).map_err(|e| FxCompileError {
         line: e.start_line(),
         column: e.start_column(),
+        end_line: e.end_line(),
+        end_column: e.end_column(),
         message: e.source.to_string(),
+        context: e.context(),
     })
 }
 
@@ -128,6 +189,60 @@ mod tests {
         assert_eq!(err.line, 2);
         assert!(err.column >= 1);
         assert!(err.message.contains("nowhere"), "{err}");
+    }
+
+    #[test]
+    fn error_span_covers_the_bad_name() {
+        let src = "fx::dissolve(300)\n    .with_area(nowhere)";
+        let err = compile(src, &FxTargets::default()).expect_err("must fail");
+        let ranges = err.span_ranges(src);
+        assert_eq!(ranges.len(), 1, "{err:?}");
+        let (row, a, b) = ranges[0];
+        assert_eq!(row, 1);
+        assert_eq!(a, err.column - 1);
+        assert!(b > a);
+        assert!(err.error_text(src).contains("nowhere"), "{err:?}");
+        // context() underlines the error line.
+        assert!(err.context.contains("> 2 |"), "{}", err.context);
+        assert!(err.context.contains('^'), "{}", err.context);
+        assert!(
+            err.status_text().starts_with("fx 2:"),
+            "{}",
+            err.status_text()
+        );
+    }
+
+    fn err_at(line: usize, column: usize, end_line: usize, end_column: usize) -> FxCompileError {
+        FxCompileError {
+            line,
+            column,
+            end_line,
+            end_column,
+            message: "boom\nmore".into(),
+            context: String::new(),
+        }
+    }
+
+    #[test]
+    fn span_ranges_are_char_based_and_never_empty() {
+        // Non-ASCII before the span: columns count chars, not bytes.
+        let src = "// é…\nfx::nope(1)";
+        let e = err_at(2, 5, 2, 9);
+        assert_eq!(e.span_ranges(src), vec![(1, 4, 8)]);
+        assert_eq!(e.error_text(src), "nope");
+        // A zero-width span (an "expected more" error) still marks a cell.
+        let e = err_at(1, 3, 1, 3);
+        assert_eq!(e.span_ranges("ab"), vec![(0, 2, 3)]);
+        assert_eq!(e.error_text("ab"), "");
+        // Multi-line: the first line to its end, whole middle lines, the
+        // last line up to the end column.
+        let src = "abc\ndef\nghi";
+        let e = err_at(1, 2, 3, 2);
+        assert_eq!(e.span_ranges(src), vec![(0, 1, 3), (1, 0, 3), (2, 0, 1)]);
+        assert_eq!(e.error_text(src), "bc\ndef\ng");
+        // Lines past the text are skipped rather than panicking.
+        assert_eq!(err_at(9, 1, 9, 4).span_ranges(src), vec![]);
+        assert_eq!(e.status_text(), "fx 1:2: boom");
     }
 
     #[test]
