@@ -337,28 +337,38 @@ target. Show inline error highlighting from `DslParseError::context()`.
 > Status 2026-11-17: **done**. F6 / View > FX Script Editor… opens
 > `fx_script/editor.rs`, a multi-line editor docked at the bottom of the
 > screen above the status bar, so the canvas stays visible. Figby had no
-> multi-line text widget to reuse, so the editor follows the F7 prompt's
-> char-indexed editing and key conventions, extended to lines (Enter keeps
-> the indent, Tab is four spaces, bracketed paste inserts, Ctrl+R replays
-> now, Esc closes and keeps the text). Every edit restarts a 300 ms
+> multi-line text widget, so the editing is a new generic one,
+> `components/multiline.rs` (`TextArea`, ratatui only, no Figby types, so
+> other apps can reuse it). It is char-indexed throughout and has cursor
+> movement, Enter/Backspace/Delete across lines, auto-indent, horizontal and
+> vertical scroll, line numbers, Shift and mouse-drag selection, Ctrl+A/C/X/V
+> through the host's clipboard (here the document clipboard the canvas
+> selection uses), Ctrl+Z/Ctrl+Y undo and redo (typed runs coalesce), click
+> to place the cursor, a drawn cursor cell plus the terminal cursor, and
+> host-supplied highlight spans. The FX editor adds Ctrl+R (replay now), Esc
+> (close, keep the text) and bracketed paste. Every edit restarts a 300 ms
 > debounce; `poll_fx_editor(now)` in the event loop compiles once per pause.
 > The clock is injected (`now: Instant`), so tests drive it with fixed
 > instants. Compiling goes through `compile.rs` with `TuiApp::fx_targets()`,
 > the same bindings as F7, and a good compile replays in the `Manual` slot. A
 > failed compile stops the running preview, highlights the span in the text
-> (reversed, error colour, also past the line end for "expected more"
-> errors), marks the line number, and shows `fx line:column: message` under
+> (a `TextArea` highlight from the char-based span: reversed, underlined,
+> error colour, also past the line end for "expected more" errors), marks
+> the line number, and shows `fx line:column: message` under
 > the text and in the status bar. `FxCompileError` now carries the end
 > position and `DslParseError::context()`. The span and the error text are
 > computed char by char from the start and end positions rather than with
-> `DslParseError::error_text()`, which (reading its 0.25.1 source) slices
-> bytes with char columns and so can panic on non-ASCII text or a span that
-> ends at the line end. While open,
-> the editor takes every key, mouse and paste event, so typing never
-> reaches the canvas tools, and it draws after the effects tick, so a
-> preview over `screen` never paints the editor. No new dependencies. Not
-> done: syntax colouring; undo inside the editor; selection, copy and cut;
-> saving the editor text into a `.figfx.toml` or loading an effect from the
+> `DslParseError::error_text()`. In 0.25.1 that slices bytes with char
+> columns and panics on a span that ends at the line end (`fx::dissolve(`:
+> "end byte index 14 is out of bounds") and on non-ASCII text before the
+> span ("start byte index 37 is not a char boundary"); two `should_panic`
+> tests in `compile.rs` pin this. While open, the editor takes every key,
+> mouse and paste event, so typing never reaches the canvas tools, and it
+> draws after the effects tick, so a preview over `screen` never paints the
+> editor. No new dependencies. Not done: syntax colouring; wide (CJK)
+> glyph widths in `TextArea` (one char is one cell); word-wise movement;
+> the OS clipboard (copy goes to Figby's document clipboard); saving the
+> editor text into a `.figfx.toml` or loading an effect from the
 > Effects tab into it; a preview that loops instead of playing once per
 > pause.
 

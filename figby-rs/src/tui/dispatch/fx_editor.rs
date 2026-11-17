@@ -64,21 +64,83 @@ impl TuiApp {
         }
     }
 
+    /// Act on what an editor input did: replay, or move text through the
+    /// document clipboard (the same one the canvas selection uses).
+    fn apply_fx_editor_outcome(&mut self, outcome: FxEditorOutcome, now: Instant) {
+        match outcome {
+            FxEditorOutcome::RunNow => {
+                let src = self.dialogs.fx_editor.text();
+                self.run_fx_editor_text(&src);
+            }
+            FxEditorOutcome::Copy(text) => {
+                self.editor.clipboard = Some(clipboard_from_text(&text));
+                self.frame.dirty = true;
+            }
+            FxEditorOutcome::Paste => {
+                if let Some(clip) = self.editor.clipboard.as_ref() {
+                    let text = text_from_clipboard(clip);
+                    self.dialogs.fx_editor.insert_str(&text, now);
+                    self.frame.dirty = true;
+                }
+            }
+            FxEditorOutcome::Changed | FxEditorOutcome::Close => self.frame.dirty = true,
+            FxEditorOutcome::None => {}
+        }
+    }
+
     /// The editor is modal while open: it takes every key.
     pub(super) fn key_fx_editor(&mut self, key: KeyEvent) -> ControlFlow<Option<AppEvent>> {
         if !self.dialogs.fx_editor.open {
             return ControlFlow::Continue(());
         }
-        match self.dialogs.fx_editor.handle_key(key, Instant::now()) {
-            FxEditorOutcome::RunNow => {
-                let src = self.dialogs.fx_editor.text();
-                self.run_fx_editor_text(&src);
-            }
-            FxEditorOutcome::Changed | FxEditorOutcome::Close => self.frame.dirty = true,
-            FxEditorOutcome::None => {}
-        }
+        let now = Instant::now();
+        let outcome = self.dialogs.fx_editor.handle_key(key, now);
+        self.apply_fx_editor_outcome(outcome, now);
         ControlFlow::Break(None)
     }
+
+    /// The editor is modal while open: it swallows the mouse, and clicks,
+    /// drags and the wheel go to its text area. Returns whether it was open.
+    pub(super) fn mouse_fx_editor(&mut self, mouse: MouseEvent) -> bool {
+        if !self.dialogs.fx_editor.open {
+            return false;
+        }
+        let now = Instant::now();
+        let outcome = self.dialogs.fx_editor.handle_mouse(mouse, now);
+        self.apply_fx_editor_outcome(outcome, now);
+        true
+    }
+}
+
+/// Editor text as a clipboard block: one row per line, one cell per char.
+fn clipboard_from_text(text: &str) -> tools::selection::Clipboard {
+    text.split('\n')
+        .map(|line| {
+            line.chars()
+                .map(|ch| {
+                    Some(canvas::CanvasCell {
+                        ch,
+                        ..Default::default()
+                    })
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// A clipboard block as text: rows become lines, transparent cells spaces,
+/// trailing blanks trimmed.
+fn text_from_clipboard(clip: &tools::selection::Clipboard) -> String {
+    clip.iter()
+        .map(|row| {
+            let line: String = row
+                .iter()
+                .map(|c| c.as_ref().map_or(' ', |c| c.ch))
+                .collect();
+            line.trim_end().to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -242,6 +304,73 @@ mod tests {
         app.dialogs.fx_editor.set_text("fx::coalesce(300)");
         let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL));
         assert!(app.frame.effects.slot_running(FxSlot::Manual));
+    }
+
+    fn ctrl(app: &mut TuiApp, c: char) {
+        let _ = app.handle_key_event(KeyEvent::new(KeyCode::Char(c), KeyModifiers::CONTROL));
+    }
+
+    #[test]
+    fn copy_cut_paste_use_the_document_clipboard() {
+        let mut app = app();
+        draw(&mut app, 100, 30);
+        key(&mut app, KeyCode::F(6));
+        app.dialogs.fx_editor.set_text("ab\ncd");
+        ctrl(&mut app, 'a');
+        ctrl(&mut app, 'c');
+        let clip = app.editor.clipboard.clone().expect("copied");
+        assert_eq!(clip.len(), 2);
+        assert_eq!(clip[1][1].as_ref().map(|c| c.ch), Some('d'));
+        assert_eq!(app.dialogs.fx_editor.text(), "ab\ncd");
+        ctrl(&mut app, 'x');
+        assert_eq!(app.dialogs.fx_editor.text(), "");
+        ctrl(&mut app, 'v');
+        ctrl(&mut app, 'v');
+        assert_eq!(app.dialogs.fx_editor.text(), "ab\ncdab\ncd");
+        ctrl(&mut app, 'z');
+        assert_eq!(app.dialogs.fx_editor.text(), "ab\ncd");
+        ctrl(&mut app, 'y');
+        assert_eq!(app.dialogs.fx_editor.text(), "ab\ncdab\ncd");
+        // A canvas clipboard (transparent cells) pastes as text.
+        app.editor.clipboard = Some(vec![vec![
+            Some(canvas::CanvasCell {
+                ch: '#',
+                ..Default::default()
+            }),
+            None,
+            Some(canvas::CanvasCell {
+                ch: '*',
+                ..Default::default()
+            }),
+            None,
+        ]]);
+        app.dialogs.fx_editor.set_text("");
+        ctrl(&mut app, 'v');
+        assert_eq!(app.dialogs.fx_editor.text(), "# *");
+    }
+
+    #[test]
+    fn mouse_click_in_the_editor_places_the_cursor_only() {
+        let mut app = app();
+        draw(&mut app, 100, 30);
+        key(&mut app, KeyCode::F(6));
+        app.dialogs.fx_editor.set_text("first\nsecond");
+        draw(&mut app, 100, 30);
+        let before = canvas_rows(&app);
+        let rect = app.dialogs.fx_editor.last_rect();
+        // Border, then the "1 " gutter: row 2 col 3 of the text.
+        let click = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: rect.x + 1 + 2 + 3,
+            row: rect.y + 1 + 1,
+            modifiers: KeyModifiers::NONE,
+        };
+        app.handle_mouse_event(click);
+        assert_eq!(app.dialogs.fx_editor.text_area().cursor(), (1, 3));
+        // A click above the editor (on the canvas) is swallowed.
+        app.handle_mouse_event(MouseEvent { row: 5, ..click });
+        assert_eq!(canvas_rows(&app), before);
+        assert!(!app.editor.unsaved);
     }
 
     #[test]

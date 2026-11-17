@@ -260,4 +260,63 @@ mod tests {
         }
         assert_eq!(FxInterp::ALL.len(), 34);
     }
+
+    /// The upstream `DslParseError` for `src`, bypassing our wrapper.
+    fn upstream_error(src: &str) -> tachyonfx::dsl::DslParseError {
+        let dsl = figby_dsl();
+        match dsl.compiler().compile(src) {
+            Ok(_) => panic!("{src:?} must fail to compile"),
+            Err(e) => e,
+        }
+    }
+
+    // tachyonfx 0.25.1 `DslParseError::error_text()` (src/dsl/parse_error.rs
+    // lines 156-200) slices the line by *byte* with the 1-based *char*
+    // columns: `line[start_col..end_col]` with
+    // `end_col = end_column.min(line.len() + 1)`. These tests pin that it
+    // panics, which is why Figby uses `FxCompileError::error_text` instead.
+    // If an upstream release fixes it, they fail and can be removed.
+
+    #[test]
+    #[should_panic(expected = "end byte index 14 is out of bounds for string of length 13")]
+    fn upstream_error_text_panics_on_an_error_at_line_end() {
+        // "Unmatched opening '('": span 1:13..1:14, ending at the line end.
+        let e = upstream_error("fx::dissolve(");
+        assert_eq!(
+            (
+                e.start_line(),
+                e.start_column(),
+                e.end_line(),
+                e.end_column()
+            ),
+            (1, 13, 1, 14)
+        );
+        let _ = e.error_text();
+    }
+
+    #[test]
+    #[should_panic(expected = "start byte index 37 is not a char boundary")]
+    fn upstream_error_text_panics_on_non_ascii_before_the_error() {
+        // Five 3-byte '…' before the error shift char columns 10 bytes
+        // left of the real text; the start lands inside a '…'.
+        let e = upstream_error(
+            "fx::dissolve(300).with_area(/*\u{2026}\u{2026}\u{2026}\u{2026}\u{2026}*/nowhere)",
+        );
+        let _ = e.error_text();
+    }
+
+    #[test]
+    fn our_error_text_handles_both_cases() {
+        let t = FxTargets::default();
+        for (src, want) in [
+            ("fx::dissolve(", "("),
+            (
+                "fx::dissolve(300).with_area(/*\u{2026}\u{2026}\u{2026}\u{2026}\u{2026}*/nowhere)",
+                "nowhere",
+            ),
+        ] {
+            let err = compile(src, &t).expect_err("must fail");
+            assert_eq!(err.error_text(src), want, "{err:?}");
+        }
+    }
 }

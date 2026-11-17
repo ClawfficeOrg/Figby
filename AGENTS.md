@@ -154,7 +154,7 @@ figby-rs/                 # Rust workspace: the figby crate (lib + binary) and f
         ├── dialogs/      # new_image, gif_import, rascii_import, system_font, font_import_options
         ├── tools/        # brush, eraser, eyedropper, fill, line, move_tool, rotate_tool,
         │                 #   selection, spray, text
-        └── components/   # canvas.rs, status_bar.rs
+        └── components/   # canvas.rs, status_bar.rs, multiline.rs (generic TextArea widget)
 c-figlet/                 # Reference C FIGlet 2.2.5 (parity oracle)
 fonts/                    # Bundled .flf/.tlf fonts
 assets/                   # Templates, demo images/video (figby-rs/assets/ holds the compiled-in icons, themes)

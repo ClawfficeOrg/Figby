@@ -1,23 +1,26 @@
 //! The FX script editor (F6, View > FX Script Editor…): a multi-line DSL
 //! expression with live preview (docs/fx-scripting-plan.md, phase 3).
 //!
-//! Every edit restarts a [`DEBOUNCE`] timer. Once the text has been idle
-//! that long, [`FxEditor::take_due`] hands it back for one compile; the
-//! caller binds the same targets as the F7 prompt, runs the effect in the
-//! manual slot and reports the result with [`FxEditor::set_result`]. A
-//! compile error is kept here and drawn inline: the span is highlighted in
-//! the text and the message sits under it.
+//! Text editing is the generic [`TextArea`] widget
+//! (`components/multiline.rs`); this module adds only the FX parts:
+//!
+//! - Every edit restarts a [`DEBOUNCE`] timer. Once the text has been idle
+//!   that long, [`FxEditor::take_due`] hands it back for one compile; the
+//!   caller binds the same targets as the F7 prompt, runs the effect in the
+//!   manual slot and reports the result with [`FxEditor::set_result`].
+//! - A compile error is kept here and drawn inline: its span (char columns,
+//!   from `FxCompileError::span_ranges`) becomes a [`Highlight`] in the text
+//!   area, and the message sits under the text.
 //!
 //! The clock is injected: key handling and polling take `now`, so tests
 //! drive the debounce with fixed instants.
 //!
-//! Keys follow the F7 prompt: type to edit; arrows, Home/End and
-//! PageUp/PageDown move; Backspace/Delete erase; Enter breaks the line
-//! (keeping the indent); Tab inserts four spaces; Ctrl+R compiles and
-//! replays now; Esc closes (the text is kept for next time).
+//! Keys: the text area's (arrows, Home/End, PageUp/PageDown, Shift to
+//! select, Ctrl+A/C/X/V, Ctrl+Z/Y), plus Ctrl+R to compile and replay now
+//! and Esc to close (the text is kept for next time).
 
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::layout::{Position, Rect};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
+use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Paragraph};
@@ -26,6 +29,7 @@ use std::time::{Duration, Instant};
 
 use super::compile::FxCompileError;
 use super::prompt::TARGET_NAMES;
+use crate::tui::components::multiline::{Highlight, TextArea, TextAreaEvent, TextAreaStyle};
 use crate::tui::theme::Theme;
 
 /// Idle time after the last edit before the preview recompiles.
@@ -38,17 +42,21 @@ fx::sequence(&[\n    fx::coalesce((500, QuadOut)),\n    fx::glitch(300),\n])\n.w
 /// Rows the editor uses for its message lines under the text.
 const MESSAGE_ROWS: u16 = 2;
 
-/// What a key did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What an input did.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FxEditorOutcome {
     /// Nothing changed.
     None,
-    /// The text or the cursor changed; redraw.
+    /// The text, cursor or selection changed; redraw.
     Changed,
     /// Ctrl+R: compile and replay now, without waiting for the debounce.
     RunNow,
     /// Esc: the editor closed.
     Close,
+    /// Copy or cut: put this text on the clipboard.
+    Copy(String),
+    /// Ctrl+V: call [`FxEditor::insert_str`] with the clipboard text.
+    Paste,
 }
 
 /// The last compile, as the editor shows it.
@@ -61,19 +69,12 @@ pub enum FxEditorResult {
 
 pub struct FxEditor {
     pub open: bool,
-    /// Never empty: an empty text is one empty line.
-    lines: Vec<String>,
-    /// Cursor line (0-based).
-    row: usize,
-    /// Cursor position as a char index into `lines[row]`.
-    col: usize,
-    /// First text line shown.
-    scroll_row: usize,
-    /// First char shown on every line.
-    scroll_col: usize,
+    area: TextArea,
     /// When the text last changed, while a recompile is pending.
     edited_at: Option<Instant>,
     result: Option<FxEditorResult>,
+    /// The box drawn last, for mouse hit-testing.
+    rect: Rect,
 }
 
 impl Default for FxEditor {
@@ -84,18 +85,15 @@ impl Default for FxEditor {
 
 impl FxEditor {
     pub fn new() -> Self {
-        let mut ed = Self {
+        let mut area = TextArea::from_text(STARTER);
+        area.line_numbers = true;
+        Self {
             open: false,
-            lines: vec![String::new()],
-            row: 0,
-            col: 0,
-            scroll_row: 0,
-            scroll_col: 0,
+            area,
             edited_at: None,
             result: None,
-        };
-        ed.set_text(STARTER);
-        ed
+            rect: Rect::default(),
+        }
     }
 
     /// Open, keeping the text. A first preview is due right away, so the
@@ -113,25 +111,20 @@ impl FxEditor {
 
     /// The whole text, lines joined with `\n`.
     pub fn text(&self) -> String {
-        self.lines.join("\n")
+        self.area.text()
     }
 
-    /// Replace the text; the cursor goes to the end. Does not arm the
-    /// debounce (callers that want a preview call [`Self::touch`]).
+    /// Replace the text (clears its undo history); the cursor goes to the
+    /// end. Does not arm the debounce (callers that want a preview call
+    /// [`Self::touch`]).
     pub fn set_text(&mut self, text: &str) {
-        self.lines = text
-            .replace("\r\n", "\n")
-            .split('\n')
-            .map(String::from)
-            .collect();
-        self.row = self.lines.len() - 1;
-        self.col = self.line_len(self.row);
+        self.area.set_text(text);
         self.result = None;
     }
 
-    /// Cursor as `(line, char)`, 0-based.
-    pub fn cursor(&self) -> (usize, usize) {
-        (self.row, self.col)
+    /// The text area, for its cursor and selection.
+    pub fn text_area(&self) -> &TextArea {
+        &self.area
     }
 
     pub fn result(&self) -> Option<&FxEditorResult> {
@@ -182,70 +175,27 @@ impl FxEditor {
         }
     }
 
-    fn line_len(&self, row: usize) -> usize {
-        self.lines[row].chars().count()
-    }
-
-    fn byte_at(&self, row: usize, char_idx: usize) -> usize {
-        let line = &self.lines[row];
-        line.char_indices()
-            .nth(char_idx)
-            .map_or(line.len(), |(b, _)| b)
-    }
-
-    fn insert_char(&mut self, c: char) {
-        let at = self.byte_at(self.row, self.col);
-        self.lines[self.row].insert(at, c);
-        self.col += 1;
-    }
-
-    fn break_line(&mut self) {
-        let at = self.byte_at(self.row, self.col);
-        let rest = self.lines[self.row].split_off(at);
-        let indent: String = self.lines[self.row]
-            .chars()
-            .take_while(|c| *c == ' ')
-            .collect();
-        self.col = indent.chars().count();
-        self.lines.insert(self.row + 1, indent + &rest);
-        self.row += 1;
-    }
-
-    /// Insert pasted text at the cursor (`\r\n` and `\r` become line
-    /// breaks; tabs become four spaces) and restart the debounce.
+    /// Insert pasted or clipboard text at the cursor (replacing any
+    /// selection) and restart the debounce.
     pub fn insert_str(&mut self, text: &str, now: Instant) {
-        let text = text.replace("\r\n", "\n").replace('\r', "\n");
-        for c in text.chars() {
-            match c {
-                '\n' => {
-                    // A paste keeps its own indentation.
-                    let at = self.byte_at(self.row, self.col);
-                    let rest = self.lines[self.row].split_off(at);
-                    self.lines.insert(self.row + 1, rest);
-                    self.row += 1;
-                    self.col = 0;
-                }
-                '\t' => (0..4).for_each(|_| self.insert_char(' ')),
-                c if c.is_control() => {}
-                c => self.insert_char(c),
-            }
-        }
+        self.area.insert_str(text);
         self.touch(now);
+    }
+
+    fn outcome(&mut self, ev: TextAreaEvent, now: Instant) -> FxEditorOutcome {
+        if ev.is_edit() {
+            self.touch(now);
+        }
+        match ev {
+            TextAreaEvent::Ignored => FxEditorOutcome::None,
+            TextAreaEvent::Moved | TextAreaEvent::Edited => FxEditorOutcome::Changed,
+            TextAreaEvent::Copy(s) | TextAreaEvent::Cut(s) => FxEditorOutcome::Copy(s),
+            TextAreaEvent::PasteRequested => FxEditorOutcome::Paste,
+        }
     }
 
     pub fn handle_key(&mut self, key: KeyEvent, now: Instant) -> FxEditorOutcome {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-        let alt = key.modifiers.contains(KeyModifiers::ALT);
-        let len = self.line_len(self.row);
-        let last = self.lines.len() - 1;
-        let moved = |ed: &mut Self| {
-            ed.col = ed.col.min(ed.line_len(ed.row));
-            FxEditorOutcome::Changed
-        };
-        let edited = |ed: &mut Self| {
-            ed.touch(now);
-            FxEditorOutcome::Changed
-        };
         match key.code {
             KeyCode::Esc => {
                 self.close();
@@ -255,85 +205,17 @@ impl FxEditor {
                 self.edited_at = None;
                 FxEditorOutcome::RunNow
             }
-            KeyCode::Char(c) if !ctrl && !alt => {
-                self.insert_char(c);
-                edited(self)
+            _ => {
+                let ev = self.area.handle_key(key);
+                self.outcome(ev, now)
             }
-            KeyCode::Enter => {
-                self.break_line();
-                edited(self)
-            }
-            KeyCode::Tab => {
-                (0..4).for_each(|_| self.insert_char(' '));
-                edited(self)
-            }
-            KeyCode::Backspace if self.col > 0 => {
-                let at = self.byte_at(self.row, self.col - 1);
-                self.lines[self.row].remove(at);
-                self.col -= 1;
-                edited(self)
-            }
-            KeyCode::Backspace if self.row > 0 => {
-                let line = self.lines.remove(self.row);
-                self.row -= 1;
-                self.col = self.line_len(self.row);
-                self.lines[self.row].push_str(&line);
-                edited(self)
-            }
-            KeyCode::Delete if self.col < len => {
-                let at = self.byte_at(self.row, self.col);
-                self.lines[self.row].remove(at);
-                edited(self)
-            }
-            KeyCode::Delete if self.row < last => {
-                let next = self.lines.remove(self.row + 1);
-                self.lines[self.row].push_str(&next);
-                edited(self)
-            }
-            KeyCode::Left if self.col > 0 => {
-                self.col -= 1;
-                FxEditorOutcome::Changed
-            }
-            KeyCode::Left if self.row > 0 => {
-                self.row -= 1;
-                self.col = self.line_len(self.row);
-                FxEditorOutcome::Changed
-            }
-            KeyCode::Right if self.col < len => {
-                self.col += 1;
-                FxEditorOutcome::Changed
-            }
-            KeyCode::Right if self.row < last => {
-                self.row += 1;
-                self.col = 0;
-                FxEditorOutcome::Changed
-            }
-            KeyCode::Up if self.row > 0 => {
-                self.row -= 1;
-                moved(self)
-            }
-            KeyCode::Down if self.row < last => {
-                self.row += 1;
-                moved(self)
-            }
-            KeyCode::PageUp => {
-                self.row = self.row.saturating_sub(10);
-                moved(self)
-            }
-            KeyCode::PageDown => {
-                self.row = (self.row + 10).min(last);
-                moved(self)
-            }
-            KeyCode::Home => {
-                self.col = 0;
-                FxEditorOutcome::Changed
-            }
-            KeyCode::End => {
-                self.col = len;
-                FxEditorOutcome::Changed
-            }
-            _ => FxEditorOutcome::None,
         }
+    }
+
+    /// Mouse inside the text: place the cursor, select, scroll.
+    pub fn handle_mouse(&mut self, mouse: MouseEvent, now: Instant) -> FxEditorOutcome {
+        let ev = self.area.handle_mouse(mouse);
+        self.outcome(ev, now)
     }
 
     /// The box the editor draws in: docked at the bottom of `area`, above
@@ -350,26 +232,14 @@ impl FxEditor {
         }
     }
 
-    /// Scroll so the cursor stays inside a text area of `rows` x `cols`.
-    fn follow_cursor(&mut self, rows: usize, cols: usize) {
-        if rows > 0 {
-            if self.row < self.scroll_row {
-                self.scroll_row = self.row;
-            } else if self.row >= self.scroll_row + rows {
-                self.scroll_row = self.row + 1 - rows;
-            }
-        }
-        if cols > 0 {
-            if self.col < self.scroll_col {
-                self.scroll_col = self.col;
-            } else if self.col >= self.scroll_col + cols {
-                self.scroll_col = self.col + 1 - cols;
-            }
-        }
+    /// The box drawn by the last render.
+    pub fn last_rect(&self) -> Rect {
+        self.rect
     }
 
     pub fn render(&mut self, frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
         let rect = self.rect(area);
+        self.rect = rect;
         if rect.width < 16 || rect.height < 5 {
             return;
         }
@@ -391,7 +261,7 @@ impl FxEditor {
             .border_style(Style::default().fg(theme.general.primary))
             .title(title.add_modifier(Modifier::BOLD))
             .title_bottom(Line::styled(
-                " Ctrl+R replay  Esc close  (preview after a pause) ",
+                " Ctrl+R replay  Ctrl+Z/Y undo/redo  Esc close ",
                 dim,
             ))
             .style(
@@ -401,72 +271,37 @@ impl FxEditor {
             );
         let inner = block.inner(rect);
         frame.render_widget(block, rect);
-        let text_rows = inner.height.saturating_sub(MESSAGE_ROWS) as usize;
-        let gutter = self.lines.len().to_string().len() + 1;
-        let text_cols = (inner.width as usize).saturating_sub(gutter + 1);
-        if text_rows == 0 || text_cols == 0 {
+        let text_rows = inner.height.saturating_sub(MESSAGE_ROWS);
+        if text_rows == 0 {
             return;
         }
-        self.follow_cursor(text_rows, text_cols);
 
         let text = self.text();
-        let spans = self
+        let highlights = self
             .error()
             .map(|e| e.span_ranges(&text))
-            .unwrap_or_default();
-        let hl = Style::default()
-            .fg(theme.general.error)
-            .add_modifier(Modifier::REVERSED | Modifier::UNDERLINED);
-        let mut out = Vec::with_capacity(text_rows);
-        for (i, line) in self
-            .lines
-            .iter()
-            .enumerate()
-            .skip(self.scroll_row)
-            .take(text_rows)
-        {
-            let marked = spans.iter().find(|(r, _, _)| *r == i);
-            let num_style = if marked.is_some() { err_style } else { dim };
-            let mut parts = vec![Span::styled(
-                format!("{:>w$} ", i + 1, w = gutter - 1),
-                num_style,
-            )];
-            // Pad past the end so a span after the last char still shows.
-            let chars: Vec<char> = line.chars().chain(std::iter::once(' ')).collect();
-            let (a, b) = marked.map_or((usize::MAX, usize::MAX), |(_, a, b)| (*a, *b));
-            let visible = self.scroll_col..(self.scroll_col + text_cols).min(chars.len().max(b));
-            let mut run = String::new();
-            let mut run_hl = false;
-            for x in visible {
-                let c = chars.get(x).copied().unwrap_or(' ');
-                let in_span = x >= a && x < b;
-                if in_span != run_hl && !run.is_empty() {
-                    parts.push(Span::styled(
-                        std::mem::take(&mut run),
-                        if run_hl { hl } else { Style::default() },
-                    ));
-                }
-                run_hl = in_span;
-                run.push(c);
-            }
-            if !run.is_empty() {
-                let trimmed = if run_hl {
-                    run
-                } else {
-                    run.trim_end().to_string()
-                };
-                parts.push(Span::styled(
-                    trimmed,
-                    if run_hl { hl } else { Style::default() },
-                ));
-            }
-            out.push(Line::from(parts));
-        }
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(row, start, end)| Highlight { row, start, end })
+            .collect();
+        self.area.set_highlights(highlights);
+        let style = TextAreaStyle {
+            text: Style::default(),
+            cursor: Style::default().add_modifier(Modifier::REVERSED),
+            selection: Style::default()
+                .bg(theme.canvas.selection)
+                .fg(theme.menu.fg),
+            highlight: Style::default()
+                .fg(theme.general.error)
+                .add_modifier(Modifier::REVERSED | Modifier::UNDERLINED),
+            line_number: dim,
+            line_number_marked: err_style.add_modifier(Modifier::BOLD),
+        };
         let text_rect = Rect {
-            height: text_rows as u16,
+            height: text_rows,
             ..inner
         };
-        frame.render_widget(Paragraph::new(out), text_rect);
+        self.area.render_frame(frame, text_rect, &style);
 
         let message = match &self.result {
             Some(FxEditorResult::Error(e)) => vec![
@@ -486,16 +321,11 @@ impl FxEditor {
             ],
         };
         let msg_rect = Rect {
-            y: inner.y + text_rows as u16,
-            height: inner.height - text_rows as u16,
+            y: inner.y + text_rows,
+            height: inner.height - text_rows,
             ..inner
         };
         frame.render_widget(Paragraph::new(message), msg_rect);
-
-        frame.set_cursor_position(Position {
-            x: inner.x + (gutter + self.col - self.scroll_col) as u16,
-            y: inner.y + (self.row - self.scroll_row) as u16,
-        });
     }
 }
 
@@ -504,10 +334,15 @@ mod tests {
     use super::*;
     use crate::tui::fx_script::compile::{compile, FxTargets};
     use ratatui::backend::TestBackend;
+    use ratatui::layout::Position;
     use ratatui::Terminal;
 
     fn key(ed: &mut FxEditor, code: KeyCode, now: Instant) -> FxEditorOutcome {
         ed.handle_key(KeyEvent::new(code, KeyModifiers::NONE), now)
+    }
+
+    fn ctrl(ed: &mut FxEditor, c: char, now: Instant) -> FxEditorOutcome {
+        ed.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::CONTROL), now)
     }
 
     fn type_str(ed: &mut FxEditor, s: &str, now: Instant) {
@@ -537,11 +372,21 @@ mod tests {
         assert_eq!(ed.take_due(ms(500)).as_deref(), Some("fx::dissolve(9)"));
         // Once per pause: nothing more until the next edit.
         assert_eq!(ed.take_due(ms(5000)), None);
-        // Cursor moves are not edits.
+        // Cursor moves and copies are not edits.
         key(&mut ed, KeyCode::Left, ms(6000));
+        ctrl(&mut ed, 'a', ms(6000));
+        assert_eq!(
+            ctrl(&mut ed, 'c', ms(6000)),
+            FxEditorOutcome::Copy("fx::dissolve(9)".into())
+        );
         assert_eq!(ed.take_due(ms(7000)), None);
+        key(&mut ed, KeyCode::End, ms(7000));
+        key(&mut ed, KeyCode::Left, ms(7000));
         key(&mut ed, KeyCode::Backspace, ms(7000));
         assert_eq!(ed.take_due(ms(7300)).as_deref(), Some("fx::dissolve()"));
+        // Undo is an edit too, and re-arms the preview.
+        ctrl(&mut ed, 'z', ms(8000));
+        assert_eq!(ed.take_due(ms(8300)).as_deref(), Some("fx::dissolve(9)"));
     }
 
     #[test]
@@ -552,77 +397,27 @@ mod tests {
         assert_eq!(ed.take_due(t0 + DEBOUNCE), None, "closed");
         ed.open(t0);
         assert!(ed.take_due(t0).is_some(), "opening previews right away");
-        ed.handle_key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE), t0);
+        key(&mut ed, KeyCode::Char('x'), t0);
         ed.close();
         assert!(!ed.pending());
     }
 
     #[test]
-    fn ctrl_r_runs_now_and_cancels_the_pending_debounce() {
+    fn ctrl_r_runs_now_and_cut_and_paste_are_reported() {
         let t0 = Instant::now();
         let mut ed = blank();
         ed.open = true;
-        type_str(&mut ed, "a", t0);
-        let out = ed.handle_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL), t0);
-        assert_eq!(out, FxEditorOutcome::RunNow);
-        assert_eq!(ed.text(), "a");
+        type_str(&mut ed, "ab", t0);
+        assert_eq!(ctrl(&mut ed, 'r', t0), FxEditorOutcome::RunNow);
         assert!(!ed.pending());
-        let out = ed.handle_key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::ALT), t0);
-        assert_eq!(out, FxEditorOutcome::None);
-    }
-
-    #[test]
-    fn multi_line_editing() {
-        let t = Instant::now();
-        let mut ed = blank();
-        type_str(&mut ed, "    a(", t);
-        key(&mut ed, KeyCode::Enter, t);
-        assert_eq!(ed.cursor(), (1, 4), "Enter keeps the indent");
-        type_str(&mut ed, "b", t);
-        assert_eq!(ed.text(), "    a(\n    b");
-        key(&mut ed, KeyCode::Home, t);
-        key(&mut ed, KeyCode::Backspace, t);
-        assert_eq!(
-            ed.text(),
-            "    a(    b",
-            "Backspace at column 0 joins lines"
-        );
-        assert_eq!(ed.cursor(), (0, 6));
-        key(&mut ed, KeyCode::Enter, t);
-        key(&mut ed, KeyCode::Up, t);
-        key(&mut ed, KeyCode::End, t);
-        key(&mut ed, KeyCode::Delete, t);
-        // Enter re-indented the rest; Delete at the line end joins it back.
-        assert_eq!(
-            ed.text(),
-            "    a(        b",
-            "Delete at line end joins lines"
-        );
-        // Left at column 0 wraps to the previous line end.
-        let mut ed = blank();
-        ed.set_text("ab\ncd");
-        key(&mut ed, KeyCode::Home, t);
-        key(&mut ed, KeyCode::Left, t);
-        assert_eq!(ed.cursor(), (0, 2));
-        key(&mut ed, KeyCode::Right, t);
-        assert_eq!(ed.cursor(), (1, 0));
-        // Up/Down clamp the column to the shorter line.
-        ed.set_text("abcdef\nx");
-        key(&mut ed, KeyCode::Up, t);
-        assert_eq!(ed.cursor(), (0, 1));
-        key(&mut ed, KeyCode::End, t);
-        key(&mut ed, KeyCode::Down, t);
-        assert_eq!(ed.cursor(), (1, 1));
-    }
-
-    #[test]
-    fn paste_splits_lines_and_arms_the_debounce() {
-        let t = Instant::now();
-        let mut ed = blank();
-        ed.open = true;
-        ed.insert_str("fx::dissolve(1)\r\n\t.with_area(canvas)", t);
+        ctrl(&mut ed, 'a', t0);
+        assert_eq!(ctrl(&mut ed, 'x', t0), FxEditorOutcome::Copy("ab".into()));
+        assert_eq!(ed.text(), "");
+        assert!(ed.pending(), "a cut is an edit");
+        assert_eq!(ctrl(&mut ed, 'v', t0), FxEditorOutcome::Paste);
+        ed.insert_str("fx::dissolve(1)\r\n\t.with_area(canvas)", t0);
         assert_eq!(ed.text(), "fx::dissolve(1)\n    .with_area(canvas)");
-        assert!(ed.take_due(t + DEBOUNCE).is_some());
+        assert!(ed.take_due(t0 + DEBOUNCE).is_some());
     }
 
     #[test]
@@ -664,6 +459,11 @@ mod tests {
             "{}",
             row(buf, line2)
         );
+        assert_eq!(
+            buf[(rect.x + 1, line2)].fg,
+            theme.general.error,
+            "marked line number"
+        );
         let (r, a, b) = err.span_ranges(src)[0];
         assert_eq!(r, 1);
         let x0 = rect.x + 1 + 2; // border + gutter
@@ -671,7 +471,7 @@ mod tests {
             let cell = &buf[(x, line2)];
             let in_span = x >= x0 + a as u16 && x < x0 + b as u16;
             assert_eq!(
-                cell.modifier.contains(Modifier::REVERSED),
+                cell.modifier.contains(Modifier::UNDERLINED),
                 in_span,
                 "x={x} {:?} span {a}..{b}",
                 cell.symbol()
@@ -684,9 +484,9 @@ mod tests {
             .map(|x| buf[(x, line2)].symbol())
             .collect();
         assert!(highlighted.contains("nowhere"), "{highlighted:?}");
-        // The message rows under the text: `fx line:column: message`.
+        // The message rows under the text: `fx line:column: message`,
+        // clipped to the box width.
         let msg = row(buf, rect.y + rect.height - 1 - MESSAGE_ROWS);
-        // Clipped to the box width.
         let head: String = err.status_text().chars().take(40).collect();
         assert!(msg.contains(&head), "{msg}");
         assert!(
@@ -704,10 +504,10 @@ mod tests {
         let theme = Theme::default();
         let mut terminal = Terminal::new(TestBackend::new(40, 20)).unwrap();
         terminal.draw(|f| ed.render(f, f.area(), &theme)).unwrap();
-        // Inner width 38, gutter "1 ", one column kept free at the right:
-        // the cursor sits on the last text column.
+        // Inner width 38 minus the "1 " gutter: the cursor sits on the last
+        // text column.
         terminal.backend_mut().assert_cursor_position(Position {
-            x: 1 + 2 + 34,
+            x: 1 + 2 + 35,
             y: ed.rect(Rect::new(0, 0, 40, 20)).y + 1,
         });
     }
