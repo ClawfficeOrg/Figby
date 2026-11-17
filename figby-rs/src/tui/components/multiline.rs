@@ -137,6 +137,8 @@ pub struct TextArea {
     highlights: Vec<Highlight>,
     /// A left-button drag is selecting.
     dragging: bool,
+    /// Display column Up/Down aim for (see `move_vertical`).
+    goal: Option<usize>,
     /// Where the text (not the gutter) was drawn last; mouse hit-testing.
     text_rect: Rect,
     pub line_numbers: bool,
@@ -211,6 +213,7 @@ impl TextArea {
             last_edit: EditKind::None,
             highlights: Vec::new(),
             dragging: false,
+            goal: None,
             text_rect: Rect::default(),
             line_numbers: false,
             tab_width: 4,
@@ -246,6 +249,7 @@ impl TextArea {
         self.undo.clear();
         self.redo.clear();
         self.last_edit = EditKind::None;
+        self.goal = None;
         self.scroll = (0, 0);
     }
 
@@ -263,6 +267,7 @@ impl TextArea {
         self.cursor = self.clamp(pos);
         self.anchor = None;
         self.last_edit = EditKind::None;
+        self.goal = None;
     }
 
     /// The selection as ordered `(start, end)`, end exclusive; `None` when
@@ -284,6 +289,7 @@ impl TextArea {
         self.anchor = Some(self.clamp(from));
         self.cursor = self.clamp(to);
         self.last_edit = EditKind::None;
+        self.goal = None;
     }
 
     pub fn select_all(&mut self) {
@@ -328,6 +334,7 @@ impl TextArea {
         }
         self.redo.clear();
         self.last_edit = kind;
+        self.goal = None;
     }
 
     /// Remove the selected text without recording undo.
@@ -484,6 +491,7 @@ impl TextArea {
         self.cursor = self.clamp(s.cursor);
         self.anchor = None;
         self.last_edit = EditKind::None;
+        self.goal = None;
     }
 
     pub fn undo(&mut self) -> bool {
@@ -599,7 +607,26 @@ impl TextArea {
         }
         self.cursor = self.clamp(to);
         self.last_edit = EditKind::None;
+        self.goal = None;
         TextAreaEvent::Moved
+    }
+
+    /// Move to `row`, keeping the goal column: the display column the
+    /// cursor had when this run of vertical moves began, so passing a
+    /// shorter line does not lose it. Any other move or edit resets it.
+    fn move_vertical(&mut self, row: usize, extend: bool) -> TextAreaEvent {
+        let (r, c) = self.cursor;
+        let goal = self.goal.unwrap_or_else(|| display_col(&self.lines[r], c));
+        let row = row.min(self.lines.len() - 1);
+        let col = char_at_display(&self.lines[row], goal);
+        let ev = self.move_to((row, col), extend);
+        self.goal = Some(goal);
+        ev
+    }
+
+    /// The goal column of the current run of vertical moves, if any.
+    pub fn goal_column(&self) -> Option<usize> {
+        self.goal
     }
 
     /// Rows PageUp/PageDown move: the rendered height, or 10 before the
@@ -689,20 +716,12 @@ impl TextArea {
                 };
                 self.move_to(to, shift)
             }
-            KeyCode::Up => self.move_to(
-                (row.saturating_sub(1), if row == 0 { 0 } else { col }),
-                shift,
-            ),
-            KeyCode::Down => {
-                let to = if row < last {
-                    (row + 1, col)
-                } else {
-                    (row, len)
-                };
-                self.move_to(to, shift)
-            }
-            KeyCode::PageUp => self.move_to((row.saturating_sub(self.page()), col), shift),
-            KeyCode::PageDown => self.move_to(((row + self.page()).min(last), col), shift),
+            KeyCode::Up if row == 0 => self.move_to((0, 0), shift),
+            KeyCode::Up => self.move_vertical(row - 1, shift),
+            KeyCode::Down if row == last => self.move_to((row, len), shift),
+            KeyCode::Down => self.move_vertical(row + 1, shift),
+            KeyCode::PageUp => self.move_vertical(row.saturating_sub(self.page()), shift),
+            KeyCode::PageDown => self.move_vertical((row + self.page()).min(last), shift),
             KeyCode::Home if ctrl => self.move_to((0, 0), shift),
             KeyCode::End if ctrl => self.move_to((last, usize::MAX), shift),
             KeyCode::Home => self.move_to((row, 0), shift),
@@ -752,6 +771,7 @@ impl TextArea {
             MouseEventKind::Drag(MouseButton::Left) if self.dragging => {
                 let pos = self.pos_at_clamped(mouse.column, mouse.row);
                 self.cursor = pos;
+                self.goal = None;
                 TextAreaEvent::Moved
             }
             MouseEventKind::Up(MouseButton::Left) if self.dragging => {
@@ -1256,6 +1276,60 @@ mod tests {
         t.handle_mouse(ev(MouseEventKind::ScrollDown, 8, 1));
         assert_eq!(t.cursor().0, 2);
         assert_eq!(t.selection(), None);
+    }
+
+    // ---- goal column ----
+
+    #[test]
+    fn up_down_keep_the_goal_column_across_short_lines() {
+        let mut t = TextArea::from_text("abcdefgh\nab\n\nabcdefgh");
+        t.set_cursor((0, 6));
+        let mut seen = vec![];
+        for code in [KeyCode::Down, KeyCode::Down, KeyCode::Down] {
+            t.handle_key(k(code));
+            seen.push(t.cursor());
+        }
+        assert_eq!(seen, [(1, 2), (2, 0), (3, 6)]);
+        assert_eq!(t.goal_column(), Some(6));
+        t.handle_key(k(KeyCode::Up));
+        t.handle_key(k(KeyCode::Up));
+        t.handle_key(k(KeyCode::Up));
+        assert_eq!(t.cursor(), (0, 6));
+        // PageUp/PageDown keep it too.
+        t.handle_key(k(KeyCode::PageDown));
+        assert_eq!(t.cursor(), (3, 6));
+    }
+
+    #[test]
+    fn horizontal_moves_and_edits_reset_the_goal_column() {
+        let mut t = TextArea::from_text("abcdefgh\nab\n\nabcdefgh");
+        t.set_cursor((0, 6));
+        t.handle_key(k(KeyCode::Down));
+        t.handle_key(k(KeyCode::Left));
+        assert_eq!(t.goal_column(), None);
+        t.handle_key(k(KeyCode::Down));
+        t.handle_key(k(KeyCode::Down));
+        assert_eq!(t.cursor(), (3, 1), "new goal from column 1");
+        t.set_cursor((0, 6));
+        t.handle_key(k(KeyCode::Down));
+        typed(&mut t, "x");
+        assert_eq!(t.goal_column(), None);
+        t.handle_key(k(KeyCode::Down));
+        t.handle_key(k(KeyCode::Down));
+        assert_eq!(t.cursor(), (3, 3), "goal from after the edit");
+    }
+
+    #[test]
+    fn the_goal_column_is_a_display_column() {
+        let mut t = TextArea::from_text("中中中\nabcdef");
+        t.set_cursor((0, 2));
+        t.handle_key(k(KeyCode::Down));
+        assert_eq!(t.cursor(), (1, 4), "two wide chars are four cells");
+        t.handle_key(k(KeyCode::Up));
+        assert_eq!(t.cursor(), (0, 2));
+        t.set_cursor((1, 3));
+        t.handle_key(k(KeyCode::Up));
+        assert_eq!(t.cursor(), (0, 1), "cell 3 is the second 中");
     }
 
     // ---- words ----
