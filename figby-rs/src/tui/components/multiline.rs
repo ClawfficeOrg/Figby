@@ -21,8 +21,9 @@
 //!   [`TextArea::insert_str`]. That lets the host route through whatever
 //!   clipboard it already has.
 //! - **View.** Vertical and horizontal scroll follow the cursor; optional
-//!   line numbers; host-supplied [`Highlight`] spans (diagnostics, search
-//!   hits); the cursor cell is drawn with its own style, and
+//!   line numbers; host-supplied [`TokenSpan`]s (syntax colouring, styled
+//!   per class by [`TextAreaStyle::tokens`]) and [`Highlight`] spans
+//!   (diagnostics, search hits); the cursor cell is drawn with its own style, and
 //!   [`TextArea::render_frame`] also places the terminal cursor. Mouse
 //!   click places the cursor, drag selects, the wheel scrolls.
 //!
@@ -83,11 +84,29 @@ pub struct Highlight {
     pub end: usize,
 }
 
-/// Styles for [`TextArea::render`]. Highlight, selection and cursor are
-/// patched over `text` in that order.
+/// How many token classes [`TextAreaStyle::tokens`] styles.
+pub const TOKEN_CLASSES: usize = 8;
+
+/// A span of one token class (syntax colouring): `row`, chars
+/// `start..end`, styled with `TextAreaStyle::tokens[class]`. The widget
+/// knows nothing about the language; the host lexes and assigns classes.
+/// A class past [`TOKEN_CLASSES`] is ignored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TokenSpan {
+    pub row: usize,
+    pub start: usize,
+    pub end: usize,
+    pub class: usize,
+}
+
+/// Styles for [`TextArea::render`]. Per cell, `text` is patched with the
+/// token class style, then highlight, selection and cursor, so a selection
+/// or a highlight always wins over token colour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TextAreaStyle {
     pub text: Style,
+    /// Style per token class (see [`TokenSpan`]).
+    pub tokens: [Style; TOKEN_CLASSES],
     pub cursor: Style,
     pub selection: Style,
     pub highlight: Style,
@@ -100,6 +119,7 @@ impl Default for TextAreaStyle {
     fn default() -> Self {
         Self {
             text: Style::default(),
+            tokens: [Style::default(); TOKEN_CLASSES],
             cursor: Style::default().add_modifier(Modifier::REVERSED),
             selection: Style::default().add_modifier(Modifier::REVERSED | Modifier::DIM),
             highlight: Style::default().add_modifier(Modifier::UNDERLINED),
@@ -135,6 +155,7 @@ pub struct TextArea {
     redo: Vec<Snapshot>,
     last_edit: EditKind,
     highlights: Vec<Highlight>,
+    tokens: Vec<TokenSpan>,
     /// A left-button drag is selecting.
     dragging: bool,
     /// Display column Up/Down aim for (see `move_vertical`).
@@ -212,6 +233,7 @@ impl TextArea {
             redo: Vec::new(),
             last_edit: EditKind::None,
             highlights: Vec::new(),
+            tokens: Vec::new(),
             dragging: false,
             goal: None,
             text_rect: Rect::default(),
@@ -519,6 +541,17 @@ impl TextArea {
 
     pub fn highlights(&self) -> &[Highlight] {
         &self.highlights
+    }
+
+    /// Replace the token spans (syntax colouring, drawn with
+    /// `TextAreaStyle::tokens`). Spans should not overlap; where they do,
+    /// the first one wins.
+    pub fn set_tokens(&mut self, tokens: Vec<TokenSpan>) {
+        self.tokens = tokens;
+    }
+
+    pub fn tokens(&self) -> &[TokenSpan] {
+        &self.tokens
     }
 
     /// Where Ctrl+Right lands from `pos`: past any spaces, then past one
@@ -882,6 +915,7 @@ impl TextArea {
                 continue;
             };
             let chars: Vec<char> = line.chars().collect();
+            let row_tokens: Vec<&TokenSpan> = self.tokens.iter().filter(|t| t.row == row).collect();
             // Walk the chars, then one-cell blanks past the end (for the
             // cursor, the selected line break and highlights past the end),
             // until the viewport is full.
@@ -891,7 +925,7 @@ impl TextArea {
                     break;
                 }
                 let (c, w) = chars.get(i).map_or((' ', 1), |&c| (c, cell_width(c)));
-                let st = self.cell_style(style, sel, row, i, chars.len());
+                let st = self.cell_style(style, sel, &row_tokens, (row, i), chars.len());
                 if disp >= sx && disp + w <= sx + cols {
                     let x = x0 + (disp - sx) as u16;
                     buf[(x, y)].set_char(c).set_style(st);
@@ -921,11 +955,17 @@ impl TextArea {
         &self,
         style: &TextAreaStyle,
         sel: Option<(TextPos, TextPos)>,
-        row: usize,
-        col: usize,
+        row_tokens: &[&TokenSpan],
+        (row, col): TextPos,
         len: usize,
     ) -> Style {
         let mut st = style.text;
+        if let Some(tok) = row_tokens
+            .iter()
+            .find(|t| col >= t.start && col < t.end && t.class < TOKEN_CLASSES)
+        {
+            st = st.patch(style.tokens[tok.class]);
+        }
         if self
             .highlights
             .iter()
@@ -1276,6 +1316,71 @@ mod tests {
         t.handle_mouse(ev(MouseEventKind::ScrollDown, 8, 1));
         assert_eq!(t.cursor().0, 2);
         assert_eq!(t.selection(), None);
+    }
+
+    // ---- tokens ----
+
+    #[test]
+    fn token_classes_colour_text_and_lose_to_highlight_and_selection() {
+        let mut t = TextArea::from_text("ab cd ef gh");
+        t.set_tokens(vec![
+            TokenSpan {
+                row: 0,
+                start: 0,
+                end: 2,
+                class: 1,
+            },
+            TokenSpan {
+                row: 0,
+                start: 3,
+                end: 5,
+                class: 2,
+            },
+            TokenSpan {
+                row: 0,
+                start: 6,
+                end: 8,
+                class: 2,
+            },
+            TokenSpan {
+                row: 0,
+                start: 9,
+                end: 11,
+                class: 99,
+            },
+        ]);
+        t.set_highlights(vec![Highlight {
+            row: 0,
+            start: 3,
+            end: 5,
+        }]);
+        t.select((0, 6), (0, 7));
+        let mut tokens = [Style::default(); TOKEN_CLASSES];
+        tokens[1] = Style::default().fg(Color::Green);
+        tokens[2] = Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD);
+        let style = TextAreaStyle {
+            tokens,
+            highlight: Style::default().fg(Color::Red),
+            selection: Style::default().fg(Color::White).bg(Color::Blue),
+            cursor: Style::default(),
+            ..Default::default()
+        };
+        let mut buf = Buffer::empty(Rect::new(0, 0, 12, 1));
+        t.render(Rect::new(0, 0, 12, 1), &mut buf, &style);
+        let fg = |x: u16| buf[(x, 0)].fg;
+        assert_eq!(fg(0), Color::Green, "class 1");
+        assert_eq!(fg(2), Color::Reset, "space between tokens");
+        assert_eq!(fg(3), Color::Red, "highlight beats the token colour");
+        assert!(
+            buf[(3, 0)].modifier.contains(Modifier::BOLD),
+            "token modifiers kept"
+        );
+        assert_eq!(fg(6), Color::White, "selection beats the token colour");
+        assert_eq!(buf[(6, 0)].bg, Color::Blue);
+        assert_eq!(fg(7), Color::Yellow, "unselected half keeps the token");
+        assert_eq!(fg(9), Color::Reset, "unknown class is ignored");
     }
 
     // ---- goal column ----

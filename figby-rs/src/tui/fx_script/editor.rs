@@ -29,6 +29,7 @@ use std::time::{Duration, Instant};
 
 use super::compile::FxCompileError;
 use super::prompt::TARGET_NAMES;
+use super::syntax;
 use crate::tui::components::multiline::{Highlight, TextArea, TextAreaEvent, TextAreaStyle};
 use crate::tui::theme::Theme;
 
@@ -285,8 +286,10 @@ impl FxEditor {
             .map(|(row, start, end)| Highlight { row, start, end })
             .collect();
         self.area.set_highlights(highlights);
+        self.area.set_tokens(syntax::tokenize(&text));
         let style = TextAreaStyle {
             text: Style::default(),
+            tokens: syntax::token_styles(theme),
             cursor: Style::default().add_modifier(Modifier::REVERSED),
             selection: Style::default()
                 .bg(theme.canvas.selection)
@@ -493,6 +496,42 @@ mod tests {
             msg.trim_start_matches(['│', ' ']).starts_with("fx 2:"),
             "{msg}"
         );
+    }
+
+    #[test]
+    fn syntax_colours_render_and_the_error_highlight_wins() {
+        let src = "fx::dissolve(300) // hi\n    .with_area(nowhere)";
+        let err = compile(src, &FxTargets::default()).expect_err("must fail");
+        let mut ed = blank();
+        ed.set_text(src);
+        ed.open = true;
+        ed.set_result(Err(err.clone()));
+        let theme = Theme::default();
+        let g = &theme.general;
+        let mut terminal = Terminal::new(TestBackend::new(60, 20)).unwrap();
+        terminal.draw(|f| ed.render(f, f.area(), &theme)).unwrap();
+        let buf = terminal.backend().buffer();
+        let rect = ed.rect(Rect::new(0, 0, 60, 20));
+        let x0 = rect.x + 1 + 2;
+        let (y1, y2) = (rect.y + 1, rect.y + 2);
+        let cell = |x: u16, y: u16| &buf[(x0 + x, y)];
+        // fx::dissolve: effect colour, bold.
+        assert_eq!(cell(0, y1).fg, g.primary);
+        assert!(cell(0, y1).modifier.contains(Modifier::BOLD));
+        assert_eq!(cell(4, y1).fg, g.primary, "dissolve");
+        assert_eq!(cell(2, y1).fg, g.secondary, "::");
+        assert_eq!(cell(13, y1).fg, g.warning, "300");
+        assert_eq!(cell(18, y1).fg, g.secondary, "comment");
+        assert!(cell(18, y1).modifier.contains(Modifier::ITALIC));
+        // .with_area: a method, not bold.
+        assert_eq!(cell(5, y2).fg, g.primary);
+        assert!(!cell(5, y2).modifier.contains(Modifier::BOLD));
+        // The error span keeps the error colour over the identifier's.
+        let (_, a, b) = err.span_ranges(src)[0];
+        for x in a as u16..b as u16 {
+            assert_eq!(cell(x, y2).fg, g.error, "x={x}");
+            assert!(cell(x, y2).modifier.contains(Modifier::UNDERLINED));
+        }
     }
 
     #[test]

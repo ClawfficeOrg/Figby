@@ -9,6 +9,7 @@
 //! - [`prompt`]: the one-line "Run effect…" prompt (F7).
 //! - [`editor`]: the multi-line FX script editor (F6) with debounced live
 //!   preview and inline error highlighting.
+//! - [`syntax`]: the DSL lexer behind the editor's syntax colouring.
 //! - [`graph_view`]: the read-only FX Graph overlay (rataflow canvas behind
 //!   the `fx-graph` feature, outline fallback without it).
 //! - [`script`]: `.figfx.toml` script files (named effects, triggers,
@@ -32,6 +33,7 @@ pub mod prompt;
 pub mod runtime;
 pub mod script;
 pub mod script_file;
+pub mod syntax;
 
 pub use editor::{FxEditor, FxEditorOutcome};
 pub use graph_view::FxGraphView;
