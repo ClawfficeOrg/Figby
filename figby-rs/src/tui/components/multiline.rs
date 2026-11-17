@@ -26,9 +26,11 @@
 //!   [`TextArea::render_frame`] also places the terminal cursor. Mouse
 //!   click places the cursor, drag selects, the wheel scrolls.
 //!
-//! Keys: arrows, Home/End, PageUp/PageDown, Ctrl+Home/End move (Shift
-//! extends the selection); Ctrl+A selects all; Ctrl+C/X/V copy, cut,
-//! paste; Ctrl+Z undo; Ctrl+Y or Ctrl+Shift+Z redo.
+//! Keys: arrows, Home/End, PageUp/PageDown, Ctrl+Home/End, Ctrl+Left/Right
+//! (by word) move, and Shift extends the selection; Ctrl+Backspace and
+//! Ctrl+Delete delete a word; Ctrl+A selects all; Ctrl+C/X/V copy, cut,
+//! paste; Ctrl+Z undo; Ctrl+Y or Ctrl+Shift+Z redo. A word is a run of
+//! alphanumerics and `_`, or a run of other non-space chars.
 
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{
@@ -157,6 +159,18 @@ fn char_len(s: &str) -> usize {
 /// Byte offset of char `ci` in `s` (the end if past it).
 fn byte_at(s: &str, ci: usize) -> usize {
     s.char_indices().nth(ci).map_or(s.len(), |(b, _)| b)
+}
+
+/// Word classes for word-wise movement: 0 space, 1 alphanumeric or `_`,
+/// 2 any other char (punctuation runs are words of their own).
+fn word_class(c: char) -> u8 {
+    if c.is_whitespace() {
+        0
+    } else if c.is_alphanumeric() || c == '_' {
+        1
+    } else {
+        2
+    }
 }
 
 /// Terminal cells `c` takes: 2 for wide CJK and emoji, else 1. Zero-width
@@ -499,6 +513,81 @@ impl TextArea {
         &self.highlights
     }
 
+    /// Where Ctrl+Right lands from `pos`: past any spaces, then past one
+    /// word (an alphanumeric/underscore run, or a run of other non-space
+    /// chars). At a line end it moves to the next line start.
+    pub fn word_right(&self, (row, col): TextPos) -> TextPos {
+        let chars: Vec<char> = self.lines[row].chars().collect();
+        if col >= chars.len() {
+            return if row + 1 < self.lines.len() {
+                (row + 1, 0)
+            } else {
+                (row, chars.len())
+            };
+        }
+        let mut i = col;
+        while i < chars.len() && chars[i].is_whitespace() {
+            i += 1;
+        }
+        if let Some(&c) = chars.get(i) {
+            let class = word_class(c);
+            while i < chars.len() && word_class(chars[i]) == class {
+                i += 1;
+            }
+        }
+        (row, i)
+    }
+
+    /// Where Ctrl+Left lands from `pos`: back over any spaces, then to the
+    /// start of the word before. At a line start it moves to the previous
+    /// line end.
+    pub fn word_left(&self, (row, col): TextPos) -> TextPos {
+        if col == 0 {
+            return if row > 0 {
+                (row - 1, char_len(&self.lines[row - 1]))
+            } else {
+                (0, 0)
+            };
+        }
+        let chars: Vec<char> = self.lines[row].chars().collect();
+        let mut i = col.min(chars.len());
+        while i > 0 && chars[i - 1].is_whitespace() {
+            i -= 1;
+        }
+        if i > 0 {
+            let class = word_class(chars[i - 1]);
+            while i > 0 && word_class(chars[i - 1]) == class {
+                i -= 1;
+            }
+        }
+        (row, i)
+    }
+
+    /// Delete from the cursor to `to` (either side), one undo step.
+    fn delete_to(&mut self, to: TextPos) -> bool {
+        if to == self.cursor {
+            return false;
+        }
+        self.anchor = Some(to);
+        self.delete_selection().is_some()
+    }
+
+    /// Ctrl+Backspace: the selection, or back to the previous word start.
+    pub fn delete_word_left(&mut self) -> bool {
+        if self.selection().is_some() {
+            return self.delete_selection().is_some();
+        }
+        self.delete_to(self.word_left(self.cursor))
+    }
+
+    /// Ctrl+Delete: the selection, or up to the next word end.
+    pub fn delete_word_right(&mut self) -> bool {
+        if self.selection().is_some() {
+            return self.delete_selection().is_some();
+        }
+        self.delete_to(self.word_right(self.cursor))
+    }
+
     // ---- input -------------------------------------------------------
 
     /// Move the cursor to `to`, extending the selection when `extend`.
@@ -566,8 +655,12 @@ impl TextArea {
                 self.insert_str("\t");
                 TextAreaEvent::Edited
             }
+            KeyCode::Backspace if ctrl => edited(self.delete_word_left()),
+            KeyCode::Delete if ctrl => edited(self.delete_word_right()),
             KeyCode::Backspace => edited(self.backspace()),
             KeyCode::Delete => edited(self.delete()),
+            KeyCode::Left if ctrl => self.move_to(self.word_left(self.cursor), shift),
+            KeyCode::Right if ctrl => self.move_to(self.word_right(self.cursor), shift),
             KeyCode::Left => {
                 if !shift && self.selection().is_some() {
                     let (a, _) = self.selection().unwrap_or_default();
@@ -1163,6 +1256,99 @@ mod tests {
         t.handle_mouse(ev(MouseEventKind::ScrollDown, 8, 1));
         assert_eq!(t.cursor().0, 2);
         assert_eq!(t.selection(), None);
+    }
+
+    // ---- words ----
+
+    fn ctrl_key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::CONTROL)
+    }
+
+    #[test]
+    fn ctrl_arrows_move_by_word_and_punctuation_runs() {
+        let mut t = TextArea::from_text("fx::dissolve(300)  .x\nnext_line");
+        t.set_cursor((0, 0));
+        let mut stops = vec![];
+        for _ in 0..8 {
+            t.handle_key(ctrl_key(KeyCode::Right));
+            stops.push(t.cursor());
+        }
+        assert_eq!(
+            stops,
+            [
+                (0, 2),
+                (0, 4),
+                (0, 12),
+                (0, 13),
+                (0, 16),
+                (0, 17),
+                (0, 20),
+                (0, 21)
+            ]
+        );
+        t.handle_key(ctrl_key(KeyCode::Right));
+        assert_eq!(t.cursor(), (1, 0), "wraps to the next line");
+        t.handle_key(ctrl_key(KeyCode::Right));
+        assert_eq!(t.cursor(), (1, 9), "underscore joins a word");
+        t.handle_key(ctrl_key(KeyCode::Left));
+        assert_eq!(t.cursor(), (1, 0));
+        t.handle_key(ctrl_key(KeyCode::Left));
+        assert_eq!(t.cursor(), (0, 21), "wraps to the previous line end");
+        t.handle_key(ctrl_key(KeyCode::Left));
+        assert_eq!(t.cursor(), (0, 20));
+        t.handle_key(ctrl_key(KeyCode::Left));
+        assert_eq!(t.cursor(), (0, 19), "the '.' run");
+        t.handle_key(ctrl_key(KeyCode::Left));
+        assert_eq!(t.cursor(), (0, 16), "back over spaces, then ')'");
+        t.set_cursor((0, 0));
+        t.handle_key(ctrl_key(KeyCode::Left));
+        assert_eq!(t.cursor(), (0, 0));
+    }
+
+    #[test]
+    fn ctrl_shift_arrows_extend_the_selection_by_word() {
+        let mut t = TextArea::from_text("let t = (600, QuadOut);");
+        t.set_cursor((0, 14));
+        let both = KeyModifiers::CONTROL | KeyModifiers::SHIFT;
+        t.handle_key(KeyEvent::new(KeyCode::Right, both));
+        assert_eq!(t.selected_text().as_deref(), Some("QuadOut"));
+        t.handle_key(KeyEvent::new(KeyCode::Right, both));
+        assert_eq!(t.selected_text().as_deref(), Some("QuadOut);"));
+        t.set_cursor((0, 8));
+        t.handle_key(KeyEvent::new(KeyCode::Left, both));
+        assert_eq!(t.selected_text().as_deref(), Some("= "));
+    }
+
+    #[test]
+    fn ctrl_backspace_and_delete_remove_a_word() {
+        let mut t = TextArea::from_text("fx::dissolve(300)");
+        t.set_cursor((0, 12));
+        assert_eq!(
+            t.handle_key(ctrl_key(KeyCode::Backspace)),
+            TextAreaEvent::Edited
+        );
+        assert_eq!((t.text().as_str(), t.cursor()), ("fx::(300)", (0, 4)));
+        assert_eq!(
+            t.handle_key(ctrl_key(KeyCode::Delete)),
+            TextAreaEvent::Edited
+        );
+        assert_eq!(t.text(), "fx::300)");
+        t.undo();
+        assert_eq!(t.text(), "fx::(300)", "one undo step per word");
+        // At a line start Ctrl+Backspace joins with the line above.
+        let mut t = TextArea::from_text("ab\ncd");
+        t.set_cursor((1, 0));
+        t.handle_key(ctrl_key(KeyCode::Backspace));
+        assert_eq!(t.text(), "abcd");
+        // A selection is deleted whole.
+        t.select((0, 1), (0, 3));
+        t.handle_key(ctrl_key(KeyCode::Delete));
+        assert_eq!(t.text(), "ad");
+        t.set_cursor((0, 2));
+        assert_eq!(
+            t.handle_key(ctrl_key(KeyCode::Delete)),
+            TextAreaEvent::Ignored
+        );
     }
 
     // ---- display width ----
