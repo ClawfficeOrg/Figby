@@ -338,14 +338,23 @@ target. Show inline error highlighting from `DslParseError::context()`.
 > `fx_script/editor.rs`, a multi-line editor docked at the bottom of the
 > screen above the status bar, so the canvas stays visible. Figby had no
 > multi-line text widget, so the editing is a new generic one,
-> `components/multiline.rs` (`TextArea`, ratatui only, no Figby types, so
-> other apps can reuse it). It is char-indexed throughout and has cursor
-> movement, Enter/Backspace/Delete across lines, auto-indent, horizontal and
-> vertical scroll, line numbers, Shift and mouse-drag selection, Ctrl+A/C/X/V
-> through the host's clipboard (here the document clipboard the canvas
-> selection uses), Ctrl+Z/Ctrl+Y undo and redo (typed runs coalesce), click
-> to place the cursor, a drawn cursor cell plus the terminal cursor, and
-> host-supplied highlight spans. The FX editor adds Ctrl+R (replay now), Esc
+> `components/multiline.rs` (`TextArea`, ratatui and `unicode-width` only,
+> no Figby types, so other apps can reuse it). It is char-indexed, but
+> layout counts display width (wide CJK and emoji take two cells and are
+> never split at the viewport edge). It has cursor movement with a goal
+> column for Up/Down, Ctrl+Left/Right by word, Ctrl+Backspace/Delete,
+> Enter/Backspace/Delete across lines, auto-indent, horizontal and vertical
+> scroll, line numbers, Shift and mouse-drag selection, Ctrl+A/C/X/V through
+> the host's clipboard, Ctrl+Z/Ctrl+Y undo and redo (typed runs coalesce),
+> click to place the cursor, a drawn cursor cell plus the terminal cursor,
+> host-supplied token classes (syntax colouring) and highlight spans. The
+> FX editor colours the DSL with `fx_script/syntax.rs` (identifiers,
+> methods, numbers, strings, comments, punctuation, `fx::` effects and
+> `let`, interpolation/colour/motion names; theme colours; selection and
+> the error highlight win over token colour). Copy and cut go to the system
+> clipboard (`arboard` 3.7, text only, native-only; `tui/text_clipboard.rs`)
+> and to the document clipboard the canvas selection uses; paste reads the
+> system clipboard and falls back to the document one. The FX editor adds Ctrl+R (replay now), Esc
 > (close, keep the text) and bracketed paste. Every edit restarts a 300 ms
 > debounce; `poll_fx_editor(now)` in the event loop compiles once per pause.
 > The clock is injected (`now: Instant`), so tests drive it with fixed
@@ -365,10 +374,8 @@ target. Show inline error highlighting from `DslParseError::context()`.
 > tests in `compile.rs` pin this. While open, the editor takes every key,
 > mouse and paste event, so typing never reaches the canvas tools, and it
 > draws after the effects tick, so a preview over `screen` never paints the
-> editor. No new dependencies. Not done: syntax colouring; wide (CJK)
-> glyph widths in `TextArea` (one char is one cell); word-wise movement;
-> the OS clipboard (copy goes to Figby's document clipboard); saving the
-> editor text into a `.figfx.toml` or loading an effect from the
+> editor. One new dependency, `arboard` (above). Not done: grapheme
+> clusters (a combining mark gets a cell of its own); saving the editor text into a `.figfx.toml` or loading an effect from the
 > Effects tab into it; a preview that loops instead of playing once per
 > pause.
 
