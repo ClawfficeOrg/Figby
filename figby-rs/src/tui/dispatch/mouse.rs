@@ -12,9 +12,7 @@ impl TuiApp {
         self.sync_font_char_owner();
         // Modal layers and full-screen views, highest priority first.
         if self.mouse_quit_prompt(mouse)
-            // The FX Graph overlay covers the frame and is read-only, so it
-            // swallows the mouse rather than let clicks paint underneath.
-            || self.dialogs.fx_graph.open
+            || self.mouse_fx_graph(mouse)
             || self.dialogs.fx_prompt.open
             || self.mouse_fx_editor(mouse)
             || self.mouse_menu_bar(mouse)
@@ -98,6 +96,20 @@ impl TuiApp {
                 self.dialogs.pending_transition = None;
                 self.frame.dirty = true;
             }
+        }
+        true
+    }
+
+    /// FX Graph overlay (F9): covers the frame and is modal, so while it is
+    /// open every mouse event goes to it (click select, drag connect,
+    /// detach) and none reaches the canvas or panels underneath. Same
+    /// priority as its key handler, `key_fx_graph`.
+    fn mouse_fx_graph(&mut self, mouse: MouseEvent) -> bool {
+        if !self.dialogs.fx_graph.open {
+            return false;
+        }
+        if self.dialogs.fx_graph.handle_mouse(mouse) {
+            self.frame.dirty = true;
         }
         true
     }
@@ -615,6 +627,35 @@ mod system_font_mouse_tests {
         assert!(!app.editor.unsaved);
         // Control: with the picker closed the same clicks do paint.
         app.dialogs.system_font.close();
+        click_everywhere(&mut app);
+        assert_ne!(app.editor.revision, revision, "control: canvas reachable");
+    }
+
+    #[test]
+    fn test_fx_graph_overlay_consumes_mouse_and_edits_by_mouse() {
+        let mut app = brush_app();
+        app.dialogs.fx_graph.graph_dir = None;
+        app.dialogs.fx_graph.open = true;
+        draw(&mut app);
+        let revision = app.editor.revision;
+        let preset = app.dialogs.fx_graph.selected();
+        click_everywhere(&mut app);
+        for _ in 0..5 {
+            app.handle_mouse_event(mouse(MouseEventKind::ScrollDown, 40, 12));
+            app.handle_mouse_event(mouse(MouseEventKind::Down(MouseButton::Right), 0, 23));
+        }
+        assert_eq!(app.editor.revision, revision, "canvas must not be painted");
+        assert!(!app.editor.unsaved);
+        assert!(app.dialogs.fx_graph.open);
+        assert_eq!(
+            app.dialogs.fx_graph.selected(),
+            preset,
+            "wheel keeps the preset"
+        );
+        // The clicks reached the overlay: one on a node entered edit mode.
+        assert!(app.dialogs.fx_graph.is_editing());
+        // Control: closed, the same clicks paint.
+        app.dialogs.fx_graph.open = false;
         click_everywhere(&mut app);
         assert_ne!(app.editor.revision, revision, "control: canvas reachable");
     }

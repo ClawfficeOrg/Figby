@@ -8,10 +8,12 @@
 //! outline. Either way the IR stays Figby's own: the rataflow `Flow` is
 //! rebuilt from the `FxGraph` and never written back. The selected node is
 //! highlighted in both (rataflow's selection style, or a marked outline row).
+//! The mouse edits too (see [`FxGraphView::handle_mouse`]): click selects,
+//! drag onto a parent connects, drag off or right-click detaches.
 
 use std::path::PathBuf;
 
-use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::{KeyCode, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -79,16 +81,93 @@ fn placement(graph: &FxGraph, n: &FxNode) -> NodePlacement {
 /// Tree layout: data flows left to right, leaves in the leftmost column and
 /// the root on the right. Leaves stack top to bottom in emission order and
 /// each parent is centred on its children. Value nodes the tree uses get a
-/// column of their own on the far left. Only nodes reachable from the root
-/// (and the values they use) are placed; an invalid graph places nothing.
+/// column of their own on the far left. Scratch trees (nodes not attached
+/// under the root, such as a leaf just added) are laid out the same way and
+/// stacked below the main tree, so they can be clicked and dragged onto a
+/// parent. An invalid graph places nothing.
 pub fn layout(graph: &FxGraph) -> Vec<NodePlacement> {
     if graph.validate().is_err() {
         return Vec::new();
     }
-    // Depth of every reachable node (pre-order, so parents come first).
-    let order = graph.reachable();
+    let mut placed = tree_layout(graph, graph.root);
+    let bottom =
+        |placed: &[NodePlacement]| placed.iter().map(|p| p.y + p.height).fold(0.0f64, f64::max);
+    for root in scratch_roots(graph) {
+        // One blank row more than between leaves sets scratch apart.
+        let top = bottom(&placed) + GAP_Y * 2.0;
+        let mut tree = tree_layout(graph, root);
+        for p in &mut tree {
+            p.y += top;
+        }
+        placed.extend(tree);
+    }
+
+    let values: Vec<NodePlacement> = graph
+        .used_values()
+        .into_iter()
+        .filter_map(|id| graph.node(id))
+        .map(|n| placement(graph, n))
+        .collect();
+    if !values.is_empty() {
+        let w = values.iter().map(|p| p.width).fold(0.0, f64::max);
+        for p in &mut placed {
+            p.x += w + GAP_X;
+        }
+        let mut y = 0.0;
+        for mut p in values {
+            p.x = w - p.width;
+            p.y = y;
+            y += p.height + GAP_Y;
+            placed.push(p);
+        }
+    }
+    placed
+}
+
+/// Nodes under `root`, parents before children (pre-order).
+fn preorder(graph: &FxGraph, root: FxNodeId) -> Vec<FxNodeId> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    let mut stack = vec![root];
+    while let Some(id) = stack.pop() {
+        if !seen.insert(id) {
+            continue;
+        }
+        out.push(id);
+        if let Some(n) = graph.node(id) {
+            stack.extend(n.children.iter().rev().copied());
+        }
+    }
+    out
+}
+
+/// Tops of the scratch trees, by id: nodes that are neither reachable from
+/// the root, nor a Value node the tree uses, nor anyone's child.
+pub fn scratch_roots(graph: &FxGraph) -> Vec<FxNodeId> {
+    let reachable = graph.reachable();
+    let used = graph.used_values();
+    let mut ids: Vec<FxNodeId> = graph
+        .nodes
+        .iter()
+        .map(|n| n.id)
+        .filter(|id| !reachable.contains(id) && !used.contains(id))
+        .filter(|&id| !graph.nodes.iter().any(|n| n.children.contains(&id)))
+        .collect();
+    ids.sort_unstable();
+    ids
+}
+
+/// Whether `id` sits under some parent (what `x` / disconnect needs).
+fn is_attached(graph: &FxGraph, id: FxNodeId) -> bool {
+    graph.nodes.iter().any(|n| n.children.contains(&id))
+}
+
+/// [`layout`] of the one tree under `root`, from the origin.
+fn tree_layout(graph: &FxGraph, root: FxNodeId) -> Vec<NodePlacement> {
+    // Depth of every node (pre-order, so parents come first).
+    let order = preorder(graph, root);
     let mut depth = std::collections::BTreeMap::new();
-    depth.insert(graph.root, 0usize);
+    depth.insert(root, 0usize);
     for &id in &order {
         let d = depth.get(&id).copied().unwrap_or(0);
         if let Some(n) = graph.node(id) {
@@ -120,7 +199,7 @@ pub fn layout(graph: &FxGraph) -> Vec<NodePlacement> {
     // y: post-order walk, leaves take the next free row.
     let mut cursor = 0.0f64;
     let mut centre = std::collections::BTreeMap::new();
-    place_y(graph, graph.root, &mut cursor, &mut centre);
+    place_y(graph, root, &mut cursor, &mut centre);
 
     for p in &mut placed {
         let c = col_of(p.id);
@@ -128,26 +207,6 @@ pub fn layout(graph: &FxGraph) -> Vec<NodePlacement> {
         p.x = col_x[c] + (col_w[c] - p.width);
         let mid = centre.get(&p.id).copied().unwrap_or(0.0);
         p.y = (mid - p.height / 2.0).max(0.0);
-    }
-
-    let values: Vec<NodePlacement> = graph
-        .used_values()
-        .into_iter()
-        .filter_map(|id| graph.node(id))
-        .map(|n| placement(graph, n))
-        .collect();
-    if !values.is_empty() {
-        let w = values.iter().map(|p| p.width).fold(0.0, f64::max);
-        for p in &mut placed {
-            p.x += w + GAP_X;
-        }
-        let mut y = 0.0;
-        for mut p in values {
-            p.x = w - p.width;
-            p.y = y;
-            y += p.height + GAP_Y;
-            placed.push(p);
-        }
     }
     placed
 }
@@ -246,6 +305,42 @@ pub struct FxGraphView {
     /// Name of the graph file last loaded; `S` saves back under it. `None`
     /// saves under the selected preset's name.
     graph_name: Option<String>,
+    /// Mouse hit targets, recorded by the last render (see [`NodeHit`]).
+    hits: Vec<NodeHit>,
+    /// Inner rect of the graph pane at the last render.
+    graph_pane: Rect,
+    /// A left-button drag that started on a node, while it lasts.
+    drag: Option<MouseDrag>,
+    /// First outline row shown (the outline scrolls with the wheel).
+    outline_scroll: usize,
+}
+
+/// One node's mouse target on screen, as last drawn.
+///
+/// On the rataflow canvas the rect is the node's own terminal rect, read
+/// back with `Flow::node_terminal_rect` right after the flow is rendered,
+/// so it carries rataflow's fit-to-view transform exactly (no second copy
+/// of the transform here). When rataflow zooms out far enough that a node
+/// is drawn shorter than its box (the bottom border dropped, the handle row
+/// on the row below the rect), `slop_row` is that extra row; it only counts
+/// when no node's own rect is hit. In the outline the rect is the node's row.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct NodeHit {
+    id: FxNodeId,
+    rect: Rect,
+    slop_row: Option<u16>,
+}
+
+/// Press on a node, then drag: onto a parent to connect, onto empty graph
+/// space to detach.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct MouseDrag {
+    from: FxNodeId,
+    start: (u16, u16),
+    moved: bool,
+    /// The node under the pointer now (never `from`), and whether
+    /// connecting `from` under it would be accepted.
+    target: Option<(FxNodeId, bool)>,
 }
 
 /// Load picker: the saved graphs (newest first) and the highlighted one.
@@ -285,6 +380,10 @@ impl FxGraphView {
             graph_dir: graph_file::default_dir(),
             picker: None,
             graph_name: None,
+            hits: Vec::new(),
+            graph_pane: Rect::default(),
+            drag: None,
+            outline_scroll: 0,
         }
     }
 
@@ -324,6 +423,8 @@ impl FxGraphView {
             self.graph_name = None;
             self.edit_msg.clear();
             self.state = None;
+            self.drag = None;
+            self.outline_scroll = 0;
         }
     }
 
@@ -843,6 +944,204 @@ impl FxGraphView {
         true
     }
 
+    /// The node drawn at screen cell (`col`, `row`) by the last render, if
+    /// any. A node's own rect wins over another node's slop row.
+    fn node_at(&self, col: u16, row: u16) -> Option<FxNodeId> {
+        let pos = (col, row).into();
+        if !self.graph_pane.contains(pos) {
+            return None;
+        }
+        self.hits
+            .iter()
+            .find(|h| h.rect.contains(pos))
+            .or_else(|| {
+                self.hits
+                    .iter()
+                    .find(|h| h.slop_row == Some(row) && col >= h.rect.x && col < h.rect.right())
+            })
+            .map(|h| h.id)
+    }
+
+    /// Select `id` as if Tab had walked to it, entering edit mode first
+    /// (as `e` does) when the overlay is only viewing.
+    fn select_node_id(&mut self, id: FxNodeId) -> bool {
+        if !self.editing {
+            self.start_editing();
+            if !self.editing {
+                return false;
+            }
+        }
+        let Some(i) = self.node_ids().iter().position(|&n| n == id) else {
+            return false;
+        };
+        if i != self.node_sel {
+            if let Some(p) = self.props.as_mut() {
+                // The panel shows the new node's fields from the top.
+                *p = PropsState::default();
+            }
+        }
+        self.node_sel = i;
+        true
+    }
+
+    /// Whether connecting `child` under `parent` would be accepted, tried on
+    /// a throwaway copy of the editor so nothing changes.
+    fn connect_check(&self, child: FxNodeId, parent: FxNodeId) -> Result<(), FxEditError> {
+        let Some(ed) = self.editor.as_ref() else {
+            return Ok(());
+        };
+        let slot = ed.graph().node(parent).map_or(0, |p| p.children.len());
+        ed.clone().connect(child, parent, slot)
+    }
+
+    fn attached(&self, id: FxNodeId) -> bool {
+        self.graph().is_some_and(|g| is_attached(g, id))
+    }
+
+    /// Handle a mouse event while open. The overlay is modal, so every event
+    /// is consumed by the caller whatever this returns; the return value is
+    /// whether anything changed (needs a redraw).
+    ///
+    /// - Left click on a node: select it (entering edit mode from view mode).
+    /// - Left press on a node, drag, release on another node: connect the
+    ///   pressed node under it, at the end of its children. Refusals go to
+    ///   the message line and change nothing.
+    /// - Release on empty graph space: detach the pressed node (`x`).
+    ///   Release outside the graph pane cancels.
+    /// - Right click on a node: select it and detach it (`x`).
+    /// - Wheel over the graph pane: scrolls the outline (no-op on the
+    ///   rataflow canvas, which always fits the graph); never changes presets.
+    pub fn handle_mouse(&mut self, mouse: MouseEvent) -> bool {
+        let (col, row) = (mouse.column, mouse.row);
+        // The load picker owns the overlay while it is open.
+        if self.picker.is_some() {
+            return false;
+        }
+        match mouse.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                self.drag = None;
+                let Some(id) = self.node_at(col, row) else {
+                    return false;
+                };
+                if !self.select_node_id(id) {
+                    return true;
+                }
+                self.drag = Some(MouseDrag {
+                    from: id,
+                    start: (col, row),
+                    moved: false,
+                    target: None,
+                });
+                let title = self
+                    .graph()
+                    .and_then(|g| g.node(id))
+                    .map(|n| n.kind.title())
+                    .unwrap_or_default();
+                self.edit_msg = format!(
+                    "selected {id} {title}; drag onto a parent to connect, right-click to detach"
+                );
+                true
+            }
+            MouseEventKind::Drag(MouseButton::Left) => {
+                let Some(mut drag) = self.drag else {
+                    return false;
+                };
+                drag.moved |= (col, row) != drag.start;
+                let in_pane = self.graph_pane.contains((col, row).into());
+                let child = drag.from;
+                let over = self.node_at(col, row).filter(|&n| n != child);
+                let check = over.map(|p| (p, self.connect_check(child, p)));
+                drag.target = check.as_ref().map(|(p, r)| (*p, r.is_ok()));
+                self.edit_msg = match check {
+                    Some((p, Ok(()))) => format!("release to connect {child} under {p}"),
+                    Some((p, Err(e))) => format!("cannot connect {child} under {p}: {e}"),
+                    None if !in_pane => "release outside the graph to cancel".into(),
+                    None if self.node_at(col, row) == Some(child) => {
+                        format!("drag {child} onto a parent to connect it")
+                    }
+                    None if self.attached(child) => format!("release to detach {child}"),
+                    None => format!("drag {child} onto a parent to connect it"),
+                };
+                self.drag = Some(drag);
+                true
+            }
+            MouseEventKind::Up(MouseButton::Left) => {
+                let Some(drag) = self.drag.take() else {
+                    return false;
+                };
+                if !drag.moved {
+                    // A plain click: the press already selected the node.
+                    return true;
+                }
+                let child = drag.from;
+                let in_pane = self.graph_pane.contains((col, row).into());
+                match self.node_at(col, row) {
+                    Some(p) if p == child => {
+                        self.edit_msg = format!("dropped {child} on itself; nothing changed");
+                    }
+                    Some(parent) => {
+                        let slot = self
+                            .graph()
+                            .and_then(|g| g.node(parent))
+                            .map_or(0, |p| p.children.len());
+                        self.edit(|ed| {
+                            ed.connect(child, parent, slot)
+                                .map(|()| format!("connected {child} under {parent}"))
+                        });
+                        if self.edit_msg.starts_with("connected") && self.marked == Some(child) {
+                            self.marked = None;
+                        }
+                    }
+                    None if !in_pane => self.edit_msg = "drag cancelled".into(),
+                    None if self.attached(child) => {
+                        self.edit(|ed| ed.disconnect(child).map(|()| format!("detached {child}")));
+                    }
+                    None => {
+                        self.edit_msg =
+                            format!("{child} is not attached; drop it on a parent to connect it");
+                    }
+                }
+                true
+            }
+            MouseEventKind::Down(MouseButton::Right) => {
+                self.drag = None;
+                let Some(id) = self.node_at(col, row) else {
+                    return false;
+                };
+                if !self.select_node_id(id) {
+                    return true;
+                }
+                self.edit(|ed| ed.disconnect(id).map(|()| format!("detached {id}")));
+                true
+            }
+            MouseEventKind::ScrollDown | MouseEventKind::ScrollUp
+                if self.graph_pane.contains((col, row).into()) && self.scrolls_outline() =>
+            {
+                let before = self.outline_scroll;
+                self.outline_scroll = if mouse.kind == MouseEventKind::ScrollDown {
+                    before + 1
+                } else {
+                    before.saturating_sub(1)
+                };
+                // Clamped against the row count when drawn.
+                self.outline_scroll != before
+            }
+            _ => false,
+        }
+    }
+
+    /// Whether the graph pane shows the outline (which the wheel scrolls)
+    /// rather than the rataflow canvas.
+    fn scrolls_outline(&self) -> bool {
+        #[cfg(feature = "fx-graph")]
+        {
+            if self.state.as_ref().is_some_and(|s| s.flow.is_some()) {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Draw the overlay over `area` (normally the whole frame).
     pub fn render(&mut self, frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
         if area.width < 4 || area.height < 4 {
@@ -881,9 +1180,9 @@ impl FxGraphView {
                 } else if self.props.is_some() {
                     " ↑↓ field  ←→ change  0-9 Enter type  v value  b bind  n unbind  u/y undo/redo  Esc back "
                 } else if self.editing {
-                    " Tab node  a/A add  v value  m mark  c connect  x detach  d del  r root  p props  u/y undo  S save  L load  Esc done "
+                    " Tab node  a/A add  v value  m mark  c connect  x detach  d del  r root  p props  u/y undo  S save  L load  Esc done  · mouse: click select, drag onto parent connect, drag off / right-click detach "
                 } else {
-                    " ↑↓ preset  s script  e edit  L load  Esc close "
+                    " ↑↓ preset  s script  e edit  L load  Esc close  · click a node to edit "
                 },
                 dim,
             ))
@@ -1058,7 +1357,7 @@ impl FxGraphView {
             });
             title = format!(" node {} ", node.unwrap_or_else(|| "none".into()));
             if let Some(m) = self.marked {
-                // Also covers a marked scratch node, which is not drawn.
+                // Names the mark even when the pane clips the marked node.
                 title.push_str(&format!("· {MARK}marked {m} "));
             }
         }
@@ -1075,12 +1374,24 @@ impl FxGraphView {
         }
         let inner = block.inner(area);
         frame.render_widget(block, area);
+        self.graph_pane = inner;
+        self.hits.clear();
         if inner.width == 0 || inner.height == 0 {
             return;
         }
         // Only edit mode has a node cursor to show.
         let highlight = self.selected_node().filter(|_| self.editing);
         let marked = self.marked.filter(|_| self.editing);
+        // While dragging onto a node: green if it would take the child, red
+        // if the connect would be refused.
+        let target = self.drag.and_then(|d| d.target).map(|(id, ok)| {
+            let colour = if ok {
+                theme.general.success
+            } else {
+                theme.general.error
+            };
+            (id, Style::default().fg(colour).add_modifier(Modifier::BOLD))
+        });
         #[cfg(feature = "fx-graph")]
         {
             let palette = rataflow_view::palette(theme);
@@ -1088,19 +1399,38 @@ impl FxGraphView {
             if let Some(flow) = self.ensure_state().flow.as_mut() {
                 flow.theme = rataflow::Theme::Custom(palette);
                 rataflow_view::select(flow, highlight);
-                rataflow_view::mark(flow, marked, mark_style);
+                rataflow_view::mark(flow, marked, mark_style, target);
                 // Read-only view: refit every frame so a resize keeps the
                 // whole graph in view.
                 flow.request_fit_view();
-                frame.render_widget(flow, inner);
+                frame.render_widget(&mut *flow, inner);
+                let hits = rataflow_view::hits(flow, inner);
+                self.hits = hits;
                 return;
             }
         }
-        let lines = self
+        let rows = self
             .graph()
-            .map(|g| outline_lines(g, highlight, marked, theme))
+            .map(|g| outline_lines_with(g, highlight, marked, target, theme))
             .unwrap_or_default();
-        frame.render_widget(Paragraph::new(lines), inner);
+        let max_scroll = rows.len().saturating_sub(inner.height as usize);
+        self.outline_scroll = self.outline_scroll.min(max_scroll);
+        let scroll = self.outline_scroll;
+        self.hits = rows
+            .iter()
+            .enumerate()
+            .skip(scroll)
+            .take(inner.height as usize)
+            .filter_map(|(i, (id, _))| {
+                id.map(|id| NodeHit {
+                    id,
+                    rect: Rect::new(inner.x, inner.y + (i - scroll) as u16, inner.width, 1),
+                    slop_row: None,
+                })
+            })
+            .collect();
+        let lines: Vec<Line> = rows.into_iter().map(|(_, l)| l).collect();
+        frame.render_widget(Paragraph::new(lines).scroll((scroll as u16, 0)), inner);
     }
 
     fn render_script(&mut self, frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
@@ -1138,42 +1468,122 @@ fn mark_style(theme: &Theme) -> Style {
 /// it uses. The selected node gets the `▸` cursor and the primary style;
 /// the marked node gets the [`MARK`] prefix and the warning style (the
 /// selection style wins when one node is both, but keeps the prefix).
+#[cfg(test)]
 fn outline_lines(
     graph: &FxGraph,
     selected: Option<FxNodeId>,
     marked: Option<FxNodeId>,
     theme: &Theme,
 ) -> Vec<Line<'static>> {
-    let mut rows = graph.outline_rows();
+    outline_lines_with(graph, selected, marked, None, theme)
+        .into_iter()
+        .map(|(_, l)| l)
+        .collect()
+}
+
+/// One outline line of a Value node.
+fn value_row(graph: &FxGraph, id: FxNodeId, depth: usize) -> Option<String> {
+    let n = graph.node(id)?;
+    Some(format!(
+        "{}{} {} {}",
+        "  ".repeat(depth),
+        n.kind.title(),
+        value_var(id),
+        n.kind.summary()
+    ))
+}
+
+/// Outline rows of the scratch tree under `id`, indented by depth.
+fn scratch_rows(
+    graph: &FxGraph,
+    id: FxNodeId,
+    depth: usize,
+    out: &mut Vec<(Option<FxNodeId>, String)>,
+) {
+    let Some(n) = graph.node(id) else {
+        return;
+    };
+    let text = if matches!(n.kind, FxNodeKind::Value { .. }) {
+        value_row(graph, id, depth).unwrap_or_default()
+    } else {
+        let kind = graph.resolved_kind(id).unwrap_or_else(|| n.kind.clone());
+        format!(
+            "{}{} {}",
+            "  ".repeat(depth),
+            n.kind.title(),
+            kind.summary()
+        )
+    };
+    out.push((Some(id), text));
+    for &c in &n.children {
+        scratch_rows(graph, c, depth + 1, out);
+    }
+}
+
+/// [`outline_lines`] with the node id of each row (`None` for a heading)
+/// and an optional drag target style, which wins over the mark style. After
+/// the tree and its values come the scratch trees, under a heading.
+fn outline_lines_with(
+    graph: &FxGraph,
+    selected: Option<FxNodeId>,
+    marked: Option<FxNodeId>,
+    target: Option<(FxNodeId, Style)>,
+    theme: &Theme,
+) -> Vec<(Option<FxNodeId>, Line<'static>)> {
+    let mut rows: Vec<(Option<FxNodeId>, String)> = graph
+        .outline_rows()
+        .into_iter()
+        .map(|(id, t)| (Some(id), t))
+        .collect();
     for id in graph.used_values() {
-        if let Some(n) = graph.node(id) {
-            rows.push((
-                id,
-                format!("{} {} {}", n.kind.title(), value_var(id), n.kind.summary()),
-            ));
+        if let Some(text) = value_row(graph, id, 0) {
+            rows.push((Some(id), text));
         }
     }
-    rows.into_iter()
+    let scratch = if rows.is_empty() {
+        Vec::new()
+    } else {
+        scratch_roots(graph)
+    };
+    let heading = (!scratch.is_empty()).then_some(rows.len());
+    for id in scratch {
+        scratch_rows(graph, id, 0, &mut rows);
+    }
+    let mut out: Vec<(Option<FxNodeId>, Line<'static>)> = rows
+        .into_iter()
         .map(|(id, text)| {
-            let is_sel = Some(id) == selected;
-            let is_mark = Some(id) == marked;
+            let is_sel = id.is_some() && id == selected;
+            let is_mark = id.is_some() && id == marked;
             let cursor = if is_sel { "▸ " } else { "  " };
             let mark = if is_mark { MARK } else { "" };
             let line = format!("{cursor}{mark}{text}");
-            if is_sel {
-                Line::styled(
+            let line = match target {
+                Some((t, style)) if Some(t) == id => Line::styled(line, style),
+                _ if is_sel => Line::styled(
                     line,
                     Style::default()
                         .fg(theme.general.primary)
                         .add_modifier(Modifier::BOLD),
-                )
-            } else if is_mark {
-                Line::styled(line, mark_style(theme))
-            } else {
-                Line::from(line)
-            }
+                ),
+                _ if is_mark => Line::styled(line, mark_style(theme)),
+                _ => Line::from(line),
+            };
+            (id, line)
         })
-        .collect()
+        .collect();
+    if let Some(at) = heading {
+        out.insert(
+            at,
+            (
+                None,
+                Line::styled(
+                    "scratch (not in the script)",
+                    Style::default().fg(theme.general.secondary),
+                ),
+            ),
+        );
+    }
+    out
 }
 
 #[cfg(feature = "fx-graph")]
@@ -1181,29 +1591,72 @@ mod rataflow_view {
     //! The only code that touches rataflow (pinned, behind `fx-graph`).
 
     use rataflow::{Edge, Flow, Node, Palette, StepEdge, TextContent};
+    use ratatui::layout::Rect;
     use ratatui::style::Style;
 
-    use super::{layout, FxGraph, FxNodeId, MARK};
+    use super::{layout, FxGraph, FxNodeId, NodeHit, MARK};
     use crate::tui::theme::Theme;
 
     /// Show `id` as the marked node: [`MARK`] in front of its title and
     /// `style` on its border (rataflow's selection style still wins on the
     /// border when it is also selected). Every other node is unmarked, so
-    /// `None` clears the mark. Idempotent; runs every frame.
-    pub(super) fn mark(flow: &mut Flow, id: Option<FxNodeId>, style: Style) {
+    /// `None` clears the mark. `target` (a drag's drop target) gets its own
+    /// border style, over the mark's. Idempotent; runs every frame.
+    pub(super) fn mark(
+        flow: &mut Flow,
+        id: Option<FxNodeId>,
+        style: Style,
+        target: Option<(FxNodeId, Style)>,
+    ) {
         let want = id.map(|i| i.to_string());
+        let target = target.map(|(i, s)| (i.to_string(), s));
         for (nid, content) in flow.nodes_content_mut() {
             let on = want.as_deref() == Some(nid);
             if let Some(title) = content.title.as_mut() {
                 let bare = title.strip_prefix(MARK).unwrap_or(title).to_string();
                 *title = if on { format!("{MARK}{bare}") } else { bare };
             }
-            content.border_style = on.then_some(style);
+            content.border_style = match &target {
+                Some((t, s)) if t == nid => Some(*s),
+                _ => on.then_some(style),
+            };
         }
     }
 
+    /// Mouse targets of every node as rataflow just drew them in `pane`:
+    /// `Flow::node_terminal_rect` (rataflow's own fit-to-view transform),
+    /// clipped to the pane. Call right after rendering the flow.
+    ///
+    /// rataflow reports (left, top, right, bottom) with right and bottom
+    /// exclusive. Zoomed out below one row per world row, a node is drawn
+    /// one row taller than that rect (its handle row lands on `bottom`), so
+    /// that row becomes the slop row.
+    pub(super) fn hits(flow: &Flow, pane: Rect) -> Vec<NodeHit> {
+        let clip = |lo: i32, hi: i32, min: u16, max: u16| -> (u16, u16) {
+            let a = lo.clamp(i32::from(min), i32::from(max)) as u16;
+            let b = hi.clamp(i32::from(min), i32::from(max)) as u16;
+            (a, b.max(a))
+        };
+        flow.nodes()
+            .filter_map(|n| {
+                let id: FxNodeId = n.id.parse().ok()?;
+                let (l, t, r, b) = flow.node_terminal_rect(&n.id)?;
+                let (x0, x1) = clip(l, r, pane.x, pane.right());
+                let (y0, y1) = clip(t, b, pane.y, pane.bottom());
+                let slop_row =
+                    (b - t < 3 && b >= i32::from(pane.y) && b < i32::from(pane.bottom()))
+                        .then_some(b as u16);
+                Some(NodeHit {
+                    id,
+                    rect: Rect::new(x0, y0, x1 - x0, y1 - y0),
+                    slop_row,
+                })
+            })
+            .collect()
+    }
+
     /// Show `id` as rataflow's selected node (accent border), or nothing.
-    /// Scratch nodes are not on the canvas, so selecting one clears it.
+    /// An id that is not on the canvas clears it.
     pub(super) fn select(flow: &mut Flow, id: Option<FxNodeId>) {
         match id {
             Some(id) => flow.select_node(&id.to_string()),
@@ -1321,7 +1774,7 @@ mod rataflow_view {
             assert_eq!(flow.selected_nodes().count(), 1);
             select(&mut flow, None);
             assert!(!flow.has_selected_nodes());
-            // A node that is not on the canvas (a scratch node) clears it.
+            // An id that is not on the canvas clears it.
             select(&mut flow, Some(9999));
             assert!(!flow.has_selected_nodes());
         }
@@ -2058,6 +2511,403 @@ mod tests {
             .unwrap();
         let flow = v.state.as_ref().unwrap().flow.as_ref().unwrap();
         assert!(!flow.has_selected_nodes());
+    }
+
+    fn mouse(kind: MouseEventKind, column: u16, row: u16) -> MouseEvent {
+        MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers: ratatui::crossterm::event::KeyModifiers::NONE,
+        }
+    }
+
+    fn draw_at(v: &mut FxGraphView, w: u16, h: u16) -> Terminal<TestBackend> {
+        let mut term = Terminal::new(TestBackend::new(w, h)).unwrap();
+        term.draw(|f| v.render(f, f.area(), &Theme::default()))
+            .unwrap();
+        term
+    }
+
+    /// A cell inside `id`'s mouse target, from the last render.
+    fn cell_of(v: &FxGraphView, id: FxNodeId) -> (u16, u16) {
+        let h = v
+            .hits
+            .iter()
+            .find(|h| h.id == id && h.rect.width > 0 && h.rect.height > 0)
+            .unwrap_or_else(|| panic!("node {id} not on screen: {:?}", v.hits));
+        (h.rect.x + h.rect.width / 2, h.rect.y)
+    }
+
+    /// A graph-pane cell over no node.
+    fn empty_cell(v: &FxGraphView) -> (u16, u16) {
+        let p = v.graph_pane;
+        for row in (p.y..p.bottom()).rev() {
+            for col in (p.x..p.right()).rev() {
+                if v.node_at(col, row).is_none() {
+                    return (col, row);
+                }
+            }
+        }
+        panic!("no empty cell in {p:?}");
+    }
+
+    fn drag(v: &mut FxGraphView, from: (u16, u16), to: (u16, u16)) {
+        let left = MouseButton::Left;
+        v.handle_mouse(mouse(MouseEventKind::Down(left), from.0, from.1));
+        v.handle_mouse(mouse(MouseEventKind::Drag(left), to.0, to.1));
+        v.handle_mouse(mouse(MouseEventKind::Up(left), to.0, to.1));
+    }
+
+    fn children(v: &FxGraphView, id: FxNodeId) -> Vec<FxNodeId> {
+        v.graph().unwrap().node(id).unwrap().children.clone()
+    }
+
+    #[test]
+    fn hit_test_maps_cells_to_the_nodes_drawn_there() {
+        // Small and large panes: rataflow zooms out (< 1) and in (> 1).
+        for (w, h) in [(140, 40), (300, 60), (80, 24)] {
+            let mut v = editing_view();
+            v.show_script = false;
+            let term = draw_at(&mut v, w, h);
+            let buf = term.backend().buffer();
+            let g = v.graph().unwrap().clone();
+            let placed = layout(&g);
+            assert_eq!(v.hits.len(), placed.len(), "{w}x{h}: one target per node");
+            for p in &placed {
+                let hit = v.hits.iter().find(|h| h.id == p.id).unwrap();
+                let r = hit.rect;
+                assert!(
+                    v.graph_pane.intersection(r) == r,
+                    "{w}x{h}: clipped to pane"
+                );
+                if r.width == 0 || r.height == 0 {
+                    continue;
+                }
+                // Every cell of the target maps back to this node.
+                for y in r.y..r.bottom() {
+                    for x in r.x..r.right() {
+                        assert_eq!(v.node_at(x, y), Some(p.id), "{w}x{h} ({x},{y})");
+                    }
+                }
+                // ...and the node is really drawn there.
+                let row: String = (r.x..r.right())
+                    .map(|x| buf[(x, r.y)].symbol().to_string())
+                    .collect();
+                #[cfg(feature = "fx-graph")]
+                {
+                    // Corners and title, unless the pane clips the node.
+                    let pane = v.graph_pane;
+                    if r.x > pane.x {
+                        assert!(row.starts_with('╭'), "{w}x{h} {}: {row:?}", p.id);
+                        let name: String = p.title.chars().take(3).collect();
+                        assert!(row.contains(&name), "{w}x{h} {}: {row:?}", p.id);
+                    }
+                    if r.x > pane.x && r.right() < pane.right() {
+                        assert!(row.trim_end().ends_with('╮'), "{w}x{h} {}: {row:?}", p.id);
+                        // The cells either side are not this node's.
+                        assert_ne!(v.node_at(r.x - 1, r.y), Some(p.id));
+                        assert_ne!(v.node_at(r.right(), r.y), Some(p.id));
+                    }
+                }
+                #[cfg(not(feature = "fx-graph"))]
+                assert!(row.contains(g.node(p.id).unwrap().kind.title()), "{row:?}");
+            }
+            // Outside the graph pane nothing is a node.
+            assert_eq!(v.node_at(0, 0), None);
+        }
+    }
+
+    #[test]
+    fn click_selects_the_node_and_enters_edit_mode() {
+        let mut v = FxGraphView::new();
+        v.graph_dir = None;
+        v.open = true;
+        draw_at(&mut v, 160, 44);
+        let g = v.graph().unwrap().clone();
+        let target = g.reachable()[2];
+        let (c, r) = cell_of(&v, target);
+        assert!(!v.is_editing());
+        let left = MouseButton::Left;
+        assert!(v.handle_mouse(mouse(MouseEventKind::Down(left), c, r)));
+        v.handle_mouse(mouse(MouseEventKind::Up(left), c, r));
+        assert!(v.is_editing(), "a click enters edit mode, as e does");
+        assert_eq!(v.selected_node(), Some(target));
+        assert_eq!(v.graph().unwrap(), &g, "a click changes nothing");
+        // Same selection Tab would reach.
+        let mut k = editing_view();
+        while k.selected_node() != Some(target) {
+            k.handle_key(KeyCode::Tab);
+        }
+        assert_eq!(k.node_sel, v.node_sel);
+        // A click on empty space keeps the selection.
+        draw_at(&mut v, 160, 44);
+        let (c, r) = empty_cell(&v);
+        v.handle_mouse(mouse(MouseEventKind::Down(left), c, r));
+        assert_eq!(v.selected_node(), Some(target));
+    }
+
+    #[test]
+    fn drag_connects_a_scratch_child_under_a_parent() {
+        let mut v = editing_view();
+        v.handle_key(KeyCode::Char('a'));
+        let leaf = v.selected_node().unwrap();
+        v.handle_key(KeyCode::Char('A'));
+        let seq = v.selected_node().unwrap();
+        // Scratch nodes are on screen, so they can be dragged.
+        draw_at(&mut v, 160, 44);
+        let (from, to) = (cell_of(&v, leaf), cell_of(&v, seq));
+        let left = MouseButton::Left;
+        v.handle_mouse(mouse(MouseEventKind::Down(left), from.0, from.1));
+        assert_eq!(v.selected_node(), Some(leaf));
+        v.handle_mouse(mouse(MouseEventKind::Drag(left), to.0, to.1));
+        assert_eq!(v.drag.unwrap().target, Some((seq, true)));
+        assert!(
+            v.edit_msg.contains(&format!("connect {leaf} under {seq}")),
+            "{}",
+            v.edit_msg
+        );
+        // The drop target is highlighted while dragging.
+        let theme = Theme::default();
+        let ok = Style::default()
+            .fg(theme.general.success)
+            .add_modifier(Modifier::BOLD);
+        draw_at(&mut v, 160, 44);
+        #[cfg(feature = "fx-graph")]
+        {
+            let flow = v.state.as_ref().unwrap().flow.as_ref().unwrap();
+            let node = flow.node(&seq.to_string()).unwrap();
+            assert_eq!(node.content.border_style, Some(ok));
+        }
+        #[cfg(not(feature = "fx-graph"))]
+        {
+            let rows = outline_lines_with(v.graph().unwrap(), None, None, Some((seq, ok)), &theme);
+            let (_, line) = rows.iter().find(|(id, _)| *id == Some(seq)).unwrap();
+            assert_eq!(line.style, ok);
+        }
+        v.handle_mouse(mouse(MouseEventKind::Up(left), to.0, to.1));
+        assert_eq!(v.edit_msg, format!("connected {leaf} under {seq}"));
+        assert_eq!(children(&v, seq), vec![leaf]);
+        assert_eq!(v.drag, None);
+        // Undoable like the keyboard connect.
+        v.handle_key(KeyCode::Char('u'));
+        assert!(children(&v, seq).is_empty());
+    }
+
+    #[test]
+    fn refused_drag_connect_reports_and_changes_nothing() {
+        let mut v = editing_view();
+        let g = v.graph().unwrap().clone();
+        let root = g.root;
+        let attached = g.reachable()[1];
+        draw_at(&mut v, 160, 44);
+        // The root cannot become a child.
+        {
+            let (a, b) = (cell_of(&v, root), cell_of(&v, attached));
+            drag(&mut v, a, b);
+        }
+        assert!(v.edit_msg.contains("root"), "{}", v.edit_msg);
+        assert_eq!(v.graph().unwrap(), &g);
+        // An attached node cannot be attached a second time.
+        let other = *g
+            .reachable()
+            .iter()
+            .find(|&&id| {
+                id != attached && id != root && !g.node(attached).unwrap().children.contains(&id)
+            })
+            .unwrap();
+        draw_at(&mut v, 160, 44);
+        let (from, to) = (cell_of(&v, attached), cell_of(&v, other));
+        let left = MouseButton::Left;
+        v.handle_mouse(mouse(MouseEventKind::Down(left), from.0, from.1));
+        v.handle_mouse(mouse(MouseEventKind::Drag(left), to.0, to.1));
+        assert_eq!(v.drag.unwrap().target, Some((other, false)));
+        assert!(v.edit_msg.starts_with("cannot connect"), "{}", v.edit_msg);
+        v.handle_mouse(mouse(MouseEventKind::Up(left), to.0, to.1));
+        assert!(!v.edit_msg.starts_with("connected"), "{}", v.edit_msg);
+        assert_eq!(v.graph().unwrap(), &g);
+        // A leaf (no children allowed) refuses a child: not a container.
+        v.handle_key(KeyCode::Char('a'));
+        let leaf = v.selected_node().unwrap();
+        let effect = *g
+            .reachable()
+            .iter()
+            .find(|&&id| g.node(id).unwrap().children.is_empty())
+            .unwrap();
+        draw_at(&mut v, 160, 44);
+        let before = v.graph().unwrap().clone();
+        {
+            let (a, b) = (cell_of(&v, leaf), cell_of(&v, effect));
+            drag(&mut v, a, b);
+        }
+        assert_eq!(v.graph().unwrap(), &before, "{}", v.edit_msg);
+        assert!(!v.edit_msg.starts_with("connected"));
+    }
+
+    #[test]
+    fn drag_to_empty_space_and_right_click_detach() {
+        let mut v = editing_view();
+        let g = v.graph().unwrap().clone();
+        // A child whose parent stays valid without it (a fixed-arity
+        // parent would be left empty, which the editor refuses).
+        let child = *g
+            .reachable()
+            .iter()
+            .find(|&&id| {
+                id != g.root && GraphEditor::new(g.clone()).unwrap().disconnect(id).is_ok()
+            })
+            .unwrap();
+        // A refused detach by drag changes nothing.
+        let fixed = g.reachable().into_iter().find(|&id| {
+            id != g.root && GraphEditor::new(g.clone()).unwrap().disconnect(id).is_err()
+        });
+        draw_at(&mut v, 160, 44);
+        if let Some(fixed) = fixed {
+            let (a, b) = (cell_of(&v, fixed), empty_cell(&v));
+            drag(&mut v, a, b);
+            assert_eq!(v.graph().unwrap(), &g, "{}", v.edit_msg);
+            assert!(!v.edit_msg.starts_with("detached"));
+            draw_at(&mut v, 160, 44);
+        }
+        {
+            let (a, b) = (cell_of(&v, child), empty_cell(&v));
+            drag(&mut v, a, b);
+        }
+        assert_eq!(v.edit_msg, format!("detached {child}"));
+        assert!(!is_attached(v.graph().unwrap(), child));
+        // Undo puts it back; a right-click detaches it again.
+        v.handle_key(KeyCode::Char('u'));
+        assert_eq!(v.graph().unwrap(), &g);
+        draw_at(&mut v, 160, 44);
+        let (c, r) = cell_of(&v, child);
+        assert!(v.handle_mouse(mouse(MouseEventKind::Down(MouseButton::Right), c, r)));
+        assert_eq!(v.selected_node(), Some(child));
+        assert!(!is_attached(v.graph().unwrap(), child));
+        // Releasing outside the graph pane cancels a drag.
+        v.handle_key(KeyCode::Char('u'));
+        draw_at(&mut v, 160, 44);
+        {
+            let (a, b) = (cell_of(&v, child), (0, 0));
+            drag(&mut v, a, b);
+        }
+        assert_eq!(v.graph().unwrap(), &g);
+        assert_eq!(v.edit_msg, "drag cancelled");
+        // Right-click on the root: refused, nothing changes.
+        draw_at(&mut v, 160, 44);
+        let (c, r) = cell_of(&v, g.root);
+        v.handle_mouse(mouse(MouseEventKind::Down(MouseButton::Right), c, r));
+        assert!(v.edit_msg.contains("root"), "{}", v.edit_msg);
+        assert_eq!(v.graph().unwrap(), &g);
+    }
+
+    #[test]
+    fn wheel_over_the_graph_never_changes_the_preset() {
+        let mut v = FxGraphView::new();
+        v.open = true;
+        draw_at(&mut v, 160, 44);
+        let (c, r) = cell_of(&v, v.graph().unwrap().root);
+        let g = v.graph().unwrap().clone();
+        for kind in [MouseEventKind::ScrollDown, MouseEventKind::ScrollUp] {
+            for _ in 0..3 {
+                v.handle_mouse(mouse(kind, c, r));
+                v.handle_mouse(mouse(kind, 2, 3));
+            }
+        }
+        assert_eq!(v.selected(), 0);
+        assert_eq!(v.graph().unwrap(), &g);
+        assert!(!v.is_editing());
+    }
+
+    #[test]
+    fn wheel_scrolls_a_long_outline() {
+        // The outline is the canvas without fx-graph, and the fallback with
+        // it when there is no flow; drive it directly.
+        let mut v = editing_view();
+        for _ in 0..30 {
+            v.handle_key(KeyCode::Char('a'));
+        }
+        v.state = None;
+        let rows = outline_lines_with(v.graph().unwrap(), None, None, None, &Theme::default());
+        assert!(rows.len() > 30);
+        assert!(rows.iter().any(|(id, _)| id.is_none()), "scratch heading");
+        // Under fx-graph the canvas is drawn instead, which the wheel leaves
+        // alone (rataflow fits the whole graph).
+        #[cfg(feature = "fx-graph")]
+        {
+            draw_at(&mut v, 160, 30);
+            assert!(!v.scrolls_outline());
+            let p = v.graph_pane;
+            assert!(!v.handle_mouse(mouse(MouseEventKind::ScrollDown, p.x + 1, p.y + 1)));
+        }
+        #[cfg(not(feature = "fx-graph"))]
+        {
+            draw_at(&mut v, 160, 30);
+            let p = v.graph_pane;
+            let first = v.hits.first().unwrap().id;
+            assert!(v.handle_mouse(mouse(MouseEventKind::ScrollDown, p.x + 1, p.y + 1)));
+            draw_at(&mut v, 160, 30);
+            assert_eq!(v.outline_scroll, 1);
+            assert_ne!(v.hits.first().unwrap().id, first);
+            // Rows still map to the node drawn on them after scrolling.
+            let hit = v.hits[3];
+            assert_eq!(v.node_at(hit.rect.x, hit.rect.y), Some(hit.id));
+            for _ in 0..100 {
+                v.handle_mouse(mouse(MouseEventKind::ScrollDown, p.x + 1, p.y + 1));
+            }
+            draw_at(&mut v, 160, 30);
+            assert_eq!(v.outline_scroll, rows.len() - p.height as usize);
+        }
+    }
+
+    #[test]
+    fn keyboard_editing_still_works_after_mouse_use() {
+        let mut v = editing_view();
+        draw_at(&mut v, 160, 44);
+        let root = v.graph().unwrap().root;
+        let (c, r) = cell_of(&v, root);
+        v.handle_mouse(mouse(MouseEventKind::Down(MouseButton::Left), c, r));
+        v.handle_mouse(mouse(MouseEventKind::Up(MouseButton::Left), c, r));
+        v.handle_key(KeyCode::Char('a'));
+        let leaf = v.selected_node().unwrap();
+        v.handle_key(KeyCode::Char('m'));
+        v.handle_key(KeyCode::Char('A'));
+        v.handle_key(KeyCode::Char('c'));
+        assert!(v.edit_msg.starts_with("connected"), "{}", v.edit_msg);
+        assert!(children(&v, v.selected_node().unwrap()).contains(&leaf));
+    }
+
+    #[test]
+    fn layout_and_outline_show_scratch_trees_below_the_tree() {
+        let mut v = editing_view();
+        v.handle_key(KeyCode::Char('A'));
+        let seq = v.selected_node().unwrap();
+        v.handle_key(KeyCode::Char('a'));
+        let leaf = v.selected_node().unwrap();
+        v.edit(|ed| ed.connect(leaf, seq, 0).map(|()| String::new()));
+        let g = v.graph().unwrap();
+        assert_eq!(scratch_roots(g), vec![seq]);
+        let placed = layout(g);
+        assert_eq!(placed.len(), g.nodes.len());
+        let at = |id| placed.iter().find(|n| n.id == id).unwrap();
+        let tree_bottom = g
+            .reachable()
+            .iter()
+            .map(|&id| at(id).y + at(id).height)
+            .fold(0.0, f64::max);
+        assert!(at(seq).y >= tree_bottom && at(leaf).x + at(leaf).width <= at(seq).x);
+        for (i, a) in placed.iter().enumerate() {
+            for b in &placed[i + 1..] {
+                assert!(!overlaps(a, b), "{} overlaps {}", a.id, b.id);
+            }
+        }
+        let rows = outline_lines_with(g, None, None, None, &Theme::default());
+        let ids: Vec<_> = rows.iter().map(|(id, _)| *id).collect();
+        let head = ids.iter().position(|id| id.is_none()).unwrap();
+        assert_eq!(&ids[head + 1..], &[Some(seq), Some(leaf)]);
+        assert!(
+            rows[head + 2].1.to_string().starts_with("    "),
+            "indented child"
+        );
     }
 
     #[test]

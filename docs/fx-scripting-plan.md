@@ -451,19 +451,51 @@ DSL.
 > **Canvas**: the selected node is rataflow's selected node in edit mode
 > (accent border); the `m`-marked node (the child for `c`, the value for
 > `b`) gets a `◆ ` title prefix and a warning-colour border, and the graph
-> pane title reads `◆ marked N` (which also covers a marked scratch node,
-> not drawn). Without the `fx-graph` feature the outline shows the same
+> pane title reads `◆ marked N`. Without the `fx-graph` feature the outline shows the same
 > `◆ ` prefix and warning style on the marked row, next to the `▸` cursor.
 > The mark clears on a successful connect, delete, load, Esc, preset
 > change, or when an undo removes the marked node. Used Value nodes get
 > their own left column with one edge per binding.
 >
-> Not done: rataflow's own mouse drag/connect editing (out of scope; the
-> canvas stays locked and edits are keyboard-driven on the IR); loading a
-> hand-written `.figfx.toml` as a graph (phase 6 text-to-graph). The
-> selection highlight and the mark are checked headlessly (rataflow node
-> state, buffer text, outline styles); nobody has yet looked at them in a
-> real terminal, so a human check of the colours and the `◆` glyph is still
+> **Mouse editing** (2026-11-19, `graph_view.rs` `handle_mouse`, routed by
+> `dispatch/mouse.rs` `mouse_fx_graph`): the overlay consumes every mouse
+> event while open, at the same priority as its key handler, so nothing
+> reaches the canvas or panels underneath. A left click on a node selects
+> it (as Tab does) and enters edit mode from view mode (as `e` does). Press
+> on a node, drag, release on another: `connect(child, parent, end of
+> children)` through `GraphEditor`; refusals (root, already attached, not a
+> container, full parent, cycle, Value node) go to the message line and
+> change nothing. While dragging, the message line names the pair and says
+> whether the connect would be accepted (tried on a clone of the editor),
+> and the node under the pointer gets a green (accepted) or red (refused)
+> border or outline row. Release on empty graph space detaches the pressed
+> node (`x`); release outside the graph pane cancels. A right click on a
+> node selects and detaches it. The wheel scrolls the outline and does
+> nothing on the rataflow canvas (which always fits the graph); it never
+> changes presets. Keyboard editing is unchanged. To give a drag something
+> to connect, `layout` now also places scratch trees (nodes not under the
+> root: a leaf just added, a detached subtree, an unused Value) below the
+> main tree, and the outline lists them under a "scratch (not in the
+> script)" heading; the emitter still ignores them.
+>
+> Hit-testing: every render records one target per node. On the rataflow
+> canvas it is `Flow::node_terminal_rect`, read back right after the flow
+> renders, so it carries rataflow's own fit-to-view transform (pan and a
+> fractional zoom) rather than a second copy of it; right and bottom are
+> exclusive. Zoomed out below one row per world row, rataflow draws a node
+> one row taller than that rect (the handle row), so that row also hits the
+> node when no node's own rect does. Without the feature, each outline row
+> is its node's target (with the wheel scroll applied). A test checks, at
+> three pane sizes (zoom below and above 1), that every cell of a target
+> maps back to its node and that the node's corner and title are drawn
+> there.
+>
+> Not done: loading a hand-written `.figfx.toml` as a graph (phase 6
+> text-to-graph). The selection highlight, the mark, the drop-target
+> highlight and the mouse gestures are checked headlessly (rataflow node
+> state, buffer text, outline styles, synthetic mouse events); nobody has
+> yet used the mouse or looked at the highlights in a real terminal, so a
+> human check of the gestures, the colours and the `◆` glyph is still
 > owed.
 
 **Phase 6 (optional).** Add text-to-graph import (a winnow subset parser).
