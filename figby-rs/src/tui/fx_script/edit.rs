@@ -10,13 +10,17 @@
 //! the child must be unattached and not the root, the parent must be a
 //! container with room, and the link must not close a cycle.
 //!
+//! Value nodes are never children. [`GraphEditor::bind`] wires one to a
+//! parameter slot of another node, and only when the types match (a colour
+//! value to a colour slot, and so on).
+//!
 //! The core is pure (no I/O, no ratatui), so it can be tested headlessly. Save
 //! and load work on strings: [`graph_to_json`] and [`graph_from_json`].
 
 use std::collections::BTreeSet;
 use std::fmt;
 
-use super::graph::{Arity, FxGraph, FxGraphError, FxNode, FxNodeId, FxNodeKind};
+use super::graph::{Arity, FxGraph, FxGraphError, FxNode, FxNodeId, FxNodeKind, FxValueType};
 
 /// Undo depth. Older edits fall off the bottom of the history.
 pub const HISTORY_LIMIT: usize = 200;
@@ -46,6 +50,25 @@ pub enum FxEditError {
     KindArity {
         node: FxNodeId,
     },
+    /// A Value node was offered as a child; it can only fill a parameter.
+    ValueNotAChild(FxNodeId),
+    /// The node has no parameter slot of that name.
+    NoSuchSlot {
+        node: FxNodeId,
+        slot: String,
+    },
+    /// The bound node is not a Value of the slot's type (`found` is `None`
+    /// when it is not a Value node).
+    SlotType {
+        slot: String,
+        expected: FxValueType,
+        found: Option<FxValueType>,
+    },
+    /// The slot is not bound to a Value node.
+    NotBound {
+        node: FxNodeId,
+        slot: String,
+    },
     NothingToUndo,
     NothingToRedo,
     /// The graph failed validation after the edit (should not happen; kept
@@ -70,6 +93,22 @@ impl fmt::Display for FxEditError {
                     f,
                     "node {node} has the wrong number of children for that kind"
                 )
+            }
+            Self::ValueNotAChild(id) => write!(
+                f,
+                "node {id} is a value; bind it to a parameter (p, then b) instead"
+            ),
+            Self::NoSuchSlot { node, slot } => write!(f, "node {node} has no parameter '{slot}'"),
+            Self::SlotType {
+                slot,
+                expected,
+                found,
+            } => match found {
+                Some(found) => write!(f, "'{slot}' takes a {expected} value, not a {found}"),
+                None => write!(f, "'{slot}' takes a {expected} value node"),
+            },
+            Self::NotBound { node, slot } => {
+                write!(f, "node {node} '{slot}' is not bound to a value")
             }
             Self::NothingToUndo => write!(f, "nothing to undo"),
             Self::NothingToRedo => write!(f, "nothing to redo"),
@@ -120,11 +159,7 @@ impl GraphEditor {
     pub fn add_node(&mut self, kind: FxNodeKind) -> FxNodeId {
         let id = self.graph.nodes.iter().map(|n| n.id).max().unwrap_or(0) + 1;
         self.apply(|g| {
-            g.nodes.push(FxNode {
-                id,
-                kind,
-                children: Vec::new(),
-            });
+            g.nodes.push(FxNode::new(id, kind));
             Ok(())
         })
         .expect("adding a scratch node cannot fail");
@@ -144,6 +179,12 @@ impl GraphEditor {
         let parent_node = g.node(parent).ok_or(FxEditError::NoSuchNode(parent))?;
         if child == g.root {
             return Err(FxEditError::IsRoot(child));
+        }
+        if matches!(
+            g.node(child).map(|n| &n.kind),
+            Some(FxNodeKind::Value { .. })
+        ) {
+            return Err(FxEditError::ValueNotAChild(child));
         }
         if is_attached(g, child) {
             return Err(FxEditError::AlreadyAttached(child));
@@ -192,6 +233,7 @@ impl GraphEditor {
     }
 
     /// Delete `id` and everything under it. The root cannot be deleted.
+    /// Slots bound to a deleted Value node fall back to their inline value.
     pub fn delete(&mut self, id: FxNodeId) -> Result<(), FxEditError> {
         if self.graph.node(id).is_none() {
             return Err(FxEditError::NoSuchNode(id));
@@ -204,13 +246,16 @@ impl GraphEditor {
             g.nodes.retain(|n| !doomed.contains(&n.id));
             for n in &mut g.nodes {
                 n.children.retain(|c| !doomed.contains(c));
+                n.params.retain(|_, v| !doomed.contains(v));
             }
             Ok(())
         })
     }
 
     /// Replace a node's kind (its parameters or its type). The node keeps its
-    /// children, so the new kind must accept that many.
+    /// children, so the new kind must accept that many. Bindings whose slot
+    /// the new kind lacks (or types differently) are dropped. A Value node
+    /// cannot change type while a slot of the old type is bound to it.
     pub fn set_kind(&mut self, id: FxNodeId, kind: FxNodeKind) -> Result<(), FxEditError> {
         let node = self.graph.node(id).ok_or(FxEditError::NoSuchNode(id))?;
         let found = node.children.len();
@@ -224,10 +269,86 @@ impl GraphEditor {
         }
         self.apply(|g| {
             if let Some(n) = g.nodes.iter_mut().find(|n| n.id == id) {
-                n.kind = kind;
+                let old = std::mem::replace(&mut n.kind, kind);
+                let new = &n.kind;
+                n.params.retain(|slot, _| {
+                    new.slot_type(slot).is_some() && new.slot_type(slot) == old.slot_type(slot)
+                });
             }
             Ok(())
         })
+    }
+
+    /// Bind parameter `slot` of `node` to the Value node `value`. The value
+    /// must have the slot's type. Rebinding a bound slot replaces it.
+    pub fn bind(&mut self, node: FxNodeId, slot: &str, value: FxNodeId) -> Result<(), FxEditError> {
+        let g = &self.graph;
+        let n = g.node(node).ok_or(FxEditError::NoSuchNode(node))?;
+        let v = g.node(value).ok_or(FxEditError::NoSuchNode(value))?;
+        let expected = n
+            .kind
+            .slot_type(slot)
+            .ok_or_else(|| FxEditError::NoSuchSlot {
+                node,
+                slot: slot.to_string(),
+            })?;
+        let found = match v.kind {
+            FxNodeKind::Value { value } => Some(value.ty()),
+            _ => None,
+        };
+        if found != Some(expected) {
+            return Err(FxEditError::SlotType {
+                slot: slot.to_string(),
+                expected,
+                found,
+            });
+        }
+        self.apply(|g| {
+            if let Some(n) = g.nodes.iter_mut().find(|n| n.id == node) {
+                n.params.insert(slot.to_string(), value);
+            }
+            Ok(())
+        })
+    }
+
+    /// Remove the binding of `slot`; the node goes back to its inline value.
+    pub fn unbind(&mut self, node: FxNodeId, slot: &str) -> Result<(), FxEditError> {
+        let n = self.graph.node(node).ok_or(FxEditError::NoSuchNode(node))?;
+        if !n.params.contains_key(slot) {
+            return Err(FxEditError::NotBound {
+                node,
+                slot: slot.to_string(),
+            });
+        }
+        self.apply(|g| {
+            if let Some(n) = g.nodes.iter_mut().find(|n| n.id == node) {
+                n.params.remove(slot);
+            }
+            Ok(())
+        })
+    }
+
+    /// Move the inline value of `slot` into a new Value node and bind the
+    /// slot to it, as one undoable edit. Returns the Value node's id.
+    pub fn extract_value(&mut self, node: FxNodeId, slot: &str) -> Result<FxNodeId, FxEditError> {
+        self.graph.node(node).ok_or(FxEditError::NoSuchNode(node))?;
+        let value = self
+            .graph
+            .resolved_kind(node)
+            .and_then(|k| k.slot_value(slot))
+            .ok_or_else(|| FxEditError::NoSuchSlot {
+                node,
+                slot: slot.to_string(),
+            })?;
+        let id = self.graph.nodes.iter().map(|n| n.id).max().unwrap_or(0) + 1;
+        self.apply(|g| {
+            g.nodes.push(FxNode::new(id, FxNodeKind::Value { value }));
+            if let Some(n) = g.nodes.iter_mut().find(|n| n.id == node) {
+                n.params.insert(slot.to_string(), id);
+            }
+            Ok(())
+        })?;
+        Ok(id)
     }
 
     /// Make an unattached node the root (the node that runs).
@@ -240,6 +361,14 @@ impl GraphEditor {
         }
         self.apply(|g| {
             g.root = id;
+            Ok(())
+        })
+    }
+
+    /// Replace the whole graph (a load), as one undoable edit.
+    pub fn replace(&mut self, graph: FxGraph) -> Result<(), FxEditError> {
+        self.apply(|g| {
+            *g = graph;
             Ok(())
         })
     }
@@ -320,8 +449,12 @@ pub fn graph_from_json(text: &str) -> Result<FxGraph, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tui::fx_script::graph::{FxEffect, FxGraphBuilder, FxInterp, FxTimer};
+    use crate::tui::fx_script::compile::{compile, FxTargets};
+    use crate::tui::fx_script::graph::{
+        FxColor, FxEffect, FxGraphBuilder, FxInterp, FxTimer, FxValue,
+    };
     use crate::tui::fx_script::presets;
+    use ratatui::layout::Rect;
 
     fn leaf(b: &mut FxGraphBuilder, ms: u32) -> FxNodeId {
         b.effect(FxEffect::Sleep { ms })
@@ -515,5 +648,155 @@ mod tests {
         ed.set_root(s).unwrap();
         assert_eq!(ed.graph().root, s);
         assert_eq!(ed.set_root(1), Err(FxEditError::AlreadyAttached(1)));
+    }
+
+    /// A fade leaf under a ping-pong root: ids 1 (fade) and 2 (root).
+    fn fade_graph() -> FxGraph {
+        let mut b = FxGraphBuilder::new();
+        let f = b.effect(FxEffect::FadeToFg {
+            color: FxColor::Cyan,
+            timer: FxTimer::new(200, FxInterp::Linear),
+        });
+        let root = b.add(FxNodeKind::PingPong, &[f]);
+        b.build(root)
+    }
+
+    fn colour_value(c: FxColor) -> FxNodeKind {
+        FxNodeKind::Value {
+            value: FxValue::Color(c),
+        }
+    }
+
+    fn assert_compiles(g: &FxGraph) {
+        let dsl = g.to_dsl().unwrap();
+        let targets = FxTargets::uniform(Rect::new(0, 0, 40, 10), 2);
+        compile(&dsl, &targets).unwrap_or_else(|e| panic!("{e:?}\n{dsl}"));
+    }
+
+    #[test]
+    fn bind_is_type_checked() {
+        let mut ed = GraphEditor::new(fade_graph()).unwrap();
+        let red = ed.add_node(colour_value(FxColor::Red));
+        let slow = ed.add_node(FxNodeKind::Value {
+            value: FxValue::Timer(FxTimer::new(900, FxInterp::QuadIn)),
+        });
+        assert_eq!(
+            ed.bind(1, "timer", red),
+            Err(FxEditError::SlotType {
+                slot: "timer".into(),
+                expected: FxValueType::Timer,
+                found: Some(FxValueType::Color),
+            })
+        );
+        assert_eq!(
+            ed.bind(1, "color", 2),
+            Err(FxEditError::SlotType {
+                slot: "color".into(),
+                expected: FxValueType::Color,
+                found: None,
+            })
+        );
+        assert_eq!(
+            ed.bind(1, "motion", red),
+            Err(FxEditError::NoSuchSlot {
+                node: 1,
+                slot: "motion".into()
+            })
+        );
+        ed.bind(1, "color", red).unwrap();
+        ed.bind(1, "timer", slow).unwrap();
+        let dsl = ed.graph().to_dsl().unwrap();
+        assert!(
+            dsl.contains(&format!("fx::fade_to_fg(v{red}, v{slow})")),
+            "{dsl}"
+        );
+        assert_eq!(ed.graph().duration_ms(), Some(1800));
+        assert_compiles(ed.graph());
+        ed.unbind(1, "timer").unwrap();
+        assert_eq!(ed.graph().duration_ms(), Some(400));
+        assert_eq!(
+            ed.unbind(1, "timer"),
+            Err(FxEditError::NotBound {
+                node: 1,
+                slot: "timer".into()
+            })
+        );
+    }
+
+    #[test]
+    fn value_nodes_cannot_be_children() {
+        let mut ed = GraphEditor::new(seq_graph()).unwrap();
+        let v = ed.add_node(colour_value(FxColor::Red));
+        assert_eq!(ed.connect(v, 3, 0), Err(FxEditError::ValueNotAChild(v)));
+        // Nor can a value become the root.
+        assert!(matches!(ed.set_root(v), Err(FxEditError::Invalid(_))));
+    }
+
+    #[test]
+    fn extract_value_is_one_undoable_edit() {
+        let mut ed = GraphEditor::new(fade_graph()).unwrap();
+        let before = ed.graph().to_dsl().unwrap();
+        let v = ed.extract_value(1, "color").unwrap();
+        assert_eq!(ed.graph().node(1).unwrap().params.get("color"), Some(&v));
+        assert_eq!(
+            ed.graph().node(v).unwrap().kind,
+            colour_value(FxColor::Cyan)
+        );
+        let dsl = ed.graph().to_dsl().unwrap();
+        assert!(
+            dsl.starts_with(&format!("let v{v} = Color::Cyan;\n")),
+            "{dsl}"
+        );
+        assert_compiles(ed.graph());
+        ed.undo().unwrap();
+        assert!(ed.graph().node(v).is_none());
+        assert_eq!(ed.graph().to_dsl().unwrap(), before);
+        assert!(matches!(
+            ed.extract_value(1, "target"),
+            Err(FxEditError::NoSuchSlot { .. })
+        ));
+    }
+
+    #[test]
+    fn deleting_a_value_unbinds_its_slots() {
+        let mut ed = GraphEditor::new(fade_graph()).unwrap();
+        let v = ed.extract_value(1, "timer").unwrap();
+        ed.delete(v).unwrap();
+        assert!(ed.graph().node(1).unwrap().params.is_empty());
+        assert_compiles(ed.graph());
+    }
+
+    #[test]
+    fn set_kind_drops_bindings_the_new_kind_lacks() {
+        let mut ed = GraphEditor::new(fade_graph()).unwrap();
+        ed.extract_value(1, "color").unwrap();
+        let t = ed.extract_value(1, "timer").unwrap();
+        ed.set_kind(
+            1,
+            FxNodeKind::Effect {
+                effect: FxEffect::Dissolve {
+                    timer: FxTimer::new(10, FxInterp::Linear),
+                },
+            },
+        )
+        .unwrap();
+        let params = &ed.graph().node(1).unwrap().params;
+        assert_eq!(params.len(), 1);
+        assert_eq!(params.get("timer"), Some(&t));
+        // A bound value cannot change to another type.
+        assert!(matches!(
+            ed.set_kind(t, colour_value(FxColor::Red)),
+            Err(FxEditError::Invalid(FxGraphError::SlotType { .. }))
+        ));
+    }
+
+    #[test]
+    fn json_round_trip_keeps_bindings() {
+        let mut ed = GraphEditor::new(fade_graph()).unwrap();
+        ed.extract_value(1, "color").unwrap();
+        let text = graph_to_json(ed.graph());
+        let back = graph_from_json(&text).unwrap();
+        assert_eq!(&back, ed.graph());
+        assert_compiles(&back);
     }
 }

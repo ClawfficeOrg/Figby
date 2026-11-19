@@ -118,7 +118,7 @@ impl FxColor {
         }
     }
 
-    fn name(self) -> String {
+    pub fn name(self) -> String {
         match self {
             FxColor::Black => "Black".into(),
             FxColor::Red => "Red".into(),
@@ -145,7 +145,7 @@ pub enum FxMotion {
 }
 
 impl FxMotion {
-    fn dsl_name(self) -> &'static str {
+    pub fn dsl_name(self) -> &'static str {
         match self {
             FxMotion::LeftToRight => "LeftToRight",
             FxMotion::RightToLeft => "RightToLeft",
@@ -234,6 +234,74 @@ impl FxFilter {
     }
 }
 
+/// The type of a parameter slot or of a Value node. A Value node may only be
+/// bound to a slot of the same type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FxValueType {
+    Color,
+    Timer,
+    Motion,
+    Target,
+}
+
+impl fmt::Display for FxValueType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            FxValueType::Color => "colour",
+            FxValueType::Timer => "timer",
+            FxValueType::Motion => "motion",
+            FxValueType::Target => "target",
+        })
+    }
+}
+
+/// The payload of a Value node: one typed value that effect parameters can
+/// reference instead of carrying it inline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FxValue {
+    Color(FxColor),
+    Timer(FxTimer),
+    Motion(FxMotion),
+    Target(FxTarget),
+}
+
+impl FxValue {
+    pub fn ty(self) -> FxValueType {
+        match self {
+            FxValue::Color(_) => FxValueType::Color,
+            FxValue::Timer(_) => FxValueType::Timer,
+            FxValue::Motion(_) => FxValueType::Motion,
+            FxValue::Target(_) => FxValueType::Target,
+        }
+    }
+
+    /// The DSL expression for the value (the right side of its `let`).
+    pub fn dsl(self) -> String {
+        match self {
+            FxValue::Color(c) => c.dsl(),
+            FxValue::Timer(t) => t.dsl(),
+            FxValue::Motion(m) => m.dsl_name().to_string(),
+            FxValue::Target(t) => t.ident(),
+        }
+    }
+
+    pub fn summary(self) -> String {
+        match self {
+            FxValue::Color(c) => c.name(),
+            FxValue::Timer(t) => t.summary(),
+            FxValue::Motion(m) => m.dsl_name().to_string(),
+            FxValue::Target(t) => t.ident(),
+        }
+    }
+}
+
+/// The DSL variable a Value node is bound to with `let`.
+pub fn value_var(id: FxNodeId) -> String {
+    format!("v{id}")
+}
+
 /// A leaf effect: one `fx::` constructor with its parameters.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "fx", rename_all = "snake_case")]
@@ -313,40 +381,43 @@ impl FxEffect {
         }
     }
 
-    fn args(&self) -> Vec<String> {
+    /// Arguments in DSL order, each tagged with the parameter slot it fills
+    /// (`None` for arguments no Value node can stand in for).
+    fn args(&self) -> Vec<(Option<&'static str>, String)> {
+        let timer = |t: FxTimer| (Some("timer"), t.dsl());
         match *self {
-            FxEffect::FadeFrom { bg, fg, timer } | FxEffect::FadeTo { bg, fg, timer } => {
-                vec![bg.dsl(), fg.dsl(), timer.dsl()]
+            FxEffect::FadeFrom { bg, fg, timer: t } | FxEffect::FadeTo { bg, fg, timer: t } => {
+                vec![(Some("bg"), bg.dsl()), (Some("fg"), fg.dsl()), timer(t)]
             }
-            FxEffect::FadeFromFg { color, timer }
-            | FxEffect::FadeToFg { color, timer }
-            | FxEffect::PaintFg { color, timer } => vec![color.dsl(), timer.dsl()],
-            FxEffect::HslShiftFg { hsl, timer } => vec![
-                format!("[{:?}, {:?}, {:?}]", hsl[0], hsl[1], hsl[2]),
-                timer.dsl(),
+            FxEffect::FadeFromFg { color, timer: t }
+            | FxEffect::FadeToFg { color, timer: t }
+            | FxEffect::PaintFg { color, timer: t } => vec![(Some("color"), color.dsl()), timer(t)],
+            FxEffect::HslShiftFg { hsl, timer: t } => vec![
+                (None, format!("[{:?}, {:?}, {:?}]", hsl[0], hsl[1], hsl[2])),
+                timer(t),
             ],
-            FxEffect::Dissolve { timer } | FxEffect::Coalesce { timer } => vec![timer.dsl()],
+            FxEffect::Dissolve { timer: t } | FxEffect::Coalesce { timer: t } => vec![timer(t)],
             FxEffect::SweepIn {
                 motion,
                 gradient_len,
                 randomness,
                 color,
-                timer,
+                timer: t,
             }
             | FxEffect::SweepOut {
                 motion,
                 gradient_len,
                 randomness,
                 color,
-                timer,
+                timer: t,
             } => vec![
-                motion.dsl_name().to_string(),
-                gradient_len.to_string(),
-                randomness.to_string(),
-                color.dsl(),
-                timer.dsl(),
+                (Some("motion"), motion.dsl_name().to_string()),
+                (None, gradient_len.to_string()),
+                (None, randomness.to_string()),
+                (Some("color"), color.dsl()),
+                timer(t),
             ],
-            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => vec![ms.to_string()],
+            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => vec![(None, ms.to_string())],
         }
     }
 
@@ -428,6 +499,9 @@ pub enum FxNodeKind {
     Area { target: FxTarget },
     /// Confine the child to matching cells.
     Filter { filter: FxFilter },
+    /// A typed value. It is never a child: effect parameters reference it
+    /// through [`FxNode::params`], and the emitter binds it with `let`.
+    Value { value: FxValue },
 }
 
 /// How many children a kind takes.
@@ -451,7 +525,7 @@ impl fmt::Display for Arity {
 impl FxNodeKind {
     pub fn arity(&self) -> Arity {
         match self {
-            FxNodeKind::Effect { .. } => Arity::None,
+            FxNodeKind::Effect { .. } | FxNodeKind::Value { .. } => Arity::None,
             FxNodeKind::Sequence | FxNodeKind::Parallel => Arity::AtLeast1,
             _ => Arity::Exactly1,
         }
@@ -471,6 +545,146 @@ impl FxNodeKind {
             FxNodeKind::FreezeAt { .. } => "freeze_at",
             FxNodeKind::Area { .. } => "area",
             FxNodeKind::Filter { .. } => "filter",
+            FxNodeKind::Value { value } => match value.ty() {
+                FxValueType::Color => "colour",
+                FxValueType::Timer => "timer",
+                FxValueType::Motion => "motion",
+                FxValueType::Target => "target",
+            },
+        }
+    }
+
+    /// The parameter slots a Value node can be bound to, with their types.
+    pub fn param_slots(&self) -> &'static [(&'static str, FxValueType)] {
+        use FxValueType as T;
+        match self {
+            FxNodeKind::Effect { effect } => match effect {
+                FxEffect::FadeFrom { .. } | FxEffect::FadeTo { .. } => {
+                    &[("bg", T::Color), ("fg", T::Color), ("timer", T::Timer)]
+                }
+                FxEffect::FadeFromFg { .. }
+                | FxEffect::FadeToFg { .. }
+                | FxEffect::PaintFg { .. } => &[("color", T::Color), ("timer", T::Timer)],
+                FxEffect::HslShiftFg { .. }
+                | FxEffect::Dissolve { .. }
+                | FxEffect::Coalesce { .. } => &[("timer", T::Timer)],
+                FxEffect::SweepIn { .. } | FxEffect::SweepOut { .. } => &[
+                    ("motion", T::Motion),
+                    ("color", T::Color),
+                    ("timer", T::Timer),
+                ],
+                FxEffect::Sleep { .. } | FxEffect::Glitch { .. } => &[],
+            },
+            FxNodeKind::ProlongStart { .. } | FxNodeKind::ProlongEnd { .. } => {
+                &[("timer", T::Timer)]
+            }
+            FxNodeKind::Area { .. } => &[("target", T::Target)],
+            _ => &[],
+        }
+    }
+
+    /// The type of parameter slot `slot`, if this kind has it.
+    pub fn slot_type(&self, slot: &str) -> Option<FxValueType> {
+        self.param_slots()
+            .iter()
+            .find(|(name, _)| *name == slot)
+            .map(|&(_, ty)| ty)
+    }
+
+    /// The inline value of parameter slot `slot`.
+    pub fn slot_value(&self, slot: &str) -> Option<FxValue> {
+        let mut out = None;
+        let mut k = self.clone();
+        k.visit_slots(&mut |name, v| {
+            if name == slot {
+                out = Some(*v);
+            }
+        });
+        out
+    }
+
+    /// This kind with slot `slot` set to `value` inline. Unchanged when the
+    /// slot does not exist or the value has another type.
+    pub fn with_slot_value(&self, slot: &str, value: FxValue) -> FxNodeKind {
+        let mut k = self.clone();
+        k.visit_slots(&mut |name, v| {
+            if name == slot && v.ty() == value.ty() {
+                *v = value;
+            }
+        });
+        k
+    }
+
+    /// Call `f` with every slot's inline value; writes to the value land in
+    /// the kind.
+    fn visit_slots(&mut self, f: &mut dyn FnMut(&'static str, &mut FxValue)) {
+        fn color(
+            name: &'static str,
+            c: &mut FxColor,
+            f: &mut dyn FnMut(&'static str, &mut FxValue),
+        ) {
+            let mut v = FxValue::Color(*c);
+            f(name, &mut v);
+            if let FxValue::Color(n) = v {
+                *c = n;
+            }
+        }
+        fn timer(t: &mut FxTimer, f: &mut dyn FnMut(&'static str, &mut FxValue)) {
+            let mut v = FxValue::Timer(*t);
+            f("timer", &mut v);
+            if let FxValue::Timer(n) = v {
+                *t = n;
+            }
+        }
+        match self {
+            FxNodeKind::Effect { effect } => match effect {
+                FxEffect::FadeFrom { bg, fg, timer: t } | FxEffect::FadeTo { bg, fg, timer: t } => {
+                    color("bg", bg, f);
+                    color("fg", fg, f);
+                    timer(t, f);
+                }
+                FxEffect::FadeFromFg { color: c, timer: t }
+                | FxEffect::FadeToFg { color: c, timer: t }
+                | FxEffect::PaintFg { color: c, timer: t } => {
+                    color("color", c, f);
+                    timer(t, f);
+                }
+                FxEffect::HslShiftFg { timer: t, .. }
+                | FxEffect::Dissolve { timer: t }
+                | FxEffect::Coalesce { timer: t } => timer(t, f),
+                FxEffect::SweepIn {
+                    motion,
+                    color: c,
+                    timer: t,
+                    ..
+                }
+                | FxEffect::SweepOut {
+                    motion,
+                    color: c,
+                    timer: t,
+                    ..
+                } => {
+                    let mut v = FxValue::Motion(*motion);
+                    f("motion", &mut v);
+                    if let FxValue::Motion(n) = v {
+                        *motion = n;
+                    }
+                    color("color", c, f);
+                    timer(t, f);
+                }
+                FxEffect::Sleep { .. } | FxEffect::Glitch { .. } => {}
+            },
+            FxNodeKind::ProlongStart { timer: t } | FxNodeKind::ProlongEnd { timer: t } => {
+                timer(t, f)
+            }
+            FxNodeKind::Area { target } => {
+                let mut v = FxValue::Target(*target);
+                f("target", &mut v);
+                if let FxValue::Target(n) = v {
+                    *target = n;
+                }
+            }
+            _ => {}
         }
     }
 
@@ -489,6 +703,7 @@ impl FxNodeKind {
             FxNodeKind::FreezeAt { alpha } => format!("at {alpha:?}"),
             FxNodeKind::Area { target } => target.ident(),
             FxNodeKind::Filter { filter } => filter.summary(),
+            FxNodeKind::Value { value } => value.summary(),
         }
     }
 }
@@ -502,6 +717,23 @@ pub struct FxNode {
     pub kind: FxNodeKind,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<FxNodeId>,
+    /// Parameter slots bound to Value nodes (slot name to Value node id).
+    /// A bound slot takes the Value node's value; the inline one is kept as
+    /// the fallback for when the binding is removed.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub params: BTreeMap<String, FxNodeId>,
+}
+
+impl FxNode {
+    /// A node with no children and no bindings.
+    pub fn new(id: FxNodeId, kind: FxNodeKind) -> Self {
+        Self {
+            id,
+            kind,
+            children: Vec::new(),
+            params: BTreeMap::new(),
+        }
+    }
 }
 
 /// A child-to-parent edge, derived from `FxNode::children`.
@@ -533,6 +765,31 @@ pub enum FxGraphError {
         expected: Arity,
         found: usize,
     },
+    /// A Value node is linked as a child (it may only fill a parameter).
+    ValueAsChild {
+        parent: FxNodeId,
+        child: FxNodeId,
+    },
+    /// The root is a Value node, which is not an effect.
+    RootIsValue(FxNodeId),
+    /// A binding names a slot the node does not have.
+    UnknownSlot {
+        node: FxNodeId,
+        slot: String,
+    },
+    /// A binding points at a missing node.
+    UnknownValue {
+        node: FxNodeId,
+        value: FxNodeId,
+    },
+    /// A binding points at a node that is not a Value of the slot's type
+    /// (`found` is `None` when it is not a Value node at all).
+    SlotType {
+        node: FxNodeId,
+        slot: String,
+        expected: FxValueType,
+        found: Option<FxValueType>,
+    },
 }
 
 impl fmt::Display for FxGraphError {
@@ -552,6 +809,29 @@ impl fmt::Display for FxGraphError {
                 expected,
                 found,
             } => write!(f, "node {node} takes {expected}, has {found}"),
+            FxGraphError::ValueAsChild { parent, child } => write!(
+                f,
+                "value node {child} is linked under {parent}; values only fill parameters"
+            ),
+            FxGraphError::RootIsValue(id) => write!(f, "root node {id} is a value, not an effect"),
+            FxGraphError::UnknownSlot { node, slot } => {
+                write!(f, "node {node} has no parameter '{slot}'")
+            }
+            FxGraphError::UnknownValue { node, value } => {
+                write!(f, "node {node} binds missing node {value}")
+            }
+            FxGraphError::SlotType {
+                node,
+                slot,
+                expected,
+                found,
+            } => match found {
+                Some(found) => write!(
+                    f,
+                    "node {node} '{slot}' takes a {expected} value, not a {found}"
+                ),
+                None => write!(f, "node {node} '{slot}' takes a {expected} value node"),
+            },
         }
     }
 }
@@ -616,6 +896,44 @@ impl FxGraph {
         if parented.contains(&self.root) {
             return Err(FxGraphError::RootHasParent(self.root));
         }
+        if matches!(by_id[&self.root].kind, FxNodeKind::Value { .. }) {
+            return Err(FxGraphError::RootIsValue(self.root));
+        }
+        // Type checks, on every node (scratch ones too, so an editor can
+        // never hold a mistyped binding).
+        for n in &self.nodes {
+            for &child in &n.children {
+                if matches!(by_id[&child].kind, FxNodeKind::Value { .. }) {
+                    return Err(FxGraphError::ValueAsChild {
+                        parent: n.id,
+                        child,
+                    });
+                }
+            }
+            for (slot, &value) in &n.params {
+                let Some(expected) = n.kind.slot_type(slot) else {
+                    return Err(FxGraphError::UnknownSlot {
+                        node: n.id,
+                        slot: slot.clone(),
+                    });
+                };
+                let Some(v) = by_id.get(&value) else {
+                    return Err(FxGraphError::UnknownValue { node: n.id, value });
+                };
+                let found = match v.kind {
+                    FxNodeKind::Value { value } => Some(value.ty()),
+                    _ => None,
+                };
+                if found != Some(expected) {
+                    return Err(FxGraphError::SlotType {
+                        node: n.id,
+                        slot: slot.clone(),
+                        expected,
+                        found,
+                    });
+                }
+            }
+        }
         // With one parent per node and an unparented root, a walk from the
         // root cannot revisit a node; orphan cycles are never walked. Keep
         // an explicit check anyway so the emitter can never loop.
@@ -667,10 +985,42 @@ impl FxGraph {
         out
     }
 
-    /// Emit tachyonfx DSL text for the tree under `root`.
+    /// Emit tachyonfx DSL text for the tree under `root`. Value nodes used
+    /// by the tree come first, one `let` each, in id order.
     pub fn to_dsl(&self) -> Result<String, FxGraphError> {
         self.validate()?;
-        Ok(self.emit(self.root))
+        let mut out = String::new();
+        for id in self.used_values() {
+            if let Some(FxNodeKind::Value { value }) = self.node(id).map(|n| &n.kind) {
+                out.push_str(&format!("let {} = {};\n", value_var(id), value.dsl()));
+            }
+        }
+        out.push_str(&self.emit(self.root));
+        Ok(out)
+    }
+
+    /// Value nodes bound by nodes reachable from the root, sorted by id.
+    pub fn used_values(&self) -> Vec<FxNodeId> {
+        let set: BTreeSet<FxNodeId> = self
+            .reachable()
+            .into_iter()
+            .filter_map(|id| self.node(id))
+            .flat_map(|n| n.params.values().copied())
+            .collect();
+        set.into_iter().collect()
+    }
+
+    /// A node's kind with every bound slot replaced by its Value node's
+    /// value: what the node actually does.
+    pub fn resolved_kind(&self, id: FxNodeId) -> Option<FxNodeKind> {
+        let node = self.node(id)?;
+        let mut kind = node.kind.clone();
+        for (slot, &vid) in &node.params {
+            if let Some(FxNodeKind::Value { value }) = self.node(vid).map(|n| &n.kind) {
+                kind = kind.with_slot_value(slot, *value);
+            }
+        }
+        Some(kind)
     }
 
     fn emit(&self, id: FxNodeId) -> String {
@@ -679,9 +1029,23 @@ impl FxGraph {
             return String::new();
         };
         let child = |i: usize| self.emit(node.children[i]);
+        // A bound slot emits the Value node's variable instead of the inline
+        // value.
+        let arg = |slot: &str, inline: String| match node.params.get(slot) {
+            Some(&vid) => value_var(vid),
+            None => inline,
+        };
         match &node.kind {
             FxNodeKind::Effect { effect } => {
-                format!("fx::{}({})", effect.fn_name(), effect.args().join(", "))
+                let args: Vec<String> = effect
+                    .args()
+                    .into_iter()
+                    .map(|(slot, text)| match slot {
+                        Some(slot) => arg(slot, text),
+                        None => text,
+                    })
+                    .collect();
+                format!("fx::{}({})", effect.fn_name(), args.join(", "))
             }
             FxNodeKind::Sequence | FxNodeKind::Parallel => {
                 let items: Vec<String> = (0..node.children.len())
@@ -698,10 +1062,10 @@ impl FxGraph {
             FxNodeKind::PingPong => wrap_call("ping_pong", &[], child(0), &[]),
             FxNodeKind::Delay { ms } => wrap_call("delay", &[ms.to_string()], child(0), &[]),
             FxNodeKind::ProlongStart { timer } => {
-                wrap_call("prolong_start", &[timer.dsl()], child(0), &[])
+                wrap_call("prolong_start", &[arg("timer", timer.dsl())], child(0), &[])
             }
             FxNodeKind::ProlongEnd { timer } => {
-                wrap_call("prolong_end", &[timer.dsl()], child(0), &[])
+                wrap_call("prolong_end", &[arg("timer", timer.dsl())], child(0), &[])
             }
             FxNodeKind::FreezeAt { alpha } => wrap_call(
                 "freeze_at",
@@ -710,11 +1074,17 @@ impl FxGraph {
                 &[],
             ),
             FxNodeKind::Area { target } => {
-                format!("{}\n.with_area({})", child(0), target.ident())
+                format!(
+                    "{}\n.with_area({})",
+                    child(0),
+                    arg("target", target.ident())
+                )
             }
             FxNodeKind::Filter { filter } => {
                 format!("{}\n.with_filter({})", child(0), filter.dsl())
             }
+            // validate() keeps Value nodes out of the tree.
+            FxNodeKind::Value { .. } => String::new(),
         }
     }
 
@@ -730,7 +1100,8 @@ impl FxGraph {
             return 0;
         };
         let kids = node.children.iter().map(|&c| self.duration_of(c));
-        match &node.kind {
+        let kind = self.resolved_kind(id).unwrap_or_else(|| node.kind.clone());
+        match &kind {
             FxNodeKind::Effect { effect } => effect.duration_ms(),
             FxNodeKind::Sequence => kids.sum(),
             FxNodeKind::Parallel => kids.max().unwrap_or(0),
@@ -743,12 +1114,18 @@ impl FxGraph {
             FxNodeKind::FreezeAt { .. } | FxNodeKind::Area { .. } | FxNodeKind::Filter { .. } => {
                 kids.sum()
             }
+            FxNodeKind::Value { .. } => 0,
         }
     }
 
     /// Indented outline of the tree, one node per line (text fallback for
     /// the graph view and a cheap thing to assert on in tests).
     pub fn outline(&self) -> Vec<String> {
+        self.outline_rows().into_iter().map(|(_, l)| l).collect()
+    }
+
+    /// [`Self::outline`] with the node id of each line.
+    pub fn outline_rows(&self) -> Vec<(FxNodeId, String)> {
         let mut out = Vec::new();
         if self.validate().is_ok() {
             self.outline_into(self.root, 0, &mut out);
@@ -756,13 +1133,17 @@ impl FxGraph {
         out
     }
 
-    fn outline_into(&self, id: FxNodeId, depth: usize, out: &mut Vec<String>) {
+    fn outline_into(&self, id: FxNodeId, depth: usize, out: &mut Vec<(FxNodeId, String)>) {
         if let Some(node) = self.node(id) {
-            out.push(format!(
-                "{}{} {}",
-                "  ".repeat(depth),
-                node.kind.title(),
-                node.kind.summary()
+            let kind = self.resolved_kind(id).unwrap_or_else(|| node.kind.clone());
+            out.push((
+                id,
+                format!(
+                    "{}{} {}",
+                    "  ".repeat(depth),
+                    node.kind.title(),
+                    kind.summary()
+                ),
             ));
             for &c in &node.children {
                 self.outline_into(c, depth + 1, out);
@@ -806,11 +1187,9 @@ impl FxGraphBuilder {
     /// Add a node over already-added `children`; returns its id.
     pub fn add(&mut self, kind: FxNodeKind, children: &[FxNodeId]) -> FxNodeId {
         let id = self.nodes.len() as FxNodeId + 1;
-        self.nodes.push(FxNode {
-            id,
-            kind,
-            children: children.to_vec(),
-        });
+        let mut node = FxNode::new(id, kind);
+        node.children = children.to_vec();
+        self.nodes.push(node);
         id
     }
 
@@ -974,14 +1353,12 @@ mod tests {
             root: 1,
             nodes: vec![
                 FxNode {
-                    id: 1,
-                    kind: FxNodeKind::PingPong,
                     children: vec![2],
+                    ..FxNode::new(1, FxNodeKind::PingPong)
                 },
                 FxNode {
-                    id: 2,
-                    kind: FxNodeKind::PingPong,
                     children: vec![1],
+                    ..FxNode::new(2, FxNodeKind::PingPong)
                 },
             ],
         };
@@ -1061,5 +1438,201 @@ mod tests {
                 "  dissolve 500ms Linear".to_string()
             ]
         );
+    }
+
+    use crate::tui::fx_script::compile::{compile, FxTargets};
+    use ratatui::layout::Rect;
+
+    fn compiles(dsl: &str) {
+        let targets = FxTargets::uniform(Rect::new(0, 0, 80, 24), 3);
+        if let Err(e) = compile(dsl, &targets) {
+            panic!("{e:?}\n{dsl}");
+        }
+    }
+
+    fn value(b: &mut FxGraphBuilder, value: FxValue) -> FxNodeId {
+        b.add(FxNodeKind::Value { value }, &[])
+    }
+
+    fn bind(g: &mut FxGraph, node: FxNodeId, slot: &str, value: FxNodeId) {
+        let n = g.nodes.iter_mut().find(|n| n.id == node).unwrap();
+        n.params.insert(slot.to_string(), value);
+    }
+
+    /// One Value node of every type, each bound to a matching slot.
+    fn valued_graph() -> FxGraph {
+        let mut b = FxGraphBuilder::new();
+        let colour = value(&mut b, FxValue::Color(FxColor::Rgb(10, 20, 30)));
+        let timer = value(&mut b, FxValue::Timer(FxTimer::new(300, FxInterp::SineOut)));
+        let motion = value(&mut b, FxValue::Motion(FxMotion::DownToUp));
+        let target = value(&mut b, FxValue::Target(FxTarget::Layer(2)));
+        let fade = b.effect(fade());
+        let sweep = b.effect(FxEffect::SweepIn {
+            motion: FxMotion::LeftToRight,
+            gradient_len: 4,
+            randomness: 1,
+            color: FxColor::Black,
+            timer: FxTimer::new(100, FxInterp::Linear),
+        });
+        let hold = b.add(
+            FxNodeKind::ProlongEnd {
+                timer: FxTimer::new(50, FxInterp::Linear),
+            },
+            &[sweep],
+        );
+        let seq = b.add(FxNodeKind::Sequence, &[fade, hold]);
+        let root = b.add(
+            FxNodeKind::Area {
+                target: FxTarget::Canvas,
+            },
+            &[seq],
+        );
+        let mut g = b.build(root);
+        bind(&mut g, fade, "color", colour);
+        bind(&mut g, fade, "timer", timer);
+        bind(&mut g, sweep, "motion", motion);
+        bind(&mut g, sweep, "color", colour);
+        bind(&mut g, sweep, "timer", timer);
+        bind(&mut g, hold, "timer", timer);
+        bind(&mut g, root, "target", target);
+        g
+    }
+
+    #[test]
+    fn value_nodes_emit_lets_that_compile() {
+        let g = valued_graph();
+        let dsl = g.to_dsl().unwrap();
+        assert!(dsl.starts_with(
+            "let v1 = Color::Rgb(10, 20, 30);\nlet v2 = (300, SineOut);\nlet v3 = DownToUp;\nlet v4 = layer_2;\n"
+        ), "{dsl}");
+        assert!(dsl.contains("fx::fade_to_fg(v1, v2)"), "{dsl}");
+        assert!(dsl.contains("fx::sweep_in(v3, 4, 1, v1, v2)"), "{dsl}");
+        assert!(dsl.contains("fx::prolong_end(v2, "), "{dsl}");
+        assert!(dsl.ends_with(".with_area(v4)"), "{dsl}");
+        compiles(&dsl);
+    }
+
+    #[test]
+    fn every_value_type_compiles_in_each_slot_it_fits() {
+        // Each slot bound alone, so a broken binding is pinned to one slot.
+        let g = valued_graph();
+        for n in &g.nodes {
+            for slot in n.params.keys() {
+                let mut one = g.clone();
+                for m in &mut one.nodes {
+                    m.params.retain(|s, _| m.id == n.id && s == slot);
+                }
+                compiles(&one.to_dsl().unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn bound_values_drive_duration_and_outline() {
+        let g = valued_graph();
+        // fade 300 (bound timer) + sweep 300 + hold 300.
+        assert_eq!(g.duration_ms(), Some(900));
+        let outline = g.outline();
+        assert_eq!(outline[0], "area layer_2");
+        assert!(outline
+            .iter()
+            .any(|l| l.contains("fade_to_fg #0a141e 300ms SineOut")));
+    }
+
+    #[test]
+    fn unused_values_are_not_emitted() {
+        let mut b = FxGraphBuilder::new();
+        let _spare = value(&mut b, FxValue::Motion(FxMotion::UpToDown));
+        let root = b.effect(fade());
+        let dsl = b.build(root).to_dsl().unwrap();
+        assert!(!dsl.contains("let"), "{dsl}");
+    }
+
+    #[test]
+    fn validate_type_checks_bindings() {
+        let base = valued_graph();
+        let (colour, timer, fade, root) = (1, 2, 5, base.root);
+
+        let mut g = base.clone();
+        bind(&mut g, fade, "color", timer);
+        assert_eq!(
+            g.validate(),
+            Err(FxGraphError::SlotType {
+                node: fade,
+                slot: "color".into(),
+                expected: FxValueType::Color,
+                found: Some(FxValueType::Timer),
+            })
+        );
+
+        let mut g = base.clone();
+        bind(&mut g, fade, "timer", fade);
+        assert!(matches!(
+            g.validate(),
+            Err(FxGraphError::SlotType { found: None, .. })
+        ));
+
+        let mut g = base.clone();
+        bind(&mut g, fade, "motion", colour);
+        assert_eq!(
+            g.validate(),
+            Err(FxGraphError::UnknownSlot {
+                node: fade,
+                slot: "motion".into()
+            })
+        );
+
+        let mut g = base.clone();
+        bind(&mut g, root, "target", 77);
+        assert_eq!(
+            g.validate(),
+            Err(FxGraphError::UnknownValue {
+                node: root,
+                value: 77
+            })
+        );
+
+        let mut g = base.clone();
+        let seq = g.node(root).unwrap().children[0];
+        g.nodes
+            .iter_mut()
+            .find(|n| n.id == seq)
+            .unwrap()
+            .children
+            .push(colour);
+        assert_eq!(
+            g.validate(),
+            Err(FxGraphError::ValueAsChild {
+                parent: seq,
+                child: colour
+            })
+        );
+
+        let mut g = base;
+        g.root = colour;
+        assert_eq!(g.validate(), Err(FxGraphError::RootIsValue(colour)));
+    }
+
+    #[test]
+    fn serde_round_trip_keeps_values_and_bindings() {
+        let g = valued_graph();
+        let json = serde_json::to_string(&g).unwrap();
+        let back: FxGraph = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, g);
+        assert_eq!(back.to_dsl().unwrap(), g.to_dsl().unwrap());
+    }
+
+    #[test]
+    fn slot_value_reads_and_writes_inline_values() {
+        let k = FxNodeKind::Effect { effect: fade() };
+        assert_eq!(k.slot_value("color"), Some(FxValue::Color(FxColor::Cyan)));
+        let k2 = k.with_slot_value("color", FxValue::Color(FxColor::Red));
+        assert_eq!(k2.slot_value("color"), Some(FxValue::Color(FxColor::Red)));
+        // A value of the wrong type is ignored.
+        assert_eq!(
+            k.with_slot_value("color", FxValue::Motion(FxMotion::UpToDown)),
+            k
+        );
+        assert_eq!(k.slot_value("motion"), None);
     }
 }

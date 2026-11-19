@@ -10,15 +10,18 @@
 //! - [`editor`]: the multi-line FX script editor (F6) with debounced live
 //!   preview and inline error highlighting.
 //! - [`syntax`]: the DSL lexer behind the editor's syntax colouring.
-//! - [`graph_view`]: the read-only FX Graph overlay (rataflow canvas behind
-//!   the `fx-graph` feature, outline fallback without it).
+//! - [`edit`]: `GraphEditor`, validated structural edits with undo/redo.
+//! - [`props`]: the Props panel model (a node's parameters as fields).
+//! - [`graph_view`]: the FX Graph overlay with its edit mode (rataflow
+//!   canvas behind the `fx-graph` feature, outline fallback without it).
+//! - [`graph_file`]: saving and loading graphs (IR JSON plus emitted DSL).
 //! - [`script`]: `.figfx.toml` script files (named effects, triggers,
 //!   slots), parsed from `&str`.
 //! - [`host`]: the loaded script's trigger queue and loops.
 //! - [`panel`]: the Effects side-panel tab (script effects with play and
 //!   stop buttons).
-//! - [`script_file`]: reading a script and polling it for hot reload (the
-//!   only part that touches the filesystem).
+//! - [`script_file`]: reading a script and polling it for hot reload.
+//!   With [`graph_file`], the only parts that touch the filesystem.
 //!
 //! Native-only, because it sits under `tui`.
 
@@ -26,11 +29,13 @@ pub mod compile;
 pub mod edit;
 pub mod editor;
 pub mod graph;
+pub mod graph_file;
 pub mod graph_view;
 pub mod host;
 pub mod panel;
 pub mod presets;
 pub mod prompt;
+pub mod props;
 pub mod runtime;
 pub mod script;
 pub mod script_file;

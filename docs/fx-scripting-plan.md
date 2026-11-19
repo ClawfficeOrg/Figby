@@ -397,18 +397,58 @@ parameters in the Props panel. Validate connections. Add undo and redo
 (rataflow snapshots, or Figby's `undo.rs`). Save and load the IR plus the
 DSL.
 
-> Status 2026-11-18: **partly done** (uncommitted). `fx_script/edit.rs`
-> holds `GraphEditor`: add (scratch node), connect (slot, child must be
-> unattached and not the root, parent must be a container with room, no
-> cycles), disconnect, delete (subtree; root refused), set_kind (child count
-> must fit), set_root, and bounded undo/redo (200). Every edit validates
-> before it lands. Arity is now checked on reachable nodes only, so scratch
-> nodes do not break the tree. `graph_to_json`/`graph_from_json` round-trip
-> the IR. The F9 overlay has an edit mode (`e`): Tab node, `a`/`A` add,
-> `m` mark, `c` connect, `x` detach, `d` delete, `r` root, `u`/`y` undo/redo.
-> Not done: Props panel parameter editing; Value nodes; file save/load from
-> the UI (the JSON and DSL helpers exist, nothing writes them yet); selected
-> node highlight on the rataflow canvas; type checks beyond the tree rules.
+> Status 2026-11-18: **done**, except the items under "Not done".
+> `fx_script/edit.rs` holds `GraphEditor`: add (scratch node), connect
+> (slot, child must be unattached and not the root, parent must be a
+> container with room, no cycles, Value nodes refused), disconnect, delete
+> (subtree; root refused; slots bound to a deleted value fall back to their
+> inline value), set_kind (child count must fit; bindings the new kind lacks
+> are dropped), set_root, bind/unbind/extract_value, replace (a load), and
+> bounded undo/redo (200). Every edit validates before it lands. Arity is
+> checked on reachable nodes only, so scratch nodes do not break the tree.
+>
+> **Value nodes** (`FxNodeKind::Value`, `graph.rs`): Colour, Timer
+> (duration plus interpolation), Motion and Target (a named region).
+> `FxNode::params` maps a parameter slot (`color`, `bg`, `fg`, `timer`,
+> `motion`, `target`) to a Value node; the inline value stays as the
+> fallback. `validate` type-checks every binding (unknown slot, missing node,
+> not a value, wrong type) and rejects a Value node as a child or as the
+> root. The emitter writes one `let vN = ...;` per used value, ahead of the
+> tree, and the bound arguments read `vN`; tests compile the emitted DSL
+> with `compile` for every value type in every slot it fits. Duration and
+> the outline use the resolved values.
+>
+> **Props panel** (`fx_script/props.rs`, pure): a node's parameters as a
+> flat field list from one visitor, so display and edit cannot disagree.
+> In the F9 edit mode, `p` (or Enter) opens it over the preset list: up and
+> down pick a field, left and right cycle choices (effect constructor,
+> colour, interpolation, motion, target, filter, value type) or nudge
+> numbers (ms, times, alpha, HSL, gradient, margins), digits plus Enter type
+> a number, `v` moves the field's value into a new Value node and binds it,
+> `b` binds the marked (`m`) value, `n` unbinds. A change to a bound field
+> edits the Value node, so every user follows. Every change goes through
+> `set_kind`/`bind`, so it is validated and undoable. `v` in edit mode adds
+> a scratch Value node.
+>
+> **Save and load** (`fx_script/graph_file.rs`, the only new code that
+> touches `std::fs`): `S` writes `<config dir>/fx-graphs/<preset>.fxgraph.json`
+> (the IR) and `<preset>.figfx.toml` (the emitted DSL as a one-effect
+> manual script); `L` loads the JSON back into the editor (an undoable edit
+> when an editor is open). Errors (no config dir, missing file, bad JSON,
+> invalid tree) show on the graph pane's message line and change nothing.
+>
+> **Canvas**: the selected node is rataflow's selected node in edit mode
+> (accent border); used Value nodes get their own left column with one edge
+> per binding. Without the `fx-graph` feature the outline marks the
+> selected row and lists the used values.
+>
+> Not done: a file picker (save and load use the selected preset's name, so
+> there is one saved graph per preset); Value nodes for the remaining
+> parameter types (HSL, numbers, filters; filter colours stay inline);
+> loading a hand-written `.figfx.toml` as a graph (phase 6 text-to-graph);
+> marking the `m` child on the canvas; rataflow's own drag/connect editing
+> (the canvas stays locked; edits are keyboard-driven on the IR). The
+> highlight is checked headlessly (rataflow selection state), not by eye.
 
 **Phase 6 (optional).** Add text-to-graph import (a winnow subset parser).
 Bake effects into the timeline or figseq frames, rendering the effect at a

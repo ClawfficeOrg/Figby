@@ -97,7 +97,8 @@ impl TuiApp {
     }
 
     /// FX Graph overlay: modal while open. Esc/q/F9 close it, arrows pick a
-    /// preset, `s` toggles the script pane; every other key is swallowed.
+    /// preset, `s` toggles the script pane, `e` enters edit mode (with the
+    /// Props panel and save/load); every other key is swallowed.
     fn key_fx_graph(&mut self, key: KeyEvent) -> KeyRoute {
         if !self.dialogs.fx_graph.open {
             return ControlFlow::Continue(());
