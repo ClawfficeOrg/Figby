@@ -791,6 +791,82 @@ mod tests {
     }
 
     #[test]
+    fn numeric_hsl_and_filter_slots_extract_and_bind_with_type_checks() {
+        use crate::tui::fx_script::graph::FxFilter;
+        // repeat(4) > delay(10) > filter(fg White) > hsl_shift_fg; plus a
+        // spare sleep(20) under a sequence for a second ms user.
+        let mut b = FxGraphBuilder::new();
+        let shift = b.effect(FxEffect::HslShiftFg {
+            hsl: [30.0, 0.0, 0.0],
+            timer: FxTimer::new(100, FxInterp::Linear),
+        });
+        let sleep = leaf(&mut b, 20);
+        let filter = b.add(
+            FxNodeKind::Filter {
+                filter: FxFilter::FgColor(FxColor::White),
+            },
+            &[shift],
+        );
+        let seq = b.add(FxNodeKind::Sequence, &[filter, sleep]);
+        let delay = b.add(FxNodeKind::Delay { ms: 10 }, &[seq]);
+        let root = b.add(FxNodeKind::Repeat { times: 4 }, &[delay]);
+        let mut ed = GraphEditor::new(b.build(root)).unwrap();
+
+        let ms = ed.extract_value(delay, "ms").unwrap();
+        assert_eq!(
+            ed.graph().node(ms).unwrap().kind,
+            FxNodeKind::Value {
+                value: FxValue::Ms(10)
+            }
+        );
+        ed.bind(sleep, "ms", ms).unwrap();
+        let times = ed.extract_value(root, "times").unwrap();
+        let hsl = ed.extract_value(shift, "hsl").unwrap();
+        let colour = ed.extract_value(filter, "color").unwrap();
+        // Wrong types are refused and change nothing.
+        let before = ed.graph().clone();
+        assert!(matches!(
+            ed.bind(root, "times", ms),
+            Err(FxEditError::SlotType {
+                expected: FxValueType::Times,
+                found: Some(FxValueType::Ms),
+                ..
+            })
+        ));
+        assert!(matches!(
+            ed.bind(filter, "color", hsl),
+            Err(FxEditError::SlotType { .. })
+        ));
+        assert!(matches!(
+            ed.bind(delay, "ms", times),
+            Err(FxEditError::SlotType { .. })
+        ));
+        assert_eq!(ed.graph(), &before);
+        let dsl = ed.graph().to_dsl().unwrap();
+        for needle in [
+            format!("fx::sleep(v{ms})"),
+            format!("RepeatMode::Times(v{times})"),
+            format!("fx::hsl_shift_fg(v{hsl}, "),
+            format!("CellFilter::FgColor(v{colour})"),
+        ] {
+            assert!(dsl.contains(&needle), "{needle}\n{dsl}");
+        }
+        assert_compiles(ed.graph());
+        // (100 + 10 sleep) + 10 delay, x4.
+        assert_eq!(ed.graph().duration_ms(), Some(480));
+        // Switching the filter to one without a colour drops the binding.
+        ed.set_kind(
+            filter,
+            FxNodeKind::Filter {
+                filter: FxFilter::Text,
+            },
+        )
+        .unwrap();
+        assert!(ed.graph().node(filter).unwrap().params.is_empty());
+        assert_compiles(ed.graph());
+    }
+
+    #[test]
     fn json_round_trip_keeps_bindings() {
         let mut ed = GraphEditor::new(fade_graph()).unwrap();
         ed.extract_value(1, "color").unwrap();

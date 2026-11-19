@@ -67,15 +67,76 @@ fn timer(t: &mut FxTimer, slot: Option<&'static str>, f: &mut Visitor<'_>) {
     f("interp", slot, Prop::Interp(&mut t.interp));
 }
 
-fn ms(v: &mut u32, f: &mut Visitor<'_>) {
+fn ms(v: &mut u32, slot: Option<&'static str>, f: &mut Visitor<'_>) {
     f(
         "ms",
-        None,
+        slot,
         Prop::U32 {
             v,
             step: 50,
             min: 0,
             max: 600_000,
+        },
+    );
+}
+
+fn times(v: &mut u32, slot: Option<&'static str>, f: &mut Visitor<'_>) {
+    f(
+        "times",
+        slot,
+        Prop::U32 {
+            v,
+            step: 1,
+            min: 1,
+            max: 1000,
+        },
+    );
+}
+
+fn alpha(v: &mut f32, slot: Option<&'static str>, f: &mut Visitor<'_>) {
+    f(
+        "alpha",
+        slot,
+        Prop::F32 {
+            v,
+            step: 0.1,
+            min: 0.0,
+            max: 1.0,
+        },
+    );
+}
+
+/// The three HSL components; all three belong to one `hsl` slot.
+fn hsl(hsl: &mut [f32; 3], slot: Option<&'static str>, f: &mut Visitor<'_>) {
+    let [h, s, l] = hsl;
+    f(
+        "hue",
+        slot,
+        Prop::F32 {
+            v: h,
+            step: 10.0,
+            min: -360.0,
+            max: 360.0,
+        },
+    );
+    f(
+        "sat",
+        slot,
+        Prop::F32 {
+            v: s,
+            step: 0.1,
+            min: -1.0,
+            max: 1.0,
+        },
+    );
+    f(
+        "light",
+        slot,
+        Prop::F32 {
+            v: l,
+            step: 0.1,
+            min: -1.0,
+            max: 1.0,
         },
     );
 }
@@ -86,6 +147,10 @@ fn visit_value(v: &mut FxValue, slot: Option<&'static str>, f: &mut Visitor<'_>)
         FxValue::Timer(t) => timer(t, slot, f),
         FxValue::Motion(m) => f("motion", slot, Prop::Motion(m)),
         FxValue::Target(t) => f("target", slot, Prop::Target(t)),
+        FxValue::Ms(n) => ms(n, slot, f),
+        FxValue::Times(n) => times(n, slot, f),
+        FxValue::Alpha(a) => alpha(a, slot, f),
+        FxValue::Hsl(h) => hsl(h, slot, f),
     }
 }
 
@@ -106,38 +171,8 @@ fn visit(kind: &mut FxNodeKind, f: &mut Visitor<'_>) {
                     f("colour", Some("color"), Prop::Color(color));
                     timer(t, Some("timer"), f);
                 }
-                FxEffect::HslShiftFg { hsl, timer: t } => {
-                    let [h, s, l] = hsl;
-                    f(
-                        "hue",
-                        None,
-                        Prop::F32 {
-                            v: h,
-                            step: 10.0,
-                            min: -360.0,
-                            max: 360.0,
-                        },
-                    );
-                    f(
-                        "sat",
-                        None,
-                        Prop::F32 {
-                            v: s,
-                            step: 0.1,
-                            min: -1.0,
-                            max: 1.0,
-                        },
-                    );
-                    f(
-                        "light",
-                        None,
-                        Prop::F32 {
-                            v: l,
-                            step: 0.1,
-                            min: -1.0,
-                            max: 1.0,
-                        },
-                    );
+                FxEffect::HslShiftFg { hsl: h, timer: t } => {
+                    hsl(h, Some("hsl"), f);
                     timer(t, Some("timer"), f);
                 }
                 FxEffect::Dissolve { timer: t } | FxEffect::Coalesce { timer: t } => {
@@ -179,39 +214,23 @@ fn visit(kind: &mut FxNodeKind, f: &mut Visitor<'_>) {
                     f("colour", Some("color"), Prop::Color(color));
                     timer(t, Some("timer"), f);
                 }
-                FxEffect::Sleep { ms: v } | FxEffect::Glitch { ms: v } => ms(v, f),
+                FxEffect::Sleep { ms: v } | FxEffect::Glitch { ms: v } => ms(v, Some("ms"), f),
             }
         }
         FxNodeKind::Sequence | FxNodeKind::Parallel | FxNodeKind::PingPong => {}
-        FxNodeKind::Repeat { times } => f(
-            "times",
-            None,
-            Prop::U32 {
-                v: times,
-                step: 1,
-                min: 1,
-                max: 1000,
-            },
-        ),
-        FxNodeKind::Delay { ms: v } => ms(v, f),
+        FxNodeKind::Repeat { times: v } => times(v, Some("times"), f),
+        FxNodeKind::Delay { ms: v } => ms(v, Some("ms"), f),
         FxNodeKind::ProlongStart { timer: t } | FxNodeKind::ProlongEnd { timer: t } => {
             timer(t, Some("timer"), f)
         }
-        FxNodeKind::FreezeAt { alpha } => f(
-            "alpha",
-            None,
-            Prop::F32 {
-                v: alpha,
-                step: 0.1,
-                min: 0.0,
-                max: 1.0,
-            },
-        ),
+        FxNodeKind::FreezeAt { alpha: v } => alpha(v, Some("alpha"), f),
         FxNodeKind::Area { target } => f("target", Some("target"), Prop::Target(target)),
         FxNodeKind::Filter { filter } => {
             f("filter", None, Prop::Filter(&mut *filter));
             match filter {
-                FxFilter::FgColor(c) | FxFilter::BgColor(c) => f("colour", None, Prop::Color(c)),
+                FxFilter::FgColor(c) | FxFilter::BgColor(c) => {
+                    f("colour", Some("color"), Prop::Color(c))
+                }
                 FxFilter::Inner {
                     horizontal,
                     vertical,
@@ -490,6 +509,10 @@ fn step_prop(prop: Prop<'_>, delta: i32) -> bool {
                 FxValue::Timer(FxTimer::new(500, FxInterp::Linear)),
                 FxValue::Motion(FxMotion::LeftToRight),
                 FxValue::Target(FxTarget::Canvas),
+                FxValue::Ms(500),
+                FxValue::Times(2),
+                FxValue::Alpha(0.5),
+                FxValue::Hsl([40.0, 0.0, 0.0]),
             ];
             let ty = v.ty();
             *v = cycle_by(&all, |x| x.ty() == ty, delta);
@@ -633,6 +656,98 @@ mod tests {
         assert_eq!(
             fields(&v).iter().map(|f| f.label).collect::<Vec<_>>(),
             vec!["type", "ms", "interp"]
+        );
+    }
+
+    #[test]
+    fn numbers_hsl_and_filter_colours_belong_to_slots() {
+        let slot_of = |k: &FxNodeKind, label: &str| {
+            fields(k)
+                .into_iter()
+                .find(|f| f.label == label)
+                .unwrap()
+                .slot
+        };
+        let sleep = FxNodeKind::Effect {
+            effect: FxEffect::Sleep { ms: 10 },
+        };
+        assert_eq!(slot_of(&sleep, "ms"), Some("ms"));
+        assert_eq!(slot_of(&FxNodeKind::Delay { ms: 1 }, "ms"), Some("ms"));
+        assert_eq!(
+            slot_of(&FxNodeKind::Repeat { times: 2 }, "times"),
+            Some("times")
+        );
+        assert_eq!(
+            slot_of(&FxNodeKind::FreezeAt { alpha: 0.1 }, "alpha"),
+            Some("alpha")
+        );
+        let shift = FxNodeKind::Effect {
+            effect: FxEffect::HslShiftFg {
+                hsl: [1.0, 0.0, 0.0],
+                timer: FxTimer::new(1, FxInterp::Linear),
+            },
+        };
+        for label in ["hue", "sat", "light"] {
+            assert_eq!(slot_of(&shift, label), Some("hsl"), "{label}");
+        }
+        let filter = FxNodeKind::Filter {
+            filter: FxFilter::FgColor(FxColor::Red),
+        };
+        assert_eq!(slot_of(&filter, "colour"), Some("color"));
+        // Every field with a slot names a slot the kind really has.
+        for k in [&sleep, &shift, &filter] {
+            for f in fields(k) {
+                if let Some(s) = f.slot {
+                    assert!(k.slot_type(s).is_some(), "{s}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn value_type_field_cycles_through_every_type() {
+        let mut v = FxNodeKind::Value {
+            value: FxValue::Color(FxColor::Red),
+        };
+        let mut seen = Vec::new();
+        for _ in 0..8 {
+            let FxNodeKind::Value { value } = &v else {
+                panic!()
+            };
+            seen.push(value.ty());
+            v = step(&v, 0, 1).unwrap();
+        }
+        seen.dedup();
+        assert_eq!(seen.len(), 8, "{seen:?}");
+        // Back at the start after a full lap.
+        assert!(matches!(
+            v,
+            FxNodeKind::Value {
+                value: FxValue::Color(_)
+            }
+        ));
+        let hsl = FxNodeKind::Value {
+            value: FxValue::Hsl([0.0, 0.0, 0.0]),
+        };
+        assert_eq!(
+            fields(&hsl).iter().map(|f| f.label).collect::<Vec<_>>(),
+            vec!["type", "hue", "sat", "light"]
+        );
+        let stepped = step(&hsl, 1, 1).unwrap();
+        assert_eq!(
+            stepped,
+            FxNodeKind::Value {
+                value: FxValue::Hsl([10.0, 0.0, 0.0])
+            }
+        );
+        let ms = FxNodeKind::Value {
+            value: FxValue::Ms(100),
+        };
+        assert_eq!(
+            set_number(&ms, 1, 250.0),
+            Some(FxNodeKind::Value {
+                value: FxValue::Ms(250)
+            })
         );
     }
 

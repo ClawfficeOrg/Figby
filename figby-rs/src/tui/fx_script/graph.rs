@@ -243,28 +243,51 @@ pub enum FxValueType {
     Timer,
     Motion,
     Target,
+    /// A plain duration in milliseconds (`sleep`, `glitch`, `delay`).
+    Ms,
+    /// A repeat count (`RepeatMode::Times`).
+    Times,
+    /// A progress value in 0..=1 (`freeze_at`).
+    Alpha,
+    /// An HSL shift `[hue, saturation, lightness]` (`hsl_shift_fg`).
+    Hsl,
 }
 
-impl fmt::Display for FxValueType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
+impl FxValueType {
+    /// Short name, as shown in node titles and error messages.
+    pub fn name(self) -> &'static str {
+        match self {
             FxValueType::Color => "colour",
             FxValueType::Timer => "timer",
             FxValueType::Motion => "motion",
             FxValueType::Target => "target",
-        })
+            FxValueType::Ms => "ms",
+            FxValueType::Times => "times",
+            FxValueType::Alpha => "alpha",
+            FxValueType::Hsl => "hsl",
+        }
+    }
+}
+
+impl fmt::Display for FxValueType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
     }
 }
 
 /// The payload of a Value node: one typed value that effect parameters can
 /// reference instead of carrying it inline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FxValue {
     Color(FxColor),
     Timer(FxTimer),
     Motion(FxMotion),
     Target(FxTarget),
+    Ms(u32),
+    Times(u32),
+    Alpha(f32),
+    Hsl([f32; 3]),
 }
 
 impl FxValue {
@@ -274,6 +297,10 @@ impl FxValue {
             FxValue::Timer(_) => FxValueType::Timer,
             FxValue::Motion(_) => FxValueType::Motion,
             FxValue::Target(_) => FxValueType::Target,
+            FxValue::Ms(_) => FxValueType::Ms,
+            FxValue::Times(_) => FxValueType::Times,
+            FxValue::Alpha(_) => FxValueType::Alpha,
+            FxValue::Hsl(_) => FxValueType::Hsl,
         }
     }
 
@@ -284,6 +311,9 @@ impl FxValue {
             FxValue::Timer(t) => t.dsl(),
             FxValue::Motion(m) => m.dsl_name().to_string(),
             FxValue::Target(t) => t.ident(),
+            FxValue::Ms(n) | FxValue::Times(n) => n.to_string(),
+            FxValue::Alpha(a) => format!("{a:?}"),
+            FxValue::Hsl(hsl) => hsl_dsl(hsl),
         }
     }
 
@@ -293,8 +323,21 @@ impl FxValue {
             FxValue::Timer(t) => t.summary(),
             FxValue::Motion(m) => m.dsl_name().to_string(),
             FxValue::Target(t) => t.ident(),
+            FxValue::Ms(n) => format!("{n}ms"),
+            FxValue::Times(n) => format!("x{n}"),
+            FxValue::Alpha(a) => format!("at {a:?}"),
+            FxValue::Hsl(hsl) => hsl_summary(hsl),
         }
     }
+}
+
+/// `[h, s, l]` as a DSL array literal (floats keep their decimal point).
+fn hsl_dsl(hsl: [f32; 3]) -> String {
+    format!("[{:?}, {:?}, {:?}]", hsl[0], hsl[1], hsl[2])
+}
+
+fn hsl_summary(hsl: [f32; 3]) -> String {
+    format!("h{:+} s{:+} l{:+}", hsl[0], hsl[1], hsl[2])
 }
 
 /// The DSL variable a Value node is bound to with `let`.
@@ -392,10 +435,7 @@ impl FxEffect {
             FxEffect::FadeFromFg { color, timer: t }
             | FxEffect::FadeToFg { color, timer: t }
             | FxEffect::PaintFg { color, timer: t } => vec![(Some("color"), color.dsl()), timer(t)],
-            FxEffect::HslShiftFg { hsl, timer: t } => vec![
-                (None, format!("[{:?}, {:?}, {:?}]", hsl[0], hsl[1], hsl[2])),
-                timer(t),
-            ],
+            FxEffect::HslShiftFg { hsl, timer: t } => vec![(Some("hsl"), hsl_dsl(hsl)), timer(t)],
             FxEffect::Dissolve { timer: t } | FxEffect::Coalesce { timer: t } => vec![timer(t)],
             FxEffect::SweepIn {
                 motion,
@@ -417,7 +457,7 @@ impl FxEffect {
                 (Some("color"), color.dsl()),
                 timer(t),
             ],
-            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => vec![(None, ms.to_string())],
+            FxEffect::Sleep { ms } | FxEffect::Glitch { ms } => vec![(Some("ms"), ms.to_string())],
         }
     }
 
@@ -431,13 +471,9 @@ impl FxEffect {
             | FxEffect::PaintFg { color, timer } => {
                 format!("{} {}", color.name(), timer.summary())
             }
-            FxEffect::HslShiftFg { hsl, timer } => format!(
-                "h{:+} s{:+} l{:+} {}",
-                hsl[0],
-                hsl[1],
-                hsl[2],
-                timer.summary()
-            ),
+            FxEffect::HslShiftFg { hsl, timer } => {
+                format!("{} {}", hsl_summary(hsl), timer.summary())
+            }
             FxEffect::Dissolve { timer } | FxEffect::Coalesce { timer } => timer.summary(),
             FxEffect::SweepIn {
                 motion,
@@ -545,12 +581,7 @@ impl FxNodeKind {
             FxNodeKind::FreezeAt { .. } => "freeze_at",
             FxNodeKind::Area { .. } => "area",
             FxNodeKind::Filter { .. } => "filter",
-            FxNodeKind::Value { value } => match value.ty() {
-                FxValueType::Color => "colour",
-                FxValueType::Timer => "timer",
-                FxValueType::Motion => "motion",
-                FxValueType::Target => "target",
-            },
+            FxNodeKind::Value { value } => value.ty().name(),
         }
     }
 
@@ -565,21 +596,32 @@ impl FxNodeKind {
                 FxEffect::FadeFromFg { .. }
                 | FxEffect::FadeToFg { .. }
                 | FxEffect::PaintFg { .. } => &[("color", T::Color), ("timer", T::Timer)],
-                FxEffect::HslShiftFg { .. }
-                | FxEffect::Dissolve { .. }
-                | FxEffect::Coalesce { .. } => &[("timer", T::Timer)],
+                FxEffect::HslShiftFg { .. } => &[("hsl", T::Hsl), ("timer", T::Timer)],
+                FxEffect::Dissolve { .. } | FxEffect::Coalesce { .. } => &[("timer", T::Timer)],
                 FxEffect::SweepIn { .. } | FxEffect::SweepOut { .. } => &[
                     ("motion", T::Motion),
                     ("color", T::Color),
                     ("timer", T::Timer),
                 ],
-                FxEffect::Sleep { .. } | FxEffect::Glitch { .. } => &[],
+                FxEffect::Sleep { .. } | FxEffect::Glitch { .. } => &[("ms", T::Ms)],
             },
+            FxNodeKind::Repeat { .. } => &[("times", T::Times)],
+            FxNodeKind::Delay { .. } => &[("ms", T::Ms)],
+            FxNodeKind::FreezeAt { .. } => &[("alpha", T::Alpha)],
             FxNodeKind::ProlongStart { .. } | FxNodeKind::ProlongEnd { .. } => {
                 &[("timer", T::Timer)]
             }
             FxNodeKind::Area { .. } => &[("target", T::Target)],
-            _ => &[],
+            // Only the colour filters carry a value; the slot exists while
+            // the filter is one of them.
+            FxNodeKind::Filter {
+                filter: FxFilter::FgColor(_) | FxFilter::BgColor(_),
+            } => &[("color", T::Color)],
+            FxNodeKind::Sequence
+            | FxNodeKind::Parallel
+            | FxNodeKind::PingPong
+            | FxNodeKind::Filter { .. }
+            | FxNodeKind::Value { .. } => &[],
         }
     }
 
@@ -636,6 +678,13 @@ impl FxNodeKind {
                 *t = n;
             }
         }
+        fn ms(name: &'static str, n: &mut u32, f: &mut dyn FnMut(&'static str, &mut FxValue)) {
+            let mut v = FxValue::Ms(*n);
+            f(name, &mut v);
+            if let FxValue::Ms(x) = v {
+                *n = x;
+            }
+        }
         match self {
             FxNodeKind::Effect { effect } => match effect {
                 FxEffect::FadeFrom { bg, fg, timer: t } | FxEffect::FadeTo { bg, fg, timer: t } => {
@@ -649,9 +698,15 @@ impl FxNodeKind {
                     color("color", c, f);
                     timer(t, f);
                 }
-                FxEffect::HslShiftFg { timer: t, .. }
-                | FxEffect::Dissolve { timer: t }
-                | FxEffect::Coalesce { timer: t } => timer(t, f),
+                FxEffect::HslShiftFg { hsl, timer: t } => {
+                    let mut v = FxValue::Hsl(*hsl);
+                    f("hsl", &mut v);
+                    if let FxValue::Hsl(n) = v {
+                        *hsl = n;
+                    }
+                    timer(t, f);
+                }
+                FxEffect::Dissolve { timer: t } | FxEffect::Coalesce { timer: t } => timer(t, f),
                 FxEffect::SweepIn {
                     motion,
                     color: c,
@@ -672,8 +727,23 @@ impl FxNodeKind {
                     color("color", c, f);
                     timer(t, f);
                 }
-                FxEffect::Sleep { .. } | FxEffect::Glitch { .. } => {}
+                FxEffect::Sleep { ms: n } | FxEffect::Glitch { ms: n } => ms("ms", n, f),
             },
+            FxNodeKind::Repeat { times } => {
+                let mut v = FxValue::Times(*times);
+                f("times", &mut v);
+                if let FxValue::Times(n) = v {
+                    *times = n;
+                }
+            }
+            FxNodeKind::Delay { ms: n } => ms("ms", n, f),
+            FxNodeKind::FreezeAt { alpha } => {
+                let mut v = FxValue::Alpha(*alpha);
+                f("alpha", &mut v);
+                if let FxValue::Alpha(n) = v {
+                    *alpha = n;
+                }
+            }
             FxNodeKind::ProlongStart { timer: t } | FxNodeKind::ProlongEnd { timer: t } => {
                 timer(t, f)
             }
@@ -684,7 +754,14 @@ impl FxNodeKind {
                     *target = n;
                 }
             }
-            _ => {}
+            FxNodeKind::Filter {
+                filter: FxFilter::FgColor(c) | FxFilter::BgColor(c),
+            } => color("color", c, f),
+            FxNodeKind::Sequence
+            | FxNodeKind::Parallel
+            | FxNodeKind::PingPong
+            | FxNodeKind::Filter { .. }
+            | FxNodeKind::Value { .. } => {}
         }
     }
 
@@ -1057,10 +1134,15 @@ impl FxGraph {
                 "repeat",
                 &[],
                 child(0),
-                &[format!("RepeatMode::Times({times})")],
+                &[format!(
+                    "RepeatMode::Times({})",
+                    arg("times", times.to_string())
+                )],
             ),
             FxNodeKind::PingPong => wrap_call("ping_pong", &[], child(0), &[]),
-            FxNodeKind::Delay { ms } => wrap_call("delay", &[ms.to_string()], child(0), &[]),
+            FxNodeKind::Delay { ms } => {
+                wrap_call("delay", &[arg("ms", ms.to_string())], child(0), &[])
+            }
             FxNodeKind::ProlongStart { timer } => {
                 wrap_call("prolong_start", &[arg("timer", timer.dsl())], child(0), &[])
             }
@@ -1069,7 +1151,7 @@ impl FxGraph {
             }
             FxNodeKind::FreezeAt { alpha } => wrap_call(
                 "freeze_at",
-                &[format!("{alpha:?}"), "false".into()],
+                &[arg("alpha", format!("{alpha:?}")), "false".into()],
                 child(0),
                 &[],
             ),
@@ -1081,7 +1163,16 @@ impl FxGraph {
                 )
             }
             FxNodeKind::Filter { filter } => {
-                format!("{}\n.with_filter({})", child(0), filter.dsl())
+                let filter = match *filter {
+                    FxFilter::FgColor(c) => {
+                        format!("CellFilter::FgColor({})", arg("color", c.dsl()))
+                    }
+                    FxFilter::BgColor(c) => {
+                        format!("CellFilter::BgColor({})", arg("color", c.dsl()))
+                    }
+                    other => other.dsl(),
+                };
+                format!("{}\n.with_filter({filter})", child(0))
             }
             // validate() keeps Value nodes out of the tree.
             FxNodeKind::Value { .. } => String::new(),
@@ -1620,6 +1711,211 @@ mod tests {
         let back: FxGraph = serde_json::from_str(&json).unwrap();
         assert_eq!(back, g);
         assert_eq!(back.to_dsl().unwrap(), g.to_dsl().unwrap());
+    }
+
+    /// One Value node of each numeric type, HSL and a filter colour, each
+    /// bound to every slot it fits. Ids: 1 ms, 2 times, 3 alpha, 4 hsl,
+    /// 5 colour, 6 sleep, 7 glitch, 8 hsl_shift_fg, 9 fg filter, 10 bg
+    /// filter, 11 freeze_at, 12 sequence, 13 delay, 14 repeat (root).
+    fn numeric_valued_graph() -> FxGraph {
+        let mut b = FxGraphBuilder::new();
+        let ms = value(&mut b, FxValue::Ms(300));
+        let times = value(&mut b, FxValue::Times(3));
+        let alpha = value(&mut b, FxValue::Alpha(0.5));
+        let hsl = value(&mut b, FxValue::Hsl([40.0, -0.5, 0.25]));
+        let colour = value(&mut b, FxValue::Color(FxColor::Red));
+        let sleep = b.effect(FxEffect::Sleep { ms: 1 });
+        let glitch = b.effect(FxEffect::Glitch { ms: 1 });
+        let shift = b.effect(FxEffect::HslShiftFg {
+            hsl: [0.0, 0.0, 0.0],
+            timer: FxTimer::new(100, FxInterp::Linear),
+        });
+        let fg = b.add(
+            FxNodeKind::Filter {
+                filter: FxFilter::FgColor(FxColor::White),
+            },
+            &[sleep],
+        );
+        let bg = b.add(
+            FxNodeKind::Filter {
+                filter: FxFilter::BgColor(FxColor::Black),
+            },
+            &[glitch],
+        );
+        let freeze = b.add(FxNodeKind::FreezeAt { alpha: 0.0 }, &[shift]);
+        let seq = b.add(FxNodeKind::Sequence, &[fg, bg, freeze]);
+        let delay = b.add(FxNodeKind::Delay { ms: 1 }, &[seq]);
+        let root = b.add(FxNodeKind::Repeat { times: 1 }, &[delay]);
+        let mut g = b.build(root);
+        bind(&mut g, sleep, "ms", ms);
+        bind(&mut g, glitch, "ms", ms);
+        bind(&mut g, delay, "ms", ms);
+        bind(&mut g, root, "times", times);
+        bind(&mut g, freeze, "alpha", alpha);
+        bind(&mut g, shift, "hsl", hsl);
+        bind(&mut g, fg, "color", colour);
+        bind(&mut g, bg, "color", colour);
+        g
+    }
+
+    #[test]
+    fn numeric_hsl_and_filter_values_emit_lets_that_compile() {
+        let g = numeric_valued_graph();
+        let dsl = g.to_dsl().unwrap();
+        assert!(
+            dsl.starts_with(
+                "let v1 = 300;\nlet v2 = 3;\nlet v3 = 0.5;\nlet v4 = [40.0, -0.5, 0.25];\nlet v5 = Color::Red;\n"
+            ),
+            "{dsl}"
+        );
+        for needle in [
+            "fx::sleep(v1)",
+            "fx::glitch(v1)",
+            "fx::hsl_shift_fg(v4, (100, Linear))",
+            ".with_filter(CellFilter::FgColor(v5))",
+            ".with_filter(CellFilter::BgColor(v5))",
+            "fx::freeze_at(v3, false, ",
+            "fx::delay(\n        v1,",
+            "RepeatMode::Times(v2)",
+        ] {
+            assert!(dsl.contains(needle), "{needle}\n{dsl}");
+        }
+        compiles(&dsl);
+    }
+
+    #[test]
+    fn numeric_values_compile_in_each_slot_alone() {
+        let g = numeric_valued_graph();
+        let mut count = 0;
+        for n in &g.nodes {
+            for slot in n.params.keys() {
+                let mut one = g.clone();
+                for m in &mut one.nodes {
+                    m.params.retain(|s, _| m.id == n.id && s == slot);
+                }
+                compiles(&one.to_dsl().unwrap());
+                count += 1;
+            }
+        }
+        assert_eq!(count, 8);
+    }
+
+    #[test]
+    fn numeric_values_drive_duration_and_outline() {
+        let g = numeric_valued_graph();
+        // (sleep 300 + glitch 300 + shift 100 + delay 300) x 3.
+        assert_eq!(g.duration_ms(), Some(3000));
+        let outline = g.outline();
+        assert_eq!(outline[0], "repeat x3");
+        assert!(
+            outline.iter().any(|l| l.contains("delay 300ms")),
+            "{outline:?}"
+        );
+        assert!(
+            outline.iter().any(|l| l.contains("filter fg Red")),
+            "{outline:?}"
+        );
+        assert!(
+            outline.iter().any(|l| l.contains("freeze_at at 0.5")),
+            "{outline:?}"
+        );
+        assert!(
+            outline
+                .iter()
+                .any(|l| l.contains("hsl_shift_fg h+40 s-0.5 l+0.25")),
+            "{outline:?}"
+        );
+    }
+
+    #[test]
+    fn numeric_bindings_are_type_checked() {
+        let base = numeric_valued_graph();
+        let (ms, times, alpha, sleep, fg, root) = (1, 2, 3, 6, 9, base.root);
+        let mut g = base.clone();
+        bind(&mut g, root, "times", ms);
+        assert_eq!(
+            g.validate(),
+            Err(FxGraphError::SlotType {
+                node: root,
+                slot: "times".into(),
+                expected: FxValueType::Times,
+                found: Some(FxValueType::Ms),
+            })
+        );
+        let mut g = base.clone();
+        bind(&mut g, sleep, "ms", alpha);
+        assert!(matches!(
+            g.validate(),
+            Err(FxGraphError::SlotType {
+                expected: FxValueType::Ms,
+                found: Some(FxValueType::Alpha),
+                ..
+            })
+        ));
+        let mut g = base.clone();
+        bind(&mut g, fg, "color", times);
+        assert!(matches!(
+            g.validate(),
+            Err(FxGraphError::SlotType {
+                expected: FxValueType::Color,
+                ..
+            })
+        ));
+        // A filter without a colour has no colour slot.
+        let mut g = base;
+        g.nodes.iter_mut().find(|n| n.id == fg).unwrap().kind = FxNodeKind::Filter {
+            filter: FxFilter::Text,
+        };
+        assert_eq!(
+            g.validate(),
+            Err(FxGraphError::UnknownSlot {
+                node: fg,
+                slot: "color".into()
+            })
+        );
+    }
+
+    #[test]
+    fn serde_round_trip_keeps_numeric_values() {
+        let g = numeric_valued_graph();
+        let json = serde_json::to_string(&g).unwrap();
+        let back: FxGraph = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, g);
+        assert_eq!(back.to_dsl().unwrap(), g.to_dsl().unwrap());
+    }
+
+    #[test]
+    fn slot_values_cover_numbers_hsl_and_filter_colours() {
+        let r = FxNodeKind::Repeat { times: 4 };
+        assert_eq!(r.slot_value("times"), Some(FxValue::Times(4)));
+        assert_eq!(
+            r.with_slot_value("times", FxValue::Times(9)),
+            FxNodeKind::Repeat { times: 9 }
+        );
+        // Same number, other type: refused.
+        assert_eq!(r.with_slot_value("times", FxValue::Ms(9)), r);
+        let f = FxNodeKind::Filter {
+            filter: FxFilter::BgColor(FxColor::Blue),
+        };
+        assert_eq!(f.slot_value("color"), Some(FxValue::Color(FxColor::Blue)));
+        assert_eq!(
+            FxNodeKind::Filter {
+                filter: FxFilter::All
+            }
+            .slot_value("color"),
+            None
+        );
+        let h = FxNodeKind::Effect {
+            effect: FxEffect::HslShiftFg {
+                hsl: [1.0, 2.0, 3.0],
+                timer: FxTimer::new(1, FxInterp::Linear),
+            },
+        };
+        assert_eq!(h.slot_value("hsl"), Some(FxValue::Hsl([1.0, 2.0, 3.0])));
+        assert_eq!(
+            FxNodeKind::FreezeAt { alpha: 0.2 }.slot_value("alpha"),
+            Some(FxValue::Alpha(0.2))
+        );
     }
 
     #[test]

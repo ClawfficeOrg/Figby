@@ -31,6 +31,9 @@ use crate::tui::theme::Theme;
 const GAP_X: f64 = 4.0;
 /// Vertical gap between stacked leaves, in cells.
 const GAP_Y: f64 = 1.0;
+/// Prefix that marks the node chosen with `m` (the child for `c`, the value
+/// for `b`), on the canvas title and in the outline.
+const MARK: &str = "◆ ";
 
 /// Where one node sits in graph space, plus what it shows.
 #[derive(Debug, Clone, PartialEq)]
@@ -56,8 +59,12 @@ fn placement(graph: &FxGraph, n: &FxNode) -> NodePlacement {
         .unwrap_or_else(|| n.kind.clone())
         .summary();
     // Border (2) + one cell of padding each side (2); the title sits on the
-    // top border with a cell of room either side.
-    let inner = body.chars().count().max(title.chars().count() + 2);
+    // top border with a cell of room either side, plus room for the mark
+    // prefix so marking a node never truncates its title.
+    let inner = body
+        .chars()
+        .count()
+        .max(title.chars().count() + 2 + MARK.chars().count());
     NodePlacement {
         id: n.id,
         x: 0.0,
@@ -234,6 +241,18 @@ pub struct FxGraphView {
     props: Option<PropsState>,
     /// Where graphs are saved and loaded (`<config dir>/fx-graphs`).
     pub graph_dir: Option<PathBuf>,
+    /// The load picker (`L`), open over the preset list.
+    picker: Option<PickerState>,
+    /// Name of the graph file last loaded; `S` saves back under it. `None`
+    /// saves under the selected preset's name.
+    graph_name: Option<String>,
+}
+
+/// Load picker: the saved graphs (newest first) and the highlighted one.
+#[derive(Debug, Clone)]
+struct PickerState {
+    entries: Vec<graph_file::GraphEntry>,
+    sel: usize,
 }
 
 /// Props panel cursor: the selected field and a number being typed.
@@ -264,6 +283,8 @@ impl FxGraphView {
             edit_msg: String::new(),
             props: None,
             graph_dir: graph_file::default_dir(),
+            picker: None,
+            graph_name: None,
         }
     }
 
@@ -299,6 +320,8 @@ impl FxGraphView {
             self.editing = false;
             self.marked = None;
             self.props = None;
+            self.picker = None;
+            self.graph_name = None;
             self.edit_msg.clear();
             self.state = None;
         }
@@ -337,8 +360,12 @@ impl FxGraphView {
             "edit mode: a add, v value, m mark, c connect, p props, S save, L load".into();
     }
 
-    /// Name the selected preset's graph is saved under.
+    /// Name the graph on screen is saved under: the file it was loaded from,
+    /// else the selected preset's name.
     fn save_name(&self) -> String {
+        if let Some(name) = &self.graph_name {
+            return name.clone();
+        }
         self.presets
             .get(self.selected)
             .map_or_else(|| "graph".into(), |p| p.name.to_string())
@@ -368,19 +395,64 @@ impl FxGraphView {
         };
     }
 
-    /// Load the saved graph for the selected preset into the editor. With an
-    /// editor open the load is one undoable edit.
-    fn load(&mut self) {
+    /// Open the load picker over the saved graphs in the graph dir, newest
+    /// first. Errors, and an empty dir, go to the message line instead.
+    fn open_picker(&mut self) {
         let Some(dir) = self.graph_dir.clone() else {
             self.edit_msg = "load failed: no config dir (set HOME or XDG_CONFIG_HOME)".into();
             return;
         };
-        let name = self.save_name();
-        let graph = match graph_file::load(&dir, &name) {
+        match graph_file::list(&dir) {
+            Ok(entries) if entries.is_empty() => {
+                self.edit_msg = format!("no saved graphs in {} (S saves one)", dir.display());
+            }
+            Ok(entries) => {
+                self.edit_msg = format!(
+                    "load: {} saved graph(s); ↑↓ pick, Enter load, Esc cancel",
+                    entries.len()
+                );
+                self.picker = Some(PickerState { entries, sel: 0 });
+            }
+            Err(e) => self.edit_msg = format!("load failed: {}: {e}", dir.display()),
+        }
+    }
+
+    fn handle_picker_key(&mut self, code: KeyCode) -> bool {
+        let Some(picker) = self.picker.as_mut() else {
+            return false;
+        };
+        let n = picker.entries.len().max(1);
+        match code {
+            KeyCode::Up | KeyCode::Char('k') | KeyCode::BackTab => {
+                picker.sel = (picker.sel + n - 1) % n;
+            }
+            KeyCode::Down | KeyCode::Char('j') | KeyCode::Tab => {
+                picker.sel = (picker.sel + 1) % n;
+            }
+            KeyCode::Enter => {
+                let entry = picker.entries.get(picker.sel).cloned();
+                self.picker = None;
+                if let Some(entry) = entry {
+                    self.load_entry(&entry);
+                }
+            }
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.picker = None;
+                self.edit_msg = "load cancelled".into();
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    /// Load one saved graph into the editor. With an editor open the load is
+    /// one undoable edit. On error nothing changes.
+    fn load_entry(&mut self, entry: &graph_file::GraphEntry) {
+        let name = entry.name.clone();
+        let graph = match graph_file::load_path(&entry.path) {
             Ok(g) => g,
             Err(e) => {
-                let path = graph_file::graph_path(&dir, &name);
-                self.edit_msg = format!("load failed: {}: {e}", path.display());
+                self.edit_msg = format!("load failed: {}: {e}", entry.path.display());
                 return;
             }
         };
@@ -405,6 +477,7 @@ impl FxGraphView {
         self.marked = None;
         self.node_sel = 0;
         self.edit_msg = format!("loaded {name}");
+        self.graph_name = Some(name);
     }
 
     /// Run one edit on the editor, then refresh the derived views and clamp
@@ -418,8 +491,13 @@ impl FxGraphView {
             Err(e) => e.to_string(),
         };
         self.state = None;
-        let n = self.node_ids().len();
-        self.node_sel = self.node_sel.min(n.saturating_sub(1));
+        let ids = self.node_ids();
+        self.node_sel = self.node_sel.min(ids.len().saturating_sub(1));
+        // An undo can take the marked node away; drop a mark that points
+        // at nothing so the canvas never claims a missing node is marked.
+        if self.marked.is_some_and(|m| !ids.contains(&m)) {
+            self.marked = None;
+        }
     }
 
     /// Select the node with the highest id, which is the one just added.
@@ -428,6 +506,9 @@ impl FxGraphView {
     }
 
     fn handle_edit_key(&mut self, code: KeyCode) -> bool {
+        if self.picker.is_some() {
+            return self.handle_picker_key(code);
+        }
         if self.props.is_some() {
             return self.handle_props_key(code);
         }
@@ -454,7 +535,7 @@ impl FxGraphView {
                 self.select_newest();
             }
             KeyCode::Char('S') => self.save(),
-            KeyCode::Char('L') => self.load(),
+            KeyCode::Char('L') => self.open_picker(),
             KeyCode::Esc => {
                 self.editing = false;
                 self.marked = None;
@@ -743,6 +824,9 @@ impl FxGraphView {
     /// Handle a key while open. The overlay is modal, so every key is
     /// consumed; returns whether anything changed (needs a redraw).
     pub fn handle_key(&mut self, code: KeyCode) -> bool {
+        if self.picker.is_some() {
+            return self.handle_picker_key(code);
+        }
         if self.editing {
             return self.handle_edit_key(code);
         }
@@ -753,7 +837,7 @@ impl FxGraphView {
             KeyCode::Down | KeyCode::Char('j') => self.select(self.selected + 1),
             KeyCode::Char('s') => self.show_script = !self.show_script,
             KeyCode::Char('e') => self.start_editing(),
-            KeyCode::Char('L') => self.load(),
+            KeyCode::Char('L') => self.open_picker(),
             _ => return false,
         }
         true
@@ -792,7 +876,9 @@ impl FxGraphView {
                 ),
             ]))
             .title_bottom(Line::styled(
-                if self.props.is_some() {
+                if self.picker.is_some() {
+                    " ↑↓ graph  Enter load  Esc cancel "
+                } else if self.props.is_some() {
                     " ↑↓ field  ←→ change  0-9 Enter type  v value  b bind  n unbind  u/y undo/redo  Esc back "
                 } else if self.editing {
                     " Tab node  a/A add  v value  m mark  c connect  x detach  d del  r root  p props  u/y undo  S save  L load  Esc done "
@@ -805,7 +891,8 @@ impl FxGraphView {
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
 
-        let list_w = match (self.props.is_some(), inner.width) {
+        let wide_list = self.props.is_some() || self.picker.is_some();
+        let list_w = match (wide_list, inner.width) {
             (true, w) if w >= 90 => 34,
             (true, w) if w >= 60 => 26,
             (_, w) if w >= 60 => 22,
@@ -815,7 +902,9 @@ impl FxGraphView {
             Layout::horizontal([Constraint::Length(list_w), Constraint::Fill(1)])
                 .spacing(1)
                 .areas(inner);
-        if self.props.is_some() {
+        if self.picker.is_some() {
+            self.render_picker(frame, list_area, theme);
+        } else if self.props.is_some() {
             self.render_props(frame, list_area, theme);
         } else {
             self.render_list(frame, list_area, theme);
@@ -865,6 +954,41 @@ impl FxGraphView {
         frame.render_widget(
             Paragraph::new(lines)
                 .wrap(ratatui::widgets::Wrap { trim: true })
+                .block(Block::default().padding(Padding::horizontal(1))),
+            area,
+        );
+    }
+
+    fn render_picker(&self, frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
+        let accent = Style::default()
+            .fg(theme.general.primary)
+            .add_modifier(Modifier::BOLD);
+        let dim = Style::default().fg(theme.general.secondary);
+        let mut lines = vec![Line::styled(
+            "Load graph",
+            Style::default().add_modifier(Modifier::BOLD),
+        )];
+        lines.push(Line::styled("newest first", dim));
+        if let Some(p) = &self.picker {
+            for (i, e) in p.entries.iter().enumerate() {
+                let on = i == p.sel;
+                lines.push(Line::styled(
+                    format!("{}{}", if on { "▸ " } else { "  " }, e.name),
+                    if on {
+                        accent
+                    } else {
+                        Style::default().fg(theme.menu.fg)
+                    },
+                ));
+            }
+        }
+        if let Some(dir) = &self.graph_dir {
+            lines.push(Line::from(""));
+            lines.push(Line::styled(dir.display().to_string(), dim));
+        }
+        frame.render_widget(
+            Paragraph::new(lines)
+                .wrap(ratatui::widgets::Wrap { trim: false })
                 .block(Block::default().padding(Padding::horizontal(1))),
             area,
         );
@@ -933,6 +1057,10 @@ impl FxGraphView {
                     .map(|n| format!("{id} {}", n.kind.title()))
             });
             title = format!(" node {} ", node.unwrap_or_else(|| "none".into()));
+            if let Some(m) = self.marked {
+                // Also covers a marked scratch node, which is not drawn.
+                title.push_str(&format!("· {MARK}marked {m} "));
+            }
         }
         let mut block = Block::default()
             .borders(Borders::ALL)
@@ -952,12 +1080,15 @@ impl FxGraphView {
         }
         // Only edit mode has a node cursor to show.
         let highlight = self.selected_node().filter(|_| self.editing);
+        let marked = self.marked.filter(|_| self.editing);
         #[cfg(feature = "fx-graph")]
         {
             let palette = rataflow_view::palette(theme);
+            let mark_style = mark_style(theme);
             if let Some(flow) = self.ensure_state().flow.as_mut() {
                 flow.theme = rataflow::Theme::Custom(palette);
                 rataflow_view::select(flow, highlight);
+                rataflow_view::mark(flow, marked, mark_style);
                 // Read-only view: refit every frame so a resize keeps the
                 // whole graph in view.
                 flow.request_fit_view();
@@ -967,7 +1098,7 @@ impl FxGraphView {
         }
         let lines = self
             .graph()
-            .map(|g| outline_lines(g, highlight, theme))
+            .map(|g| outline_lines(g, highlight, marked, theme))
             .unwrap_or_default();
         frame.render_widget(Paragraph::new(lines), inner);
     }
@@ -995,9 +1126,24 @@ impl FxGraphView {
     }
 }
 
+/// Style of the `m`-marked node: the theme's warning colour, so it reads as
+/// distinct from the selection (primary) on the canvas and in the outline.
+fn mark_style(theme: &Theme) -> Style {
+    Style::default()
+        .fg(theme.general.warning)
+        .add_modifier(Modifier::BOLD)
+}
+
 /// The text fallback for the canvas: the tree outline, then the Value nodes
-/// it uses, with the selected node marked and styled.
-fn outline_lines(graph: &FxGraph, selected: Option<FxNodeId>, theme: &Theme) -> Vec<Line<'static>> {
+/// it uses. The selected node gets the `▸` cursor and the primary style;
+/// the marked node gets the [`MARK`] prefix and the warning style (the
+/// selection style wins when one node is both, but keeps the prefix).
+fn outline_lines(
+    graph: &FxGraph,
+    selected: Option<FxNodeId>,
+    marked: Option<FxNodeId>,
+    theme: &Theme,
+) -> Vec<Line<'static>> {
     let mut rows = graph.outline_rows();
     for id in graph.used_values() {
         if let Some(n) = graph.node(id) {
@@ -1009,15 +1155,22 @@ fn outline_lines(graph: &FxGraph, selected: Option<FxNodeId>, theme: &Theme) -> 
     }
     rows.into_iter()
         .map(|(id, text)| {
-            if Some(id) == selected {
+            let is_sel = Some(id) == selected;
+            let is_mark = Some(id) == marked;
+            let cursor = if is_sel { "▸ " } else { "  " };
+            let mark = if is_mark { MARK } else { "" };
+            let line = format!("{cursor}{mark}{text}");
+            if is_sel {
                 Line::styled(
-                    format!("▸ {text}"),
+                    line,
                     Style::default()
                         .fg(theme.general.primary)
                         .add_modifier(Modifier::BOLD),
                 )
+            } else if is_mark {
+                Line::styled(line, mark_style(theme))
             } else {
-                Line::from(format!("  {text}"))
+                Line::from(line)
             }
         })
         .collect()
@@ -1028,9 +1181,26 @@ mod rataflow_view {
     //! The only code that touches rataflow (pinned, behind `fx-graph`).
 
     use rataflow::{Edge, Flow, Node, Palette, StepEdge, TextContent};
+    use ratatui::style::Style;
 
-    use super::{layout, FxGraph, FxNodeId};
+    use super::{layout, FxGraph, FxNodeId, MARK};
     use crate::tui::theme::Theme;
+
+    /// Show `id` as the marked node: [`MARK`] in front of its title and
+    /// `style` on its border (rataflow's selection style still wins on the
+    /// border when it is also selected). Every other node is unmarked, so
+    /// `None` clears the mark. Idempotent; runs every frame.
+    pub(super) fn mark(flow: &mut Flow, id: Option<FxNodeId>, style: Style) {
+        let want = id.map(|i| i.to_string());
+        for (nid, content) in flow.nodes_content_mut() {
+            let on = want.as_deref() == Some(nid);
+            if let Some(title) = content.title.as_mut() {
+                let bare = title.strip_prefix(MARK).unwrap_or(title).to_string();
+                *title = if on { format!("{MARK}{bare}") } else { bare };
+            }
+            content.border_style = on.then_some(style);
+        }
+    }
 
     /// Show `id` as rataflow's selected node (accent border), or nothing.
     /// Scratch nodes are not on the canvas, so selecting one clears it.
@@ -1557,12 +1727,16 @@ mod tests {
         v.handle_key(KeyCode::Esc);
         v.select(v.selected());
         assert!(v.graph().unwrap().node(id).unwrap().params.is_empty());
-        // ... until it is loaded back.
+        // ... until it is loaded back through the picker.
         v.handle_key(KeyCode::Char('L'));
+        assert!(v.picker.is_some(), "{}", v.edit_msg);
+        v.handle_key(KeyCode::Enter);
+        assert!(v.picker.is_none());
         assert!(v.is_editing(), "{}", v.edit_msg);
         assert_eq!(v.graph().unwrap(), &edited);
         // A second load is one undoable edit on top.
         v.handle_key(KeyCode::Char('L'));
+        v.handle_key(KeyCode::Enter);
         assert!(v.editor.as_ref().unwrap().can_undo());
     }
 
@@ -1574,14 +1748,238 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         v.graph_dir = Some(dir.path().to_path_buf());
         let before = v.graph().unwrap().clone();
+        // An empty dir opens no picker and says so.
         v.handle_key(KeyCode::Char('L'));
+        assert!(v.edit_msg.starts_with("no saved graphs"), "{}", v.edit_msg);
+        assert!(v.picker.is_none());
+        assert_eq!(v.graph().unwrap(), &before);
+        // A file that is not a graph is listed, but picking it is reported,
+        // not loaded.
+        std::fs::write(graph_file::graph_path(dir.path(), "broken"), "[]").unwrap();
+        v.handle_key(KeyCode::Char('L'));
+        assert!(v.picker.is_some(), "{}", v.edit_msg);
+        v.handle_key(KeyCode::Enter);
         assert!(v.edit_msg.starts_with("load failed"), "{}", v.edit_msg);
         assert_eq!(v.graph().unwrap(), &before);
-        // A file that is not a graph is reported, not loaded.
-        std::fs::write(graph_file::graph_path(dir.path(), &v.save_name()), "[]").unwrap();
+        assert!(v.graph_name.is_none());
+        // A dir that cannot be listed (a file in its place) is reported.
+        let not_dir = dir.path().join("plain");
+        std::fs::write(&not_dir, "x").unwrap();
+        v.graph_dir = Some(not_dir);
         v.handle_key(KeyCode::Char('L'));
         assert!(v.edit_msg.starts_with("load failed"), "{}", v.edit_msg);
+        assert!(v.picker.is_none());
         assert_eq!(v.graph().unwrap(), &before);
+    }
+
+    /// Save the first preset's graph under each name, oldest first, with
+    /// distinct mtimes. Returns the dir.
+    fn saved_graphs(names: &[&str]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let all = presets::all();
+        for (i, name) in names.iter().enumerate() {
+            // A distinct Sleep leaf per file so loads are told apart.
+            let mut ed = GraphEditor::new(all[0].graph.clone()).unwrap();
+            ed.add_node(FxNodeKind::Effect {
+                effect: FxEffect::Sleep { ms: i as u32 + 1 },
+            });
+            let saved = graph_file::save(dir.path(), name, ed.graph()).unwrap();
+            let f = std::fs::OpenOptions::new()
+                .write(true)
+                .open(&saved.graph)
+                .unwrap();
+            f.set_modified(
+                std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000 + i as u64),
+            )
+            .unwrap();
+        }
+        dir
+    }
+
+    fn picker_names(v: &FxGraphView) -> Vec<String> {
+        v.picker
+            .as_ref()
+            .unwrap()
+            .entries
+            .iter()
+            .map(|e| e.name.clone())
+            .collect()
+    }
+
+    #[test]
+    fn load_picker_lists_newest_first_and_loads_the_pick() {
+        let dir = saved_graphs(&["alpha", "beta", "gamma"]);
+        let mut v = FxGraphView::new();
+        v.open = true;
+        v.graph_dir = Some(dir.path().to_path_buf());
+        // Works from the read-only view too.
+        v.handle_key(KeyCode::Char('L'));
+        assert_eq!(picker_names(&v), vec!["gamma", "beta", "alpha"]);
+        // Up wraps to the oldest; Down comes back round to the newest.
+        v.handle_key(KeyCode::Up);
+        assert_eq!(v.picker.as_ref().unwrap().sel, 2);
+        v.handle_key(KeyCode::Down);
+        v.handle_key(KeyCode::Down);
+        assert_eq!(v.picker.as_ref().unwrap().sel, 1);
+        // Other keys are not taken by the edit mode while picking.
+        assert!(!v.handle_key(KeyCode::Char('a')));
+        assert!(v.editor.is_none());
+        v.handle_key(KeyCode::Enter);
+        assert!(v.picker.is_none());
+        assert!(v.is_editing());
+        assert_eq!(v.edit_msg, "loaded beta");
+        let want = graph_file::load(dir.path(), "beta").unwrap();
+        assert_eq!(v.graph().unwrap(), &want);
+        // S now saves back under the loaded name.
+        assert_eq!(v.save_name(), "beta");
+        // Selecting a preset forgets the loaded name.
+        v.handle_key(KeyCode::Esc);
+        v.select(0);
+        assert_ne!(v.save_name(), "beta");
+    }
+
+    #[test]
+    fn load_picker_esc_cancels_and_changes_nothing() {
+        let dir = saved_graphs(&["one", "two"]);
+        let mut v = editing_view();
+        v.graph_dir = Some(dir.path().to_path_buf());
+        let before = v.graph().unwrap().clone();
+        v.handle_key(KeyCode::Char('L'));
+        v.handle_key(KeyCode::Down);
+        v.handle_key(KeyCode::Esc);
+        assert!(v.picker.is_none());
+        assert_eq!(v.edit_msg, "load cancelled");
+        assert_eq!(v.graph().unwrap(), &before);
+        // Esc only closed the picker; edit mode is still on.
+        assert!(v.is_editing());
+        assert!(!v.editor.as_ref().unwrap().can_undo());
+    }
+
+    #[test]
+    fn load_picker_renders_names() {
+        let dir = saved_graphs(&["first_graph", "second_graph"]);
+        let mut v = FxGraphView::new();
+        v.open = true;
+        v.graph_dir = Some(dir.path().to_path_buf());
+        v.handle_key(KeyCode::Char('L'));
+        let mut term = Terminal::new(TestBackend::new(140, 40)).unwrap();
+        term.draw(|f| v.render(f, f.area(), &Theme::default()))
+            .unwrap();
+        let text = screen_text(&term);
+        assert!(text.contains("Load graph"), "{text}");
+        assert!(text.contains("▸ second_graph"), "{text}");
+        assert!(text.contains("  first_graph"), "{text}");
+        assert!(text.contains("Enter load"), "{text}");
+        for (w, h) in [(30, 10), (60, 20), (4, 4)] {
+            let mut term = Terminal::new(TestBackend::new(w, h)).unwrap();
+            term.draw(|f| v.render(f, f.area(), &Theme::default()))
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn outline_marks_the_m_node_distinctly_from_the_selection() {
+        let g = presets::all().remove(0).graph;
+        let rows = g.outline_rows();
+        let (root, other) = (rows[0].0, rows[1].0);
+        let theme = Theme::default();
+        let lines = outline_lines(&g, Some(root), Some(other), &theme);
+        let text: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text[1].starts_with(&format!("  {MARK}")), "{text:?}");
+        assert_eq!(lines[1].style.fg, Some(theme.general.warning));
+        assert_eq!(text.iter().filter(|l| l.contains(MARK)).count(), 1);
+        // Marked and selected at once: the cursor and the mark both show.
+        let lines = outline_lines(&g, Some(root), Some(root), &theme);
+        assert!(lines[0].to_string().starts_with(&format!("▸ {MARK}")));
+        // No mark, no prefix.
+        let lines = outline_lines(&g, Some(root), None, &theme);
+        assert!(lines.iter().all(|l| !l.to_string().contains(MARK)));
+    }
+
+    fn render_text(v: &mut FxGraphView) -> String {
+        let mut term = Terminal::new(TestBackend::new(160, 44)).unwrap();
+        term.draw(|f| v.render(f, f.area(), &Theme::default()))
+            .unwrap();
+        screen_text(&term)
+    }
+
+    #[test]
+    fn marked_node_shows_on_screen_until_the_mark_is_cleared() {
+        let mut v = editing_view();
+        v.handle_key(KeyCode::Tab);
+        let id = v.selected_node().unwrap();
+        assert!(!render_text(&mut v).contains(MARK.trim()));
+        v.handle_key(KeyCode::Char('m'));
+        let text = render_text(&mut v);
+        // In the graph pane title, and on the node itself (canvas title
+        // under fx-graph, outline row without it).
+        assert!(text.contains(&format!("marked {id}")), "{text}");
+        assert!(
+            text.matches(MARK.trim()).count() >= 2,
+            "mark on the node too:\n{text}"
+        );
+        // Esc leaves edit mode and clears the mark.
+        v.handle_key(KeyCode::Esc);
+        assert_eq!(v.marked, None);
+        assert!(!render_text(&mut v).contains(MARK.trim()));
+    }
+
+    #[test]
+    fn mark_is_cleared_by_connect_and_by_undoing_the_marked_node_away() {
+        let mut v = editing_view();
+        v.handle_key(KeyCode::Char('a'));
+        let leaf = v.selected_node().unwrap();
+        v.handle_key(KeyCode::Char('m'));
+        assert_eq!(v.marked, Some(leaf));
+        // Undo the add: the marked node is gone, so is the mark.
+        v.handle_key(KeyCode::Char('u'));
+        assert_eq!(v.marked, None);
+        assert!(!render_text(&mut v).contains(MARK.trim()));
+        // Mark, connect: cleared.
+        v.handle_key(KeyCode::Char('a'));
+        v.handle_key(KeyCode::Char('m'));
+        v.handle_key(KeyCode::Char('A'));
+        v.handle_key(KeyCode::Char('c'));
+        assert!(v.edit_msg.starts_with("connected"), "{}", v.edit_msg);
+        assert_eq!(v.marked, None);
+        assert!(!render_text(&mut v).contains(MARK.trim()));
+    }
+
+    #[cfg(feature = "fx-graph")]
+    #[test]
+    fn canvas_marks_the_m_node_title_and_border() {
+        let mut v = editing_view();
+        v.handle_key(KeyCode::Tab);
+        let id = v.selected_node().unwrap();
+        v.handle_key(KeyCode::Char('m'));
+        // Move the cursor off it, so the mark is not hidden by selection.
+        v.handle_key(KeyCode::Tab);
+        render_text(&mut v);
+        let theme = Theme::default();
+        let flow = v.state.as_ref().unwrap().flow.as_ref().unwrap();
+        for n in flow.nodes() {
+            let title = n.content.title.clone().unwrap_or_default();
+            if n.id == id.to_string() {
+                assert!(title.starts_with(MARK), "{title}");
+                assert_eq!(n.content.border_style, Some(mark_style(&theme)));
+            } else {
+                assert!(!title.starts_with(MARK), "{} {title}", n.id);
+                assert_eq!(n.content.border_style, None);
+            }
+        }
+        // Re-marking is idempotent: one prefix, not two.
+        render_text(&mut v);
+        let flow = v.state.as_ref().unwrap().flow.as_ref().unwrap();
+        let title = flow.node(&id.to_string()).unwrap().content.title.clone();
+        assert_eq!(title.unwrap().matches(MARK).count(), 1);
+        // Clearing the mark restores the plain title.
+        v.handle_key(KeyCode::Esc);
+        render_text(&mut v);
+        let flow = v.state.as_ref().unwrap().flow.as_ref().unwrap();
+        assert!(flow.nodes().all(
+            |n| !n.content.title.clone().unwrap_or_default().contains(MARK)
+                && n.content.border_style.is_none()
+        ));
     }
 
     #[test]
@@ -1632,7 +2030,7 @@ mod tests {
             })
             .unwrap();
         let vid = ed.extract_value(user, "timer").unwrap();
-        let lines = outline_lines(ed.graph(), Some(root), &Theme::default());
+        let lines = outline_lines(ed.graph(), Some(root), None, &Theme::default());
         let text: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
         assert!(text[0].starts_with("▸ "), "{text:?}");
         assert!(text[1..].iter().all(|l| l.starts_with("  ")), "{text:?}");

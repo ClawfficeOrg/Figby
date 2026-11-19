@@ -6,6 +6,9 @@
 //! - `<name>.fxgraph.json`: the IR, which is what loads back into the editor.
 //! - `<name>.figfx.toml`: the emitted DSL as a one-effect script (trigger
 //!   `manual`), so the graph can be opened as an effect script as well.
+//!
+//! [`list`] finds the saved graphs in a dir, newest first, for the load
+//! picker in the overlay.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -89,6 +92,55 @@ pub fn save(dir: &Path, name: &str, graph: &FxGraph) -> io::Result<Saved> {
     Ok(saved)
 }
 
+/// One saved graph found in a graph dir.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GraphEntry {
+    /// The file stem (the name it was saved under).
+    pub name: String,
+    pub path: PathBuf,
+    pub modified: std::time::SystemTime,
+}
+
+/// The saved graphs (`*.fxgraph.json` files) in `dir`, newest first; ties
+/// go by name. A missing `dir` is an empty list, not an error (nothing has
+/// been saved yet). Other files and directories are skipped.
+pub fn list(dir: &Path) -> io::Result<Vec<GraphEntry>> {
+    let read = match std::fs::read_dir(dir) {
+        Ok(r) => r,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+    let mut out = Vec::new();
+    for entry in read {
+        let entry = entry?;
+        let file_name = entry.file_name();
+        let Some(name) = file_name
+            .to_str()
+            .and_then(|n| n.strip_suffix(GRAPH_EXTENSION))
+        else {
+            continue;
+        };
+        if name.is_empty() {
+            continue;
+        }
+        let meta = entry.metadata()?;
+        if !meta.is_file() {
+            continue;
+        }
+        out.push(GraphEntry {
+            name: name.to_string(),
+            path: entry.path(),
+            modified: meta.modified().unwrap_or(std::time::UNIX_EPOCH),
+        });
+    }
+    out.sort_by(|a, b| {
+        b.modified
+            .cmp(&a.modified)
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    Ok(out)
+}
+
 /// Read and validate `<name>.fxgraph.json` from `dir`.
 pub fn load(dir: &Path, name: &str) -> io::Result<FxGraph> {
     load_path(&graph_path(dir, name))
@@ -124,6 +176,44 @@ mod tests {
             let script = parse_script(&text).unwrap_or_else(|e| panic!("{}: {e:?}", p.name));
             assert_eq!(script.effects.len(), 1, "{}", p.name);
         }
+    }
+
+    fn set_mtime(path: &Path, secs: u64) {
+        let f = std::fs::OpenOptions::new().write(true).open(path).unwrap();
+        f.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs))
+            .unwrap();
+    }
+
+    #[test]
+    fn list_is_newest_first_and_skips_other_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let all = presets::all();
+        let g = &all[0].graph;
+        for (name, secs) in [
+            ("old", 1_000),
+            ("new", 3_000),
+            ("mid", 2_000),
+            ("tie", 2_000),
+        ] {
+            let saved = save(dir.path(), name, g).unwrap();
+            set_mtime(&saved.graph, secs);
+        }
+        std::fs::write(dir.path().join("notes.txt"), "x").unwrap();
+        std::fs::create_dir(dir.path().join("dir.fxgraph.json")).unwrap();
+        let names: Vec<String> = list(dir.path())
+            .unwrap()
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(names, vec!["new", "mid", "tie", "old"]);
+        let first = &list(dir.path()).unwrap()[0];
+        assert_eq!(load_path(&first.path).unwrap(), *g);
+    }
+
+    #[test]
+    fn list_of_a_missing_dir_is_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(list(&dir.path().join("nope")).unwrap().is_empty());
     }
 
     #[test]
