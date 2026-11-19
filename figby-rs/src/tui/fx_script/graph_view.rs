@@ -15,7 +15,8 @@ use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph};
 use ratatui::Frame;
 
 use super::compile::{compile, FxCompileError, FxTargets};
-use super::graph::{FxGraph, FxGraphError, FxNodeId};
+use super::edit::GraphEditor;
+use super::graph::{FxEffect, FxGraph, FxGraphError, FxNodeId, FxNodeKind};
 use super::presets::{self, FxPreset};
 use crate::tui::theme::Theme;
 
@@ -180,6 +181,17 @@ pub struct FxGraphView {
     presets: Vec<FxPreset>,
     selected: usize,
     state: Option<ViewState>,
+    /// Edited copy of the selected preset, made on first edit. It lives until
+    /// another preset is selected (edits are not saved to disk yet).
+    editor: Option<GraphEditor>,
+    /// Edit mode: keys act on nodes instead of presets.
+    editing: bool,
+    /// Index into the edited graph's node ids (sorted), the selected node.
+    node_sel: usize,
+    /// A node marked as the child for the next `c` (connect).
+    marked: Option<FxNodeId>,
+    /// Last edit result or hint, shown in the graph pane's title.
+    edit_msg: String,
 }
 
 impl Default for FxGraphView {
@@ -196,6 +208,11 @@ impl FxGraphView {
             presets: presets::all(),
             selected: 0,
             state: None,
+            editor: None,
+            editing: false,
+            node_sel: 0,
+            marked: None,
+            edit_msg: String::new(),
         }
     }
 
@@ -211,16 +228,163 @@ impl FxGraphView {
         self.selected
     }
 
-    /// The selected preset's graph.
+    /// The graph on screen: the edited copy if there is one, else the
+    /// selected preset's graph.
     pub fn graph(&self) -> Option<&FxGraph> {
-        self.presets.get(self.selected).map(|p| &p.graph)
+        match &self.editor {
+            Some(ed) => Some(ed.graph()),
+            None => self.presets.get(self.selected).map(|p| &p.graph),
+        }
+    }
+
+    pub fn is_editing(&self) -> bool {
+        self.editing
     }
 
     pub fn select(&mut self, index: usize) {
         if !self.presets.is_empty() {
             self.selected = index % self.presets.len();
+            self.editor = None;
+            self.editing = false;
+            self.marked = None;
+            self.edit_msg.clear();
             self.state = None;
         }
+    }
+
+    /// Node ids of the graph on screen, sorted.
+    fn node_ids(&self) -> Vec<FxNodeId> {
+        let mut ids: Vec<FxNodeId> = self
+            .graph()
+            .map(|g| g.nodes.iter().map(|n| n.id).collect())
+            .unwrap_or_default();
+        ids.sort_unstable();
+        ids
+    }
+
+    fn selected_node(&self) -> Option<FxNodeId> {
+        self.node_ids().get(self.node_sel).copied()
+    }
+
+    fn start_editing(&mut self) {
+        if self.editor.is_none() {
+            let Some(p) = self.presets.get(self.selected) else {
+                return;
+            };
+            match GraphEditor::new(p.graph.clone()) {
+                Ok(ed) => self.editor = Some(ed),
+                Err(e) => {
+                    self.edit_msg = e.to_string();
+                    return;
+                }
+            }
+        }
+        self.editing = true;
+        self.node_sel = 0;
+        self.edit_msg = "edit mode: a add, m mark child, c connect, x detach, d delete".into();
+    }
+
+    /// Run one edit on the editor, then refresh the derived views and clamp
+    /// the selection. Errors go to the message line.
+    fn edit(
+        &mut self,
+        op: impl FnOnce(&mut GraphEditor) -> Result<String, super::edit::FxEditError>,
+    ) {
+        let Some(ed) = self.editor.as_mut() else {
+            return;
+        };
+        self.edit_msg = match op(ed) {
+            Ok(msg) => msg,
+            Err(e) => e.to_string(),
+        };
+        self.state = None;
+        let n = self.node_ids().len();
+        self.node_sel = self.node_sel.min(n.saturating_sub(1));
+    }
+
+    /// Select the node with the highest id, which is the one just added.
+    fn select_newest(&mut self) {
+        self.node_sel = self.node_ids().len().saturating_sub(1);
+    }
+
+    fn handle_edit_key(&mut self, code: KeyCode) -> bool {
+        let n = self.node_ids().len().max(1);
+        let sel = self.selected_node();
+        match code {
+            KeyCode::Esc => {
+                self.editing = false;
+                self.marked = None;
+                self.edit_msg = "edits kept; press e to edit again".into();
+            }
+            KeyCode::Tab | KeyCode::Down => self.node_sel = (self.node_sel + 1) % n,
+            KeyCode::BackTab | KeyCode::Up => self.node_sel = (self.node_sel + n - 1) % n,
+            KeyCode::Char('a') => {
+                self.edit(|ed| {
+                    let id = ed.add_node(FxNodeKind::Effect {
+                        effect: FxEffect::Sleep { ms: 100 },
+                    });
+                    Ok(format!(
+                        "added leaf {id}; mark it (m) and connect (c) under a parent"
+                    ))
+                });
+                self.select_newest();
+            }
+            KeyCode::Char('A') => {
+                self.edit(|ed| {
+                    let id = ed.add_node(FxNodeKind::Sequence);
+                    Ok(format!(
+                        "added sequence {id}; mark a child and connect it here"
+                    ))
+                });
+                self.select_newest();
+            }
+            KeyCode::Char('m') => {
+                self.marked = sel;
+                self.edit_msg = match sel {
+                    Some(id) => format!("marked {id} as child; select a parent and press c"),
+                    None => String::new(),
+                };
+            }
+            KeyCode::Char('c') => match (self.marked, sel) {
+                (Some(child), Some(parent)) => {
+                    let slot = self
+                        .graph()
+                        .and_then(|g| g.node(parent))
+                        .map_or(0, |p| p.children.len());
+                    self.edit(|ed| {
+                        ed.connect(child, parent, slot)
+                            .map(|()| format!("connected {child} under {parent}"))
+                    });
+                    if self.edit_msg.starts_with("connected") {
+                        self.marked = None;
+                    }
+                }
+                _ => self.edit_msg = "mark a child with m, select its parent, then c".into(),
+            },
+            KeyCode::Char('x') => {
+                if let Some(id) = sel {
+                    self.edit(|ed| ed.disconnect(id).map(|()| format!("detached {id}")));
+                }
+            }
+            KeyCode::Char('d') | KeyCode::Delete => {
+                if let Some(id) = sel {
+                    self.edit(|ed| {
+                        ed.delete(id)
+                            .map(|()| format!("deleted {id} and its children"))
+                    });
+                    self.marked = None;
+                }
+            }
+            KeyCode::Char('r') => {
+                if let Some(id) = sel {
+                    self.edit(|ed| ed.set_root(id).map(|()| format!("{id} is now the root")));
+                }
+            }
+            KeyCode::Char('u') => self.edit(|ed| ed.undo().map(|()| "undone".into())),
+            KeyCode::Char('y') => self.edit(|ed| ed.redo().map(|()| "redone".into())),
+            _ => return false,
+        }
+        true
     }
 
     /// Emitted DSL for the selected graph (empty if it does not validate).
@@ -233,9 +397,9 @@ impl FxGraphView {
     }
 
     fn ensure_state(&mut self) -> &mut ViewState {
-        let graph = self.presets.get(self.selected).map(|p| &p.graph);
+        let graph = self.graph().cloned();
         self.state.get_or_insert_with(|| match graph {
-            Some(g) => ViewState::new(g),
+            Some(g) => ViewState::new(&g),
             None => ViewState {
                 script: String::new(),
                 status: CompileStatus::Graph(FxGraphError::Empty),
@@ -248,12 +412,16 @@ impl FxGraphView {
     /// Handle a key while open. The overlay is modal, so every key is
     /// consumed; returns whether anything changed (needs a redraw).
     pub fn handle_key(&mut self, code: KeyCode) -> bool {
+        if self.editing {
+            return self.handle_edit_key(code);
+        }
         let n = self.presets.len().max(1);
         match code {
             KeyCode::Esc | KeyCode::Char('q') | KeyCode::F(9) => self.open = false,
             KeyCode::Up | KeyCode::Char('k') => self.select(self.selected + n - 1),
             KeyCode::Down | KeyCode::Char('j') => self.select(self.selected + 1),
             KeyCode::Char('s') => self.show_script = !self.show_script,
+            KeyCode::Char('e') => self.start_editing(),
             _ => return false,
         }
         true
@@ -280,9 +448,25 @@ impl FxGraphView {
                         .fg(theme.general.primary)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("read-only ", dim),
+                Span::styled(
+                    if self.editing {
+                        "editing "
+                    } else if self.editor.is_some() {
+                        "edited (unsaved) "
+                    } else {
+                        "read-only "
+                    },
+                    dim,
+                ),
             ]))
-            .title_bottom(Line::styled(" ↑↓ preset  s script  Esc close ", dim))
+            .title_bottom(Line::styled(
+                if self.editing {
+                    " Tab node  a add  A seq  m mark  c connect  x detach  d delete  r root  u undo  y redo  Esc done "
+                } else {
+                    " ↑↓ preset  s script  e edit  Esc close "
+                },
+                dim,
+            ))
             .style(base);
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
@@ -344,11 +528,26 @@ impl FxGraphView {
     }
 
     fn render_graph(&mut self, frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
-        let block = Block::default()
+        let mut title = String::from(" graph ");
+        if self.editing {
+            let node = self.selected_node().and_then(|id| {
+                self.graph()
+                    .and_then(|g| g.node(id))
+                    .map(|n| format!("{id} {}", n.kind.title()))
+            });
+            title = format!(" node {} ", node.unwrap_or_else(|| "none".into()));
+        }
+        let mut block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(theme.general.secondary))
-            .title(" graph ");
+            .title(title);
+        if !self.edit_msg.is_empty() {
+            block = block.title_bottom(Line::styled(
+                format!(" {} ", self.edit_msg),
+                Style::default().fg(theme.general.secondary),
+            ));
+        }
         let inner = block.inner(area);
         frame.render_widget(block, area);
         if inner.width == 0 || inner.height == 0 {
@@ -591,6 +790,71 @@ mod tests {
         assert!(text.contains("compiles"));
         // Node titles reach the buffer through rataflow (or the outline).
         assert!(text.contains("sweep_in"), "{text}");
+    }
+
+    #[test]
+    fn edit_keys_wire_a_leaf_under_a_parent_and_undo_it() {
+        let mut v = FxGraphView::new();
+        v.open = true;
+        let before = v.graph().unwrap().clone();
+        assert!(v.handle_key(KeyCode::Char('e')));
+        assert!(v.is_editing());
+        // Add a leaf (selected), mark it, add a sequence (selected), connect.
+        v.handle_key(KeyCode::Char('a'));
+        let leaf = v.selected_node().unwrap();
+        v.handle_key(KeyCode::Char('m'));
+        v.handle_key(KeyCode::Char('A'));
+        let seq = v.selected_node().unwrap();
+        assert_ne!(seq, leaf);
+        v.handle_key(KeyCode::Char('c'));
+        assert!(v.edit_msg.starts_with("connected"), "{}", v.edit_msg);
+        assert!(v
+            .graph()
+            .unwrap()
+            .node(seq)
+            .unwrap()
+            .children
+            .contains(&leaf));
+        assert_eq!(v.marked, None);
+        // Undo removes the attachment.
+        v.handle_key(KeyCode::Char('u'));
+        assert!(v.graph().unwrap().node(seq).unwrap().children.is_empty());
+        assert_ne!(v.graph().unwrap(), &before);
+        // Esc keeps the edit but leaves edit mode; the preset list moves again.
+        v.handle_key(KeyCode::Esc);
+        assert!(!v.is_editing());
+        v.handle_key(KeyCode::Down);
+        assert!(v.graph().is_some() && v.editor.is_none());
+    }
+
+    #[test]
+    fn edit_errors_show_in_the_message_and_change_nothing() {
+        let mut v = FxGraphView::new();
+        v.open = true;
+        v.handle_key(KeyCode::Char('e'));
+        let before = v.graph().unwrap().clone();
+        // Walk the selection onto the root, then try to delete it.
+        let root = before.root;
+        while v.selected_node() != Some(root) {
+            v.handle_key(KeyCode::Tab);
+        }
+        v.handle_key(KeyCode::Char('d'));
+        assert!(v.edit_msg.contains("root"), "{}", v.edit_msg);
+        assert_eq!(v.graph().unwrap(), &before);
+    }
+
+    #[test]
+    fn edited_graph_renders_and_recompiles() {
+        let mut term = Terminal::new(TestBackend::new(140, 40)).unwrap();
+        let mut v = FxGraphView::new();
+        v.open = true;
+        v.handle_key(KeyCode::Char('e'));
+        v.handle_key(KeyCode::Char('A'));
+        term.draw(|f| v.render(f, f.area(), &Theme::default()))
+            .unwrap();
+        assert!(screen_text(&term).contains("editing"));
+        // A scratch sequence is not reachable, so the emitted script is the root's.
+        assert!(matches!(v.status(), CompileStatus::Ok(_)));
     }
 
     #[test]

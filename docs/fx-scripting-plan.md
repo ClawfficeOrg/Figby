@@ -397,6 +397,19 @@ parameters in the Props panel. Validate connections. Add undo and redo
 (rataflow snapshots, or Figby's `undo.rs`). Save and load the IR plus the
 DSL.
 
+> Status 2026-11-18: **partly done** (uncommitted). `fx_script/edit.rs`
+> holds `GraphEditor`: add (scratch node), connect (slot, child must be
+> unattached and not the root, parent must be a container with room, no
+> cycles), disconnect, delete (subtree; root refused), set_kind (child count
+> must fit), set_root, and bounded undo/redo (200). Every edit validates
+> before it lands. Arity is now checked on reachable nodes only, so scratch
+> nodes do not break the tree. `graph_to_json`/`graph_from_json` round-trip
+> the IR. The F9 overlay has an edit mode (`e`): Tab node, `a`/`A` add,
+> `m` mark, `c` connect, `x` detach, `d` delete, `r` root, `u`/`y` undo/redo.
+> Not done: Props panel parameter editing; Value nodes; file save/load from
+> the UI (the JSON and DSL helpers exist, nothing writes them yet); selected
+> node highlight on the rataflow canvas; type checks beyond the tree rules.
+
 **Phase 6 (optional).** Add text-to-graph import (a winnow subset parser).
 Bake effects into the timeline or figseq frames, rendering the effect at a
 fixed `dt` per frame so it can be exported as GIF. Consider Rhai for control

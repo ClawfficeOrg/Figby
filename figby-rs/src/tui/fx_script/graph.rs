@@ -612,19 +612,6 @@ impl FxGraph {
                     return Err(FxGraphError::SharedChild(child));
                 }
             }
-            let found = n.children.len();
-            let ok = match n.kind.arity() {
-                Arity::None => found == 0,
-                Arity::Exactly1 => found == 1,
-                Arity::AtLeast1 => found >= 1,
-            };
-            if !ok {
-                return Err(FxGraphError::Arity {
-                    node: n.id,
-                    expected: n.kind.arity(),
-                    found,
-                });
-            }
         }
         if parented.contains(&self.root) {
             return Err(FxGraphError::RootHasParent(self.root));
@@ -640,6 +627,24 @@ impl FxGraph {
             }
             if let Some(n) = by_id.get(&id) {
                 stack.extend(n.children.iter().copied());
+            }
+        }
+        // Arity is checked on reachable nodes only, so an unattached scratch
+        // node (an editor's fresh Sequence) does not invalidate the tree.
+        for id in &seen {
+            let Some(n) = by_id.get(id) else { continue };
+            let found = n.children.len();
+            let ok = match n.kind.arity() {
+                Arity::None => found == 0,
+                Arity::Exactly1 => found == 1,
+                Arity::AtLeast1 => found >= 1,
+            };
+            if !ok {
+                return Err(FxGraphError::Arity {
+                    node: n.id,
+                    expected: n.kind.arity(),
+                    found,
+                });
             }
         }
         Ok(())

@@ -23,6 +23,7 @@
 //! Native-only, because it sits under `tui`.
 
 pub mod compile;
+pub mod edit;
 pub mod editor;
 pub mod graph;
 pub mod graph_view;
